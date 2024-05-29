@@ -1,5 +1,3 @@
-package org.object_d;
-
 import org.tensorflow.SavedModelBundle;
 import org.tensorflow.TensorFlow;
 
