@@ -5,9 +5,12 @@ import java.awt.*;
 
 public class Trainer extends JFrame {
 
+    JLabel label;
+
     public Trainer(JFrame jFrame) {
-        setLayout(new FlowLayout());
-        JLabel label = new JLabel("idk");
+        setLayout(new GridLayout(5,1));
+        label = new JLabel("Model trainer");
         add(label);
+
     }
 }
