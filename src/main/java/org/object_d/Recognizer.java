@@ -3,9 +3,6 @@ package org.object_d;
 import org.tensorflow.Graph;
 import org.tensorflow.Session;
 import org.tensorflow.Tensor;
-import org.tensorflow.ndarray.buffer.FloatDataBuffer;
-import org.tensorflow.proto.GraphDef;
-import org.tensorflow.types.TString;
 import javax.swing.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -13,7 +10,8 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.List;          
+import java.util.Arrays;
+import java.util.List;
 
 
 public class Recognizer extends JFrame implements ActionListener {
@@ -70,19 +68,18 @@ public class Recognizer extends JFrame implements ActionListener {
 
     private static float[] executeInceptionGraph(byte[] graphDef, byte[] imageBytes) {
         try (Graph g = new Graph()) {
-            g.importGraphDef(GraphDef.parseFrom(graphDef));
+            g.importGraphDef(graphDef);
             try (Session s = new Session(g);
-                 Tensor image = TString.scalarOf(new String(imageBytes));
+                 Tensor image = Tensor.create(imageBytes);
                  Tensor result = s.runner()
                          .feed("DecodeJpeg/contents", image)
                          .fetch("softmax")
-                         .run().get(0)) {
+                         .run().getFirst()) {
 
-                long[] rshape = result.shape().asArray();
+                long[] rshape = Arrays.stream(result.shape()).toArray();
                 int nlabels = (int) rshape[1];
                 float[] resultArray = new float[nlabels];
-                FloatDataBuffer floatBuffer = result.asRawTensor().data().asFloats();
-              //  floatBuffer.copyTo(resultArray);
+                float[] floatBuffer = result.copyTo(resultArray);
                 return resultArray;
             }
         } catch (Exception e) {
@@ -93,11 +90,11 @@ public class Recognizer extends JFrame implements ActionListener {
 
     @Override
     public void actionPerformed(ActionEvent e) {
-        modelPath = "/Users/gregor/IdeaProjects/U6_CS_TENSORFLOW/";
+        modelPath = "C:\\Users\\grego\\Desktop\\Tensorflow_ObjD\\";
         graphDef = readAllBytesOrExit(Paths.get(modelPath, "tensorflow_inception_graph.pb"));
         labels = readAllLinesOrExit(Paths.get(modelPath, "imagenet_comp_graph_label_strings.txt"));
         try {
-            byte[] imageBytes = Files.readAllBytes(Paths.get("/Users/gregor/IdeaProjects/U6_CS_TENSORFLOW/bild.JPEG"));
+            byte[] imageBytes = Files.readAllBytes(Paths.get("C:\\Users\\grego\\Desktop\\Tensorflow_ObjD\\bild.JPEG"));
             float[] labelProbabilities = executeInceptionGraph(graphDef, imageBytes);
             int bestLabelIdx = maxIndex(labelProbabilities);
             result.setText(String.format("BEST MATCH: %s (%.2f%% likely)", labels.get(bestLabelIdx), labelProbabilities[bestLabelIdx] * 100f));
