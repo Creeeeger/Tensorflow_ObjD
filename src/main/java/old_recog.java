@@ -29,8 +29,7 @@ public class old_recog extends JFrame implements ActionListener {
     private final JTextField result;
     private final JTextField imgpth;
     private final JTextField modelpth;
-    private final FileNameExtensionFilter imgfilter = new FileNameExtensionFilter(
-            "JPG & JPEG Images", "jpg", "jpeg");
+    private final FileNameExtensionFilter imgfilter = new FileNameExtensionFilter("JPG & JPEG Images", "jpg", "jpeg");
     private String modelpath;
     private String imagepath;
     private boolean modelselected = false;
@@ -38,7 +37,7 @@ public class old_recog extends JFrame implements ActionListener {
     private List<String> labels;
 
     public old_recog() {
-        setLayout(new GridLayout(4,4));
+        setLayout(new GridLayout(4, 4));
         setSize(500, 500);
 
         predict = new JButton("Predict");
@@ -68,10 +67,7 @@ public class old_recog extends JFrame implements ActionListener {
         add(viewer).setSize(new Dimension(200, 200));
         add(predict);
         add(result).setSize(new Dimension(300, 100));
-
-
         setLocationRelativeTo(null);
-
         setResizable(false);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
     }
@@ -80,7 +76,7 @@ public class old_recog extends JFrame implements ActionListener {
         try (Graph g = new Graph()) {
             g.importGraphDef(graphDef);
             try (Session s = new Session(g);
-                 Tensor result = s.runner().feed("DecodeJpeg/contents", image).fetch("softmax").run().get(0)) {
+                 Tensor result = s.runner().feed("DecodeJpeg/contents", image).fetch("softmax").run().getFirst()) {
                 final long[] rshape = result.shape();
                 if (result.numDimensions() != 2 || rshape[0] != 1) {
                     throw new RuntimeException(
@@ -187,7 +183,6 @@ public class old_recog extends JFrame implements ActionListener {
                         "BEST MATCH: %s (%.2f%% likely)%n",
                         labels.get(bestLabelIdx), labelProbabilities[bestLabelIdx] * 100f);
             }
-
         }
     }
 }

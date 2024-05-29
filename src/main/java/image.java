@@ -44,11 +44,9 @@ public class image {
                     }
                 }
 
-             //   imageTensors.add(Tensor.create(TUint8.class, Shape.of(imgHeight, imgWidth, 3)));
+                //   imageTensors.add(Tensor.create(TUint8.class, Shape.of(imgHeight, imgWidth, 3)));
                 labels.add((long) label);
             }
         }
-
-        // Your further code to handle imageTensors and labels
     }
 }
