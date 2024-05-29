@@ -3,7 +3,6 @@ package org.object_d;
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
-import java.awt.Image;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.File;
@@ -12,15 +11,15 @@ public class Main_UI extends JFrame {
     public JLabel label, img;
     public ImageIcon image = null;
     public JMenuBar menuBar;
-    public JMenu file, model, database;
-    public JMenuItem exit, load, load_database, reset_database, load_model, set_params, restore_last;
+    public JMenu file, model, database, model_trainer;
+    public JMenuItem exit, load, load_database, reset_database, load_model, set_params, restore_last, train_model;
     public JScrollPane scrollPane;
     public JPanel leftPanel, rightPanel; // Panels for left and right boxes
     public File tensor_file;
     public JButton detect;
 
     public Main_UI() {
-        setLayout(new FlowLayout()); // Use BorderLayout for main layout
+        setLayout(new GridLayout(2, 4)); // Use BorderLayout for main layout
 
         // Create left and right panels
         leftPanel = new JPanel();
@@ -42,10 +41,12 @@ public class Main_UI extends JFrame {
         file = new JMenu("File");
         model = new JMenu("Model");
         database = new JMenu("Database");
+        model_trainer = new JMenu("Model creator");
 
         menuBar.add(file);
         menuBar.add(model);
         menuBar.add(database);
+        menuBar.add(model_trainer);
 
         load_database = new JMenuItem("Load database");
         database.add(load_database);
@@ -81,6 +82,11 @@ public class Main_UI extends JFrame {
         event_exit ex = new event_exit();
         exit.addActionListener(ex);
 
+        train_model = new JMenuItem("Train own models");
+        model_trainer.add(train_model);
+        event_train tm = new event_train();
+        train_model.addActionListener(tm);
+
         scrollPane = new JScrollPane();
         rightPanel.add(scrollPane);
 
@@ -114,6 +120,18 @@ public class Main_UI extends JFrame {
 
             config_handler.save_config(values);
             System.exit(0);
+        }
+    }
+
+    public class event_train implements ActionListener {
+
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            Trainer gui = new Trainer(Main_UI.this);
+            gui.setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE);
+            gui.setVisible(true);
+            gui.setSize(400, 400);
+            gui.setLocation(100, 100);
         }
     }
 
