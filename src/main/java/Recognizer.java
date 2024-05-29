@@ -67,20 +67,24 @@ public class Recognizer extends JFrame implements ActionListener {
         SwingUtilities.invokeLater(() -> new Recognizer().setVisible(true));
     }
 
+    private static float[][] getResultArray(Tensor result) {
+        final long[] rshape = result.shape();
+        if (result.numDimensions() != 2 || rshape[0] != 1) {
+            throw new RuntimeException(
+                    String.format(
+                            "Expected model to produce a [1 N] shaped tensor where N is the number of labels, instead it produced one with shape %s",
+                            Arrays.toString(rshape)));
+        }
+        int nlabels = (int) rshape[1];
+        return new float[1][nlabels];
+    }
+
     public static float[] executeInceptionGraph(byte[] graphDef, Tensor image) {
         try (Graph g = new Graph()) {
             g.importGraphDef(graphDef);
             try (Session s = new Session(g);
-                 Tensor result = s.runner().feed("DecodeJpeg/contents", image).fetch("softmax").run().get(0)) {
-                final long[] rshape = result.shape();
-                if (result.numDimensions() != 2 || rshape[0] != 1) {
-                    throw new RuntimeException(
-                            String.format(
-                                    "Expected model to produce a [1 N] shaped tensor where N is the number of labels, instead it produced one with shape %s",
-                                    Arrays.toString(rshape)));
-                }
-                int nlabels = (int) rshape[1];
-                float[][] resultArray = new float[1][nlabels];
+                 Tensor result = s.runner().feed("DecodeJpeg/contents", image).fetch("softmax").run().getFirst()) {
+                float[][] resultArray = getResultArray(result);
                 result.copyTo(resultArray);
                 return resultArray[0];
             }
