@@ -1,8 +1,4 @@
-package org.object_d;
-
 import org.tensorflow.Tensor;
-import org.tensorflow.ndarray.Shape;
-import org.tensorflow.types.TUint8;
 
 import javax.imageio.ImageIO;
 import java.awt.*;
@@ -29,7 +25,7 @@ public class image {
             String className = classNames[label];
             File dir = new File(Paths.get(dataDir, className).toString());
             for (File file : Objects.requireNonNull(dir.listFiles())) {
-                BufferedImage img = ImageIO.read(new File("/Users/gregor/IdeaProjects/U6_CS_TENSORFLOW/flower_photos/roses/4910094611_8c7170fc95_n.jpg"));
+                BufferedImage img = ImageIO.read(new File("C:\\Users\\grego\\Desktop\\Tensorflow_ObjD\\flower_photos\\roses\\4910094611_8c7170fc95_n.jpg"));
 
                 // Convert image to RGB if necessary
                 BufferedImage rgbImg = new BufferedImage(imgWidth, imgHeight, BufferedImage.TYPE_INT_RGB);

@@ -1,5 +1,3 @@
-package org.object_d;
-
 import org.tensorflow.Graph;
 import org.tensorflow.Session;
 import org.tensorflow.Tensor;
@@ -33,7 +31,6 @@ public class old_recog extends JFrame implements ActionListener {
     private final JTextField modelpth;
     private final FileNameExtensionFilter imgfilter = new FileNameExtensionFilter(
             "JPG & JPEG Images", "jpg", "jpeg");
-    JTable table;
     private String modelpath;
     private String imagepath;
     private boolean modelselected = false;
@@ -41,9 +38,8 @@ public class old_recog extends JFrame implements ActionListener {
     private List<String> labels;
 
     public old_recog() {
-        setTitle("Object Recognition - Emaraic.com");
+        setLayout(new GridLayout(4,4));
         setSize(500, 500);
-        table = new JTable();
 
         predict = new JButton("Predict");
         predict.setEnabled(false);
@@ -65,15 +61,13 @@ public class old_recog extends JFrame implements ActionListener {
         modelpth.setEditable(false);
         imgpth.setEditable(false);
         viewer = new JLabel();
-        getContentPane().add(table);
-        table.add(modelpth);
-        table.add(incep);
-        table.add(imgpth);
-        table.add(img);
-
-        table.add(viewer).setSize(new Dimension(200, 200));
-        table.add(predict);
-        table.add(result).setSize(new Dimension(300, 100));
+        add(modelpth);
+        add(incep);
+        add(imgpth);
+        add(img);
+        add(viewer).setSize(new Dimension(200, 200));
+        add(predict);
+        add(result).setSize(new Dimension(300, 100));
 
 
         setLocationRelativeTo(null);
@@ -82,8 +76,7 @@ public class old_recog extends JFrame implements ActionListener {
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
     }
 
-    ///
-    private static float[] executeInceptionGraph(byte[] graphDef, Tensor image) {
+    public static float[] executeInceptionGraph(byte[] graphDef, Tensor image) {
         try (Graph g = new Graph()) {
             g.importGraphDef(graphDef);
             try (Session s = new Session(g);
@@ -96,7 +89,9 @@ public class old_recog extends JFrame implements ActionListener {
                                     Arrays.toString(rshape)));
                 }
                 int nlabels = (int) rshape[1];
-                return result.copyTo(new float[1][nlabels])[0];
+                float[][] resultArray = new float[1][nlabels];
+                result.copyTo(resultArray);
+                return resultArray[0];
             }
         }
     }
@@ -134,7 +129,7 @@ public class old_recog extends JFrame implements ActionListener {
     public static void main(String[] args) {
         SwingUtilities.invokeLater(new Runnable() {
             public void run() {
-                new Recognizer().setVisible(true);
+                new old_recog().setVisible(true);
 
             }
         });
@@ -173,7 +168,7 @@ public class old_recog extends JFrame implements ActionListener {
                         predict.setEnabled(true);
                     }
                 } catch (IOException ex) {
-                    Logger.getLogger(Recognizer.class.getName()).log(Level.SEVERE, null, ex);
+                    Logger.getLogger(old_recog.class.getName()).log(Level.SEVERE, null, ex);
                 }
             } else {
                 System.out.println("Process was cancelled by user.");

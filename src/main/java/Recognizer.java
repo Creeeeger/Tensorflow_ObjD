@@ -1,9 +1,9 @@
-package org.object_d;
-
 import org.tensorflow.Graph;
 import org.tensorflow.Session;
 import org.tensorflow.Tensor;
+
 import javax.swing.*;
+import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.IOException;
@@ -16,17 +16,18 @@ import java.util.List;
 
 public class Recognizer extends JFrame implements ActionListener {
     JButton predict;
-    JTextField result;
+    JLabel result;
     String modelPath;
     byte[] graphDef;
     List<String> labels;
 
     public Recognizer() {
+        setLayout(new FlowLayout());
         setSize(500, 500);
         predict = new JButton("Predict");
         predict.setEnabled(true);
         predict.addActionListener(this);
-        result = new JTextField();
+        result = new JLabel("im the result");
         add(result);
         add(predict);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -66,25 +67,23 @@ public class Recognizer extends JFrame implements ActionListener {
         SwingUtilities.invokeLater(() -> new Recognizer().setVisible(true));
     }
 
-    private static float[] executeInceptionGraph(byte[] graphDef, byte[] imageBytes) {
+    public static float[] executeInceptionGraph(byte[] graphDef, Tensor image) {
         try (Graph g = new Graph()) {
             g.importGraphDef(graphDef);
             try (Session s = new Session(g);
-                 Tensor image = Tensor.create(imageBytes);
-                 Tensor result = s.runner()
-                         .feed("DecodeJpeg/contents", image)
-                         .fetch("softmax")
-                         .run().getFirst()) {
-
-                long[] rshape = Arrays.stream(result.shape()).toArray();
+                 Tensor result = s.runner().feed("DecodeJpeg/contents", image).fetch("softmax").run().get(0)) {
+                final long[] rshape = result.shape();
+                if (result.numDimensions() != 2 || rshape[0] != 1) {
+                    throw new RuntimeException(
+                            String.format(
+                                    "Expected model to produce a [1 N] shaped tensor where N is the number of labels, instead it produced one with shape %s",
+                                    Arrays.toString(rshape)));
+                }
                 int nlabels = (int) rshape[1];
-                float[] resultArray = new float[nlabels];
-                float[] floatBuffer = result.copyTo(resultArray);
-                return resultArray;
+                float[][] resultArray = new float[1][nlabels];
+                result.copyTo(resultArray);
+                return resultArray[0];
             }
-        } catch (Exception e) {
-            System.out.println(e);
-            throw new RuntimeException(e);
         }
     }
 
@@ -94,7 +93,7 @@ public class Recognizer extends JFrame implements ActionListener {
         graphDef = readAllBytesOrExit(Paths.get(modelPath, "tensorflow_inception_graph.pb"));
         labels = readAllLinesOrExit(Paths.get(modelPath, "imagenet_comp_graph_label_strings.txt"));
         try {
-            byte[] imageBytes = Files.readAllBytes(Paths.get("C:\\Users\\grego\\Desktop\\Tensorflow_ObjD\\bild.JPEG"));
+            Tensor imageBytes = Tensor.create(Files.readAllBytes(Paths.get("C:\\Users\\grego\\Desktop\\Tensorflow_ObjD\\bild.JPEG")));
             float[] labelProbabilities = executeInceptionGraph(graphDef, imageBytes);
             int bestLabelIdx = maxIndex(labelProbabilities);
             result.setText(String.format("BEST MATCH: %s (%.2f%% likely)", labels.get(bestLabelIdx), labelProbabilities[bestLabelIdx] * 100f));
