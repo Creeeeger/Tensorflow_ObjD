@@ -13,7 +13,6 @@ import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.List;
 
-
 public class Recognizer extends JFrame implements ActionListener {
     JButton predict;
     JLabel result;
@@ -27,7 +26,7 @@ public class Recognizer extends JFrame implements ActionListener {
         predict = new JButton("Predict");
         predict.setEnabled(true);
         predict.addActionListener(this);
-        result = new JLabel("im the result");
+        result = new JLabel("I'm the result");
         add(result);
         add(predict);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
