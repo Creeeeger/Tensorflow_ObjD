@@ -8,7 +8,7 @@ import java.awt.event.ActionListener;
 import java.io.File;
 
 public class Main_UI extends JFrame {
-    public JLabel label, img;
+    public JLabel label, img, image_path, model_path;
     public ImageIcon image = null;
     public JMenuBar menuBar;
     public JMenu file, model, database, model_trainer;
@@ -94,6 +94,12 @@ public class Main_UI extends JFrame {
         leftPanel.add(detect);
         detect_ev d = new detect_ev();
         detect.addActionListener(d);
+
+        image_path = new JLabel("here comes the image path");
+        add(image_path);
+
+        model_path = new JLabel("here comes the model path");
+        add(model_path);
     }
 
     public static void main(String[] args) {
