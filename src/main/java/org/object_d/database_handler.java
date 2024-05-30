@@ -11,7 +11,7 @@ public class database_handler {
                 {"Item2", "15"},
                 {"Item3", "2"}
         };
-     addData(sampleData);
+        addData(sampleData);
         //!! dummy data
     }
 
