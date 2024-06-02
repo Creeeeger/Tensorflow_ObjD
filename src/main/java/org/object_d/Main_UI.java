@@ -6,16 +6,17 @@ import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.File;
+import java.util.Objects;
 
 public class Main_UI extends JFrame {
-    public JLabel label, img, image_path, model_path;
+    public JLabel label, img, image_path, model_path, result;
     public ImageIcon image = null;
     public JMenuBar menuBar;
     public JMenu file, model, database, model_trainer;
     public JMenuItem exit, load, load_database, reset_database, load_model, set_params, restore_last, train_model;
     public JScrollPane scrollPane;
     public JPanel leftPanel, rightPanel; // Panels for left and right boxes
-    public File tensor_file;
+    public File tensor_file, picture;
     public JButton detect;
 
     public Main_UI() {
@@ -27,14 +28,19 @@ public class Main_UI extends JFrame {
         rightPanel = new JPanel();
         rightPanel.setLayout(new BoxLayout(rightPanel, BoxLayout.Y_AXIS)); // Vertical layout for right panel
 
+
+
         // Add panels to main frame
-        add(leftPanel, BorderLayout.NORTH);
-        add(rightPanel, BorderLayout.SOUTH);
+        add(leftPanel, BorderLayout.WEST);
+        add(rightPanel, BorderLayout.EAST);
         label = new JLabel("Object detector");
         leftPanel.add(label);
 
+
+
         img = new JLabel(image);
         leftPanel.add(img);
+
 
         menuBar = new JMenuBar();
         setJMenuBar(menuBar);
@@ -92,14 +98,18 @@ public class Main_UI extends JFrame {
 
         detect = new JButton("Recognise Objects");
         leftPanel.add(detect);
+        detect.setEnabled(false);
         detect_ev d = new detect_ev();
         detect.addActionListener(d);
 
         image_path = new JLabel("here comes the image path");
-        add(image_path);
+        leftPanel.add(image_path);
 
         model_path = new JLabel("here comes the model path");
-        add(model_path);
+        leftPanel.add(model_path);
+
+        result = new JLabel("Predicted results here");
+        leftPanel.add(result);
     }
 
     public static void main(String[] args) {
@@ -108,9 +118,6 @@ public class Main_UI extends JFrame {
         gui.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         gui.setSize(600, 600);
         gui.setTitle("Object recognitions");
-
-        HelloTensorFlow tensor = new HelloTensorFlow();
-        System.out.println(tensor.version());
     }
 
     public static class event_exit implements ActionListener {
@@ -123,7 +130,7 @@ public class Main_UI extends JFrame {
                     {"db_path", "/"},
                     {"set_date", "Thu May 02 10:38:25 BSssT 2024"}
             };
-
+            //Use the actual variables instead of dummy data (event exit)!!!
             config_handler.save_config(values);
             System.exit(0);
         }
@@ -146,7 +153,8 @@ public class Main_UI extends JFrame {
 
         @Override
         public void actionPerformed(ActionEvent e) {
-
+            //Add whole image detection logic (detect_ev image recogniser event)!!!
+            //Create ui for outcome (detect_ev image recogniser event)!!!
         }
     }
 
@@ -164,7 +172,7 @@ public class Main_UI extends JFrame {
             JScrollPane scrollPane = new JScrollPane(table);
 
             // Add scroll pane to the frame
-            getContentPane().add(scrollPane);
+            rightPanel.add(scrollPane);
 
             // Revalidate and repaint the frame
             revalidate();
@@ -178,8 +186,9 @@ public class Main_UI extends JFrame {
         @Override
         public void actionPerformed(ActionEvent e) {
             String[][] values = config_handler.load_config();
-            for (String[] value : values) {
+            for (String[] value : Objects.requireNonNull(values)) {
                 System.out.println(value[0] + " " + value[1]);
+                //Set the variables properly to the context they need (restore last)!!!
             }
 
             // Create table model with data and column names
@@ -190,15 +199,16 @@ public class Main_UI extends JFrame {
             JScrollPane scrollPane = new JScrollPane(table1);
 
             // Add scroll pane to the frame
-            getContentPane().add(scrollPane);
+            rightPanel.add(scrollPane);
 
             // Revalidate and repaint the frame
             revalidate();
             repaint();
+            detect.setEnabled(true);
         }
     }
 
-    public class event_load_tensor implements ActionListener {
+    public class event_load_tensor implements ActionListener { // returns tensor_file as loaded tensor
 
         @Override
         public void actionPerformed(ActionEvent e) {
@@ -206,7 +216,9 @@ public class Main_UI extends JFrame {
             int returnValue = fileChooser.showOpenDialog(null);
             if (returnValue == JFileChooser.APPROVE_OPTION) {
                 tensor_file = fileChooser.getSelectedFile();
-                System.out.println("Tensor file imported ");
+                System.out.println("Tensor file imported");
+                detect.setEnabled(true);
+                model_path.setText(tensor_file.getPath());
             }
         }
     }
@@ -215,7 +227,7 @@ public class Main_UI extends JFrame {
 
         @Override
         public void actionPerformed(ActionEvent e) {
-
+            //Create param window!!!
         }
     }
 
@@ -229,10 +241,8 @@ public class Main_UI extends JFrame {
         }
     }
 
-    public class event_load implements ActionListener {
+    public class event_load implements ActionListener {//returns picture as the loaded image
         private final JLabel imageLabel;
-        private final int desiredWidth = 400;
-        private final int desiredHeight = 300;
 
         public event_load(JLabel imageLabel) {
             this.imageLabel = imageLabel;
@@ -247,9 +257,13 @@ public class Main_UI extends JFrame {
                 try {
                     ImageIcon icon = new ImageIcon(selectedFile.getPath());
                     Image originalImage = icon.getImage();
+                    int desiredHeight = 300;
+                    int desiredWidth = 400;
                     Image scaledImage = originalImage.getScaledInstance(desiredWidth, desiredHeight, Image.SCALE_SMOOTH);
                     ImageIcon scaledIcon = new ImageIcon(scaledImage);
                     imageLabel.setIcon(scaledIcon);
+                    picture = selectedFile;
+                    image_path.setText(picture.getPath());
                 } catch (Exception ex) {
                     ex.printStackTrace();
                 }
@@ -257,3 +271,8 @@ public class Main_UI extends JFrame {
         }
     }
 }
+//Set the variables properly to the context they need (restore last)!!!
+//Create param window (for tensor file) !!!
+//Use the actual variables instead of dummy data (event exit)!!!
+//Add whole image detection logic (detect_ev image recogniser event)!!!
+//Create ui for outcome (detect_ev image recogniser event)!!!
