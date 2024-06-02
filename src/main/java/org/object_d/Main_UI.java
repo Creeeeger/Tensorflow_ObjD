@@ -1,5 +1,7 @@
 package org.object_d;
 
+import org.tensorflow.SavedModelBundle;
+
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
@@ -18,6 +20,7 @@ public class Main_UI extends JFrame {
     public JPanel leftPanel, rightPanel; // Panels for left and right boxes
     public File tensor_file, picture;
     public JButton detect;
+    SavedModelBundle savedModelBundle;
 
     public Main_UI() {
         setLayout(new GridLayout(2, 1)); // Use BorderLayout for main layout
@@ -29,13 +32,11 @@ public class Main_UI extends JFrame {
         rightPanel.setLayout(new BoxLayout(rightPanel, BoxLayout.Y_AXIS)); // Vertical layout for right panel
 
 
-
         // Add panels to main frame
         add(leftPanel, BorderLayout.WEST);
         add(rightPanel, BorderLayout.EAST);
         label = new JLabel("Object detector");
         leftPanel.add(label);
-
 
 
         img = new JLabel(image);
@@ -216,9 +217,15 @@ public class Main_UI extends JFrame {
             int returnValue = fileChooser.showOpenDialog(null);
             if (returnValue == JFileChooser.APPROVE_OPTION) {
                 tensor_file = fileChooser.getSelectedFile();
-                System.out.println("Tensor file imported");
-                detect.setEnabled(true);
                 model_path.setText(tensor_file.getPath());
+                detect.setEnabled(true);
+            }
+
+            try {
+                savedModelBundle = SavedModelBundle.load(tensor_file.getPath(), "serve");
+                System.out.println("Model loaded");
+            } catch (Exception ex) {
+                ex.printStackTrace();
             }
         }
     }
@@ -228,6 +235,12 @@ public class Main_UI extends JFrame {
         @Override
         public void actionPerformed(ActionEvent e) {
             //Create param window!!!
+            model_param gui = new model_param(Main_UI.this);
+            gui.setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE);
+            gui.setVisible(true);
+            gui.setSize(550, 550);
+            gui.setLocation(100, 100);
+            gui.setTitle("Model Parameter Settings");
         }
     }
 
@@ -272,7 +285,6 @@ public class Main_UI extends JFrame {
     }
 }
 //Set the variables properly to the context they need (restore last)!!!
-//Create param window (for tensor file) !!!
 //Use the actual variables instead of dummy data (event exit)!!!
 //Add whole image detection logic (detect_ev image recogniser event)!!!
-//Create ui for outcome (detect_ev image recogniser event)!!!
+//Reorganise Menu bar!!!
