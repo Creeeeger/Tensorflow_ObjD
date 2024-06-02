@@ -8,4 +8,6 @@
 
 - Detect what is on images
 
-- Train your own models
+- Train / Create your own models
+
+- Generate images with stable diffusion for training models

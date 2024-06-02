@@ -19,7 +19,7 @@ public class Main_UI extends JFrame {
     public JButton detect;
 
     public Main_UI() {
-        setLayout(new GridLayout(2, 4)); // Use BorderLayout for main layout
+        setLayout(new GridLayout(2, 1)); // Use BorderLayout for main layout
 
         // Create left and right panels
         leftPanel = new JPanel();
@@ -28,8 +28,8 @@ public class Main_UI extends JFrame {
         rightPanel.setLayout(new BoxLayout(rightPanel, BoxLayout.Y_AXIS)); // Vertical layout for right panel
 
         // Add panels to main frame
-        add(leftPanel, BorderLayout.WEST);
-        add(rightPanel, BorderLayout.EAST);
+        add(leftPanel, BorderLayout.NORTH);
+        add(rightPanel, BorderLayout.SOUTH);
         label = new JLabel("Object detector");
         leftPanel.add(label);
 
@@ -136,8 +136,9 @@ public class Main_UI extends JFrame {
             Trainer gui = new Trainer(Main_UI.this);
             gui.setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE);
             gui.setVisible(true);
-            gui.setSize(400, 400);
+            gui.setSize(550, 550);
             gui.setLocation(100, 100);
+            gui.setTitle("Model trainer");
         }
     }
 
