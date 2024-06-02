@@ -17,6 +17,7 @@ import java.util.Date;
 
 public class config_handler {
     public static void create_config() {
+        //Add required config values!!!
         HelloTensorFlow ts = new HelloTensorFlow();
         Date date = new Date();
 
@@ -136,8 +137,5 @@ public class config_handler {
             e.printStackTrace();
         }
     }
-
-    public static void main(String[] args) {
-
-    }
 }
+//Add required config values
