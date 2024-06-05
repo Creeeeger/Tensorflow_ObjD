@@ -11,63 +11,69 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 
 public class Trainer extends JFrame {
-
-    public JPanel leftPanel, rightPanel; // Panels for left and right boxes
-    JLabel images_path, output_path;
-    JButton image_folder, stable_gen, output_path_button, create_model;
-    JTextField command;
+    private final JPanel leftPanel;
+    private final JPanel rightPanel;
+    private final JLabel images_path;
+    private final JLabel output_path;
+    private final JButton image_folder;
+    private final JButton stable_gen;
+    private final JButton output_path_button;
+    private final JButton create_model;
+    private final JTextField command;
     File op_path_gen_img, img_for_train;
     String command_string, output_gen_string, image_folder_String;
 
-
     public Trainer(JFrame jFrame) {
-        setLayout(new GridLayout(2, 1));
+        setLayout(new GridLayout(1, 2, 10, 10)); // Use horizontal grid layout with spacing
 
         // Create left and right panels
         leftPanel = new JPanel();
-        leftPanel.setLayout(new BoxLayout(leftPanel, BoxLayout.Y_AXIS)); // Vertical layout for left panel
+        leftPanel.setLayout(new BoxLayout(leftPanel, BoxLayout.Y_AXIS));
+        leftPanel.setBorder(BorderFactory.createTitledBorder("Training Panel")); // Add border with title
+
         rightPanel = new JPanel();
-        rightPanel.setLayout(new BoxLayout(rightPanel, BoxLayout.Y_AXIS)); // Vertical layout for right panel
+        rightPanel.setLayout(new BoxLayout(rightPanel, BoxLayout.Y_AXIS));
+        rightPanel.setBorder(BorderFactory.createTitledBorder("Image Generation Panel")); // Add border with title
 
         // Add panels to main frame
-        add(leftPanel, BorderLayout.NORTH);
-        add(rightPanel, BorderLayout.SOUTH);
+        add(leftPanel);
+        add(rightPanel);
 
-
+        // Left Panel Components
         images_path = new JLabel("Select a folder with images first");
-        leftPanel.add(images_path);
-
         image_folder = new JButton("1. Select folder with images");
-        leftPanel.add(image_folder);
-        image_path_function image_path_function = new image_path_function();
-        image_folder.addActionListener(image_path_function);
-
         create_model = new JButton("2. Create model");
         create_model.setEnabled(false);
+
+        leftPanel.add(images_path);
+        leftPanel.add(Box.createRigidArea(new Dimension(0, 10))); // Add space between components
+        leftPanel.add(image_folder);
+        leftPanel.add(Box.createRigidArea(new Dimension(0, 20))); // Add more space between components
         leftPanel.add(create_model);
-        create_model_event create_model_event = new create_model_event();
-        create_model.addActionListener(create_model_event);
 
-
-        JLabel gen = new JLabel("If you want to generate images with Stable Diffusion use this");
-        rightPanel.add(gen);
-
+        // Right Panel Components
+        JLabel gen = new JLabel("If you want to generate images with Stable Diffusion use this:");
         command = new JTextField("1. Enter input for image generator -- replace with your own request", 75);
-        rightPanel.add(command);
-
         output_path = new JLabel("Path of generated output images");
-        rightPanel.add(output_path);
-
         output_path_button = new JButton("2. Select path for output generated images");
-        rightPanel.add(output_path_button);
-        oppbe oppbe = new oppbe();
-        output_path_button.addActionListener(oppbe);
-
         stable_gen = new JButton("3. Generate images");
         stable_gen.setEnabled(false);
+
+        rightPanel.add(gen);
+        rightPanel.add(Box.createRigidArea(new Dimension(0, 10)));
+        rightPanel.add(command);
+        rightPanel.add(Box.createRigidArea(new Dimension(0, 10)));
+        rightPanel.add(output_path);
+        rightPanel.add(Box.createRigidArea(new Dimension(0, 10)));
+        rightPanel.add(output_path_button);
+        rightPanel.add(Box.createRigidArea(new Dimension(0, 20)));
         rightPanel.add(stable_gen);
-        stable_gen_event stable_gen_event = new stable_gen_event();
-        stable_gen.addActionListener(stable_gen_event);
+
+        // Add action listeners
+        image_folder.addActionListener(new image_path_function());
+        create_model.addActionListener(new create_model_event());
+        output_path_button.addActionListener(new oppbe());
+        stable_gen.addActionListener(new stable_gen_event());
     }
 
     public static void create_env() {
@@ -163,7 +169,6 @@ public class Trainer extends JFrame {
     }
 }
 
-//Make Ui nicer
 //proceed with stable dif interaction
 //create model logic
 //Rest of the setup process with git

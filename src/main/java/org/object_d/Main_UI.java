@@ -144,7 +144,7 @@ public class Main_UI extends JFrame {
             Trainer gui = new Trainer(Main_UI.this);
             gui.setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE);
             gui.setVisible(true);
-            gui.setSize(550, 550);
+            gui.setSize(1000, 700);
             gui.setLocation(100, 100);
             gui.setTitle("Model trainer");
         }
