@@ -52,8 +52,14 @@ public class model_param extends JFrame {
 
         @Override
         public void actionPerformed(ActionEvent e) {
-            //Apply settings to config!!!
-            //Hide window!!!
+            boolean isSetting1Selected = setting1.isSelected();
+            boolean isSetting2Selected = setting2.isSelected();
+            boolean isSetting3Selected = setting3.isSelected();
+            boolean isSetting4Selected = setting4.isSelected();
+            //Apply settings to config link with config handler!!!
+
+
+            setVisible(false);
         }
     }
 }
