@@ -1,0 +1,14 @@
+Config handler:
+    //Add required config values
+
+Main Ui:
+    //Add whole image detection logic (detect_ev image recogniser event)!!!
+    //Make UI Better!!!
+
+Model param:
+    //Use right settings which we actually need!!!
+
+Trainer:
+    //proceed with stable dif interaction
+    //create model logic
+    //Rest of the setup process with git
