@@ -74,21 +74,21 @@ public class Main_UI extends JFrame {
         file = new JMenu("File");
         load = new JMenuItem("Load image");
         load.addActionListener(new event_load(img));
+        load_model = new JMenuItem("Load a tensor model");
+        load_model.addActionListener(new event_load_tensor());
         restore_last = new JMenuItem("Restore last config");
         restore_last.addActionListener(new event_restore_last());
         exit = new JMenuItem("Save and Exit");
         exit.addActionListener(new event_exit());
         file.add(load);
+        file.add(load_model);
         file.add(restore_last);
         file.add(exit);
         menuBar.add(file);
 
         model = new JMenu("Model");
-        load_model = new JMenuItem("Load a tensor model");
-        load_model.addActionListener(new event_load_tensor());
         set_params = new JMenuItem("Set model parameters");
         set_params.addActionListener(new event_set_params());
-        model.add(load_model);
         model.add(set_params);
         menuBar.add(model);
 
@@ -347,4 +347,3 @@ public class Main_UI extends JFrame {
 }
 //Add whole image detection logic (detect_ev image recogniser event)!!!
 //Make UI Better!!!
-//Reorganise Menu bar!!!
