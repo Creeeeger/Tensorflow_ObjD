@@ -10,9 +10,14 @@ public class model_param extends JFrame {
     private final JCheckBox setting2;
     private final JCheckBox setting3;
     private final JCheckBox setting4;
+    private final String pic;  // Add instance variable for pic
+    private final String ten;  // Add instance variable for ten
 
-    public model_param() {
+    public model_param(String pic, String ten) {
         setLayout(new BorderLayout(10, 10)); // Use BorderLayout with spacing
+
+        this.pic = pic;  // Initialize pic
+        this.ten = ten;  // Initialize ten
 
         JPanel settingsPanel = new JPanel();
         settingsPanel.setLayout(new BoxLayout(settingsPanel, BoxLayout.Y_AXIS));
@@ -54,7 +59,7 @@ public class model_param extends JFrame {
             boolean isSetting3Selected = setting3.isSelected();
             boolean isSetting4Selected = setting4.isSelected();
             Main_UI mainUI = new Main_UI();
-            mainUI.save_reload_config(isSetting1Selected, isSetting2Selected, isSetting3Selected, isSetting4Selected);
+            mainUI.save_reload_config(isSetting1Selected, isSetting2Selected, isSetting3Selected, isSetting4Selected, pic, ten);
             setVisible(false);
         }
     }
