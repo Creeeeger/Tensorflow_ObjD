@@ -18,7 +18,8 @@ public class Main_UI extends JFrame {
     public JMenuItem exit, load, load_database, reset_database, load_model, set_params, restore_last, train_model;
     public JScrollPane scrollPane;
     public JPanel leftPanel, rightPanel; // Panels for left and right boxes
-    public File tensor_file, picture;
+    public File tensor_file = new File("/");
+    public File picture = new File("/");
     public JButton detect;
     public boolean setting1, setting2, setting3, setting4;
     SavedModelBundle savedModelBundle;
@@ -116,7 +117,7 @@ public class Main_UI extends JFrame {
 
     public static void main(String[] args) {
         File config = new File("config.xml");
-        if(!config.exists()){
+        if (!config.exists()) {
             config_handler config_handler = new config_handler();
             config_handler.create_config();
             System.out.println("Config Created");
@@ -128,10 +129,10 @@ public class Main_UI extends JFrame {
         gui.setTitle("Object recognitions");
     }
 
-    public void save_reload_config(boolean setting1, boolean setting2, boolean setting3, boolean setting4) {
+    public void save_reload_config(boolean setting1, boolean setting2, boolean setting3, boolean setting4, String pic, String ten) {
         String[][] values = {
-                {"img_path", picture.getPath()},
-                {"ts_path", tensor_file.getPath()},
+                {"img_path", pic},
+                {"ts_path", ten},
                 {"setting1", String.valueOf(setting1)},
                 {"setting2", String.valueOf(setting2)},
                 {"setting3", String.valueOf(setting3)},
@@ -140,7 +141,10 @@ public class Main_UI extends JFrame {
         config_handler.save_config(values);
 
         String[][] values_load = config_handler.load_config();
-        // Loop through and set the variables properly to the context they need
+        setValues(values_load);
+    }
+
+    public void setValues(String[][] values_load) {
         for (String[] value : Objects.requireNonNull(values_load)) {
             System.out.println(value[0] + " " + value[1]);
             switch (value[0]) {
@@ -191,6 +195,43 @@ public class Main_UI extends JFrame {
         }
     }
 
+    public class event_set_params implements ActionListener {
+
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            model_param gui = new model_param(picture.getPath(), tensor_file.getPath());
+            gui.setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE);
+            gui.setVisible(true);
+            gui.setSize(550, 550);
+            gui.setLocation(100, 100);
+            gui.setTitle("Model Parameter Settings");
+        }
+    }
+
+    public class event_restore_last implements ActionListener {
+
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            String[][] values = config_handler.load_config();
+            setValues(values);
+
+            // Create table model with data and column names
+            DefaultTableModel model = new DefaultTableModel(values, new String[]{"Name", "Value"});
+            JTable table1 = new JTable(model);
+
+            // Create scroll pane and add table to it
+            JScrollPane scrollPane = new JScrollPane(table1);
+
+            // Add scroll pane to the frame
+            rightPanel.add(scrollPane);
+
+            // Revalidate and repaint the frame
+            revalidate();
+            repaint();
+            detect.setEnabled(true);
+        }
+    }
+
     public class event_exit implements ActionListener {
         @Override
         public void actionPerformed(ActionEvent e) {
@@ -225,7 +266,6 @@ public class Main_UI extends JFrame {
         @Override
         public void actionPerformed(ActionEvent e) {
             //Add whole image detection logic (detect_ev image recogniser event)!!!
-            //Create ui for outcome (detect_ev image recogniser event)!!!
         }
     }
 
@@ -251,34 +291,6 @@ public class Main_UI extends JFrame {
         }
     }
 
-
-    public class event_restore_last implements ActionListener {
-
-        @Override
-        public void actionPerformed(ActionEvent e) {
-            String[][] values = config_handler.load_config();
-            for (String[] value : Objects.requireNonNull(values)) {
-                System.out.println(value[0] + " " + value[1]);
-                //Set the variables properly to the context they need (restore last)!!!
-            }
-
-            // Create table model with data and column names
-            DefaultTableModel model = new DefaultTableModel(values, new String[]{"Name", "Value"});
-            JTable table1 = new JTable(model);
-
-            // Create scroll pane and add table to it
-            JScrollPane scrollPane = new JScrollPane(table1);
-
-            // Add scroll pane to the frame
-            rightPanel.add(scrollPane);
-
-            // Revalidate and repaint the frame
-            revalidate();
-            repaint();
-            detect.setEnabled(true);
-        }
-    }
-
     public class event_load_tensor implements ActionListener { // returns tensor_file as loaded tensor
 
         @Override
@@ -297,19 +309,6 @@ public class Main_UI extends JFrame {
             } catch (Exception ex) {
                 ex.printStackTrace();
             }
-        }
-    }
-
-    public static class event_set_params implements ActionListener {
-
-        @Override
-        public void actionPerformed(ActionEvent e) {
-            model_param gui = new model_param();
-            gui.setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE);
-            gui.setVisible(true);
-            gui.setSize(550, 550);
-            gui.setLocation(100, 100);
-            gui.setTitle("Model Parameter Settings");
         }
     }
 
@@ -353,7 +352,6 @@ public class Main_UI extends JFrame {
         }
     }
 }
-//Set the variables properly to the context they need (restore last)!!!
 //Add whole image detection logic (detect_ev image recogniser event)!!!
-//Create ui for outcome (detect_ev image recogniser event)!!!
+//Make UI Better!!!
 //Reorganise Menu bar!!!

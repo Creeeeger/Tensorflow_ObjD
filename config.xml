@@ -1,7 +1,9 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <config>
+    <img_path>/Users/gregor/Desktop/Tensorflow_ObjD/bild.JPEG</img_path>
+    <ts_path>/Users/gregor/AutoConfig.kmk</ts_path>
     <setting1>false</setting1>
-    <setting2>true</setting2>
+    <setting2>false</setting2>
     <setting3>false</setting3>
-    <setting4>true</setting4>
+    <setting4>false</setting4>
 </config>
