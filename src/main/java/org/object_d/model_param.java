@@ -6,21 +6,19 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 
 public class model_param extends JFrame {
-    private final JLabel infos;
     private final JCheckBox setting1;
     private final JCheckBox setting2;
     private final JCheckBox setting3;
     private final JCheckBox setting4;
-    private final JButton apply;
 
-    public model_param(Main_UI mainUi) {
+    public model_param() {
         setLayout(new BorderLayout(10, 10)); // Use BorderLayout with spacing
 
         JPanel settingsPanel = new JPanel();
         settingsPanel.setLayout(new BoxLayout(settingsPanel, BoxLayout.Y_AXIS));
         settingsPanel.setBorder(BorderFactory.createTitledBorder("Model Parameters")); // Add border with title
 
-        infos = new JLabel("Select your settings and then press apply");
+        JLabel infos = new JLabel("Select your settings and then press apply");
         settingsPanel.add(infos);
         settingsPanel.add(Box.createRigidArea(new Dimension(0, 10))); // Add space between components
 
@@ -37,14 +35,13 @@ public class model_param extends JFrame {
         settingsPanel.add(Box.createRigidArea(new Dimension(0, 5)));
         settingsPanel.add(setting4);
 
-        apply = new JButton("Apply Settings");
+        JButton apply = new JButton("Apply Settings");
         apply.setAlignmentX(Component.CENTER_ALIGNMENT); // Center the button
         settingsPanel.add(Box.createRigidArea(new Dimension(0, 20))); // Add more space before button
         settingsPanel.add(apply);
 
         add(settingsPanel, BorderLayout.CENTER);
 
-        // Add action listener for the apply button
         apply.addActionListener(new apply_event());
     }
 
@@ -56,12 +53,10 @@ public class model_param extends JFrame {
             boolean isSetting2Selected = setting2.isSelected();
             boolean isSetting3Selected = setting3.isSelected();
             boolean isSetting4Selected = setting4.isSelected();
-            //Apply settings to config link with config handler!!!
-
-
+            Main_UI mainUI = new Main_UI();
+            mainUI.save_reload_config(isSetting1Selected, isSetting2Selected, isSetting3Selected, isSetting4Selected);
             setVisible(false);
         }
     }
 }
-//Link settings to config!!!
-//Apply settings to detection
+//Use right settings which we actually need!!!
