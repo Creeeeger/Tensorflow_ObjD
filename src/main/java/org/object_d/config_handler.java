@@ -13,13 +13,10 @@ import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
 import java.io.File;
-import java.util.Date;
 
 public class config_handler {
-    public static void create_config() {
+    public void create_config() {
         //Add required config values!!!
-        HelloTensorFlow ts = new HelloTensorFlow();
-        Date date = new Date();
 
         try {
             DocumentBuilderFactory builderFactory = DocumentBuilderFactory.newInstance();
@@ -32,17 +29,25 @@ public class config_handler {
             last_path.appendChild(doc.createTextNode("/"));
             root.appendChild(last_path);
 
-            Element tensor_version = doc.createElement("version");
-            tensor_version.appendChild(doc.createTextNode(String.valueOf(ts.version())));
-            root.appendChild(tensor_version);
-
-            Element database_path = doc.createElement("db_path");
+            Element database_path = doc.createElement("ts_path");
             database_path.appendChild(doc.createTextNode("/"));
             root.appendChild(database_path);
 
-            Element creation_date = doc.createElement("set_date");
-            creation_date.appendChild(doc.createTextNode((date.toString())));
-            root.appendChild(creation_date);
+            Element setting1 = doc.createElement("setting1");
+            setting1.appendChild(doc.createTextNode("true"));
+            root.appendChild(setting1);
+
+            Element setting2 = doc.createElement("setting2");
+            setting2.appendChild(doc.createTextNode("true"));
+            root.appendChild(setting2);
+
+            Element setting3 = doc.createElement("setting3");
+            setting3.appendChild(doc.createTextNode("true"));
+            root.appendChild(setting3);
+
+            Element setting4 = doc.createElement("setting4");
+            setting4.appendChild(doc.createTextNode("true"));
+            root.appendChild(setting4);
 
             //Set new keys on demand here
             TransformerFactory transformerFactory = TransformerFactory.newInstance();

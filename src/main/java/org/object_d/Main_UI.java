@@ -20,6 +20,7 @@ public class Main_UI extends JFrame {
     public JPanel leftPanel, rightPanel; // Panels for left and right boxes
     public File tensor_file, picture;
     public JButton detect;
+    public boolean setting1, setting2, setting3, setting4;
     SavedModelBundle savedModelBundle;
 
     public Main_UI() {
@@ -114,6 +115,12 @@ public class Main_UI extends JFrame {
     }
 
     public static void main(String[] args) {
+        File config = new File("config.xml");
+        if(!config.exists()){
+            config_handler config_handler = new config_handler();
+            config_handler.create_config();
+            System.out.println("Config Created");
+        }
         Main_UI gui = new Main_UI();
         gui.setVisible(true);
         gui.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -121,17 +128,80 @@ public class Main_UI extends JFrame {
         gui.setTitle("Object recognitions");
     }
 
-    public static class event_exit implements ActionListener {
+    public void save_reload_config(boolean setting1, boolean setting2, boolean setting3, boolean setting4) {
+        String[][] values = {
+                {"img_path", picture.getPath()},
+                {"ts_path", tensor_file.getPath()},
+                {"setting1", String.valueOf(setting1)},
+                {"setting2", String.valueOf(setting2)},
+                {"setting3", String.valueOf(setting3)},
+                {"setting4", String.valueOf(setting4)}
+        };
+        config_handler.save_config(values);
+
+        String[][] values_load = config_handler.load_config();
+        // Loop through and set the variables properly to the context they need
+        for (String[] value : Objects.requireNonNull(values_load)) {
+            System.out.println(value[0] + " " + value[1]);
+            switch (value[0]) {
+                case "img_path":
+                    File selectedFile = new File(value[1]);
+                    try {
+                        JLabel imageLabel = img;
+                        ImageIcon icon = new ImageIcon(selectedFile.getPath());
+                        Image originalImage = icon.getImage();
+                        int desiredHeight = 300;
+                        int desiredWidth = 400;
+                        Image scaledImage = originalImage.getScaledInstance(desiredWidth, desiredHeight, Image.SCALE_SMOOTH);
+                        ImageIcon scaledIcon = new ImageIcon(scaledImage);
+                        imageLabel.setIcon(scaledIcon);
+                        picture = selectedFile;
+                        image_path.setText(picture.getPath());
+                    } catch (Exception ex) {
+                        ex.printStackTrace();
+                    }
+                    break;
+                case "ts_path":
+                    tensor_file = new File(value[1]);
+                    model_path.setText(tensor_file.getPath());
+                    detect.setEnabled(true);
+                    try {
+                        savedModelBundle = SavedModelBundle.load(tensor_file.getPath(), "serve");
+                        System.out.println("Model loaded");
+                    } catch (Exception ex) {
+                        ex.printStackTrace();
+                    }
+                    break;
+                case "setting1":
+                    setting1 = Boolean.parseBoolean(value[1]);
+                    break;
+                case "setting2":
+                    setting2 = Boolean.parseBoolean(value[1]);
+                    break;
+                case "setting3":
+                    setting3 = Boolean.parseBoolean(value[1]);
+                    break;
+                case "setting4":
+                    setting4 = Boolean.parseBoolean(value[1]);
+                    break;
+                default:
+                    System.out.println("Unknown setting: " + value[0]);
+                    break;
+            }
+        }
+    }
+
+    public class event_exit implements ActionListener {
         @Override
         public void actionPerformed(ActionEvent e) {
-            //!! dummy values
             String[][] values = {
-                    {"img_path", "/"},
-                    {"version", "2.16.1"},
-                    {"db_path", "/"},
-                    {"set_date", "Thu May 02 10:38:25 BSssT 2024"}
+                    {"img_path", picture.getPath()},
+                    {"ts_path", tensor_file.getPath()},
+                    {"setting1", String.valueOf(setting1)},
+                    {"setting2", String.valueOf(setting2)},
+                    {"setting3", String.valueOf(setting3)},
+                    {"setting4", String.valueOf(setting4)}
             };
-            //Use the actual variables instead of dummy data (event exit)!!!
             config_handler.save_config(values);
             System.exit(0);
         }
@@ -230,12 +300,11 @@ public class Main_UI extends JFrame {
         }
     }
 
-    public class event_set_params implements ActionListener {
+    public static class event_set_params implements ActionListener {
 
         @Override
         public void actionPerformed(ActionEvent e) {
-            //Create param window!!!
-            model_param gui = new model_param(Main_UI.this);
+            model_param gui = new model_param();
             gui.setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE);
             gui.setVisible(true);
             gui.setSize(550, 550);
@@ -255,7 +324,7 @@ public class Main_UI extends JFrame {
     }
 
     public class event_load implements ActionListener {//returns picture as the loaded image
-        private final JLabel imageLabel;
+        JLabel imageLabel;
 
         public event_load(JLabel imageLabel) {
             this.imageLabel = imageLabel;
@@ -285,6 +354,6 @@ public class Main_UI extends JFrame {
     }
 }
 //Set the variables properly to the context they need (restore last)!!!
-//Use the actual variables instead of dummy data (event exit)!!!
 //Add whole image detection logic (detect_ev image recogniser event)!!!
+//Create ui for outcome (detect_ev image recogniser event)!!!
 //Reorganise Menu bar!!!
