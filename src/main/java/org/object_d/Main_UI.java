@@ -25,94 +25,87 @@ public class Main_UI extends JFrame {
     SavedModelBundle savedModelBundle;
 
     public Main_UI() {
-        setLayout(new GridLayout(2, 1)); // Use BorderLayout for main layout
+        setLayout(new GridLayout(1, 2, 10, 10)); // Use horizontal grid layout with spacing
 
         // Create left and right panels
         leftPanel = new JPanel();
-        leftPanel.setLayout(new BoxLayout(leftPanel, BoxLayout.Y_AXIS)); // Vertical layout for left panel
-        rightPanel = new JPanel();
-        rightPanel.setLayout(new BoxLayout(rightPanel, BoxLayout.Y_AXIS)); // Vertical layout for right panel
+        leftPanel.setLayout(new BoxLayout(leftPanel, BoxLayout.Y_AXIS));
+        leftPanel.setBorder(BorderFactory.createTitledBorder("Detection Panel")); // Add border with title
 
+        rightPanel = new JPanel();
+        rightPanel.setLayout(new BoxLayout(rightPanel, BoxLayout.Y_AXIS));
+        rightPanel.setBorder(BorderFactory.createTitledBorder("Data Panel")); // Add border with title
 
         // Add panels to main frame
-        add(leftPanel, BorderLayout.WEST);
-        add(rightPanel, BorderLayout.EAST);
+        add(leftPanel);
+        add(rightPanel);
+
+        // Left Panel Components
         label = new JLabel("Object detector");
-        leftPanel.add(label);
-
-
         img = new JLabel(image);
+        image_path = new JLabel("here comes the image path");
+        model_path = new JLabel("here comes the model path");
+        result = new JLabel("Predicted results here");
+
+        leftPanel.add(label);
+        leftPanel.add(Box.createRigidArea(new Dimension(0, 10))); // Add space between components
         leftPanel.add(img);
+        leftPanel.add(Box.createRigidArea(new Dimension(0, 10))); // Add space between components
+        leftPanel.add(image_path);
+        leftPanel.add(Box.createRigidArea(new Dimension(0, 10))); // Add space between components
+        leftPanel.add(model_path);
+        leftPanel.add(Box.createRigidArea(new Dimension(0, 10))); // Add space between components
+        leftPanel.add(result);
 
+        detect = new JButton("Recognise Objects");
+        detect.setEnabled(false);
+        detect.addActionListener(new detect_ev());
+        leftPanel.add(Box.createRigidArea(new Dimension(0, 10))); // Add space between components
+        leftPanel.add(detect);
 
-        menuBar = new JMenuBar();
-        setJMenuBar(menuBar);
-        file = new JMenu("File");
-        model = new JMenu("Model");
-        database = new JMenu("Database");
-        model_trainer = new JMenu("Model creator");
-
-        menuBar.add(file);
-        menuBar.add(model);
-        menuBar.add(database);
-        menuBar.add(model_trainer);
-
-        load_database = new JMenuItem("Load database");
-        database.add(load_database);
-        event_load_database eld = new event_load_database();
-        load_database.addActionListener(eld);
-
-        reset_database = new JMenuItem("Reset database");
-        database.add(reset_database);
-        event_reset_database erd = new event_reset_database();
-        reset_database.addActionListener(erd);
-
-        load_model = new JMenuItem("Load a tensor model");
-        model.add(load_model);
-        event_load_tensor elt = new event_load_tensor();
-        load_model.addActionListener(elt);
-
-        set_params = new JMenuItem("Set model parameters");
-        model.add(set_params);
-        event_set_params esp = new event_set_params();
-        set_params.addActionListener(esp);
-
-        restore_last = new JMenuItem("Restore last config");
-        file.add(restore_last);
-        event_restore_last erl = new event_restore_last();
-        restore_last.addActionListener(erl);
-
-        load = new JMenuItem("Load image");
-        file.add(load);
-        load.addActionListener(new event_load(img));
-
-        exit = new JMenuItem("Save and Exit");
-        file.add(exit);
-        event_exit ex = new event_exit();
-        exit.addActionListener(ex);
-
-        train_model = new JMenuItem("Train own models");
-        model_trainer.add(train_model);
-        event_train tm = new event_train();
-        train_model.addActionListener(tm);
-
+        // Right Panel Components
         scrollPane = new JScrollPane();
         rightPanel.add(scrollPane);
 
-        detect = new JButton("Recognise Objects");
-        leftPanel.add(detect);
-        detect.setEnabled(false);
-        detect_ev d = new detect_ev();
-        detect.addActionListener(d);
+        // Menu Bar Configuration
+        menuBar = new JMenuBar();
+        setJMenuBar(menuBar);
 
-        image_path = new JLabel("here comes the image path");
-        leftPanel.add(image_path);
+        file = new JMenu("File");
+        load = new JMenuItem("Load image");
+        load.addActionListener(new event_load(img));
+        restore_last = new JMenuItem("Restore last config");
+        restore_last.addActionListener(new event_restore_last());
+        exit = new JMenuItem("Save and Exit");
+        exit.addActionListener(new event_exit());
+        file.add(load);
+        file.add(restore_last);
+        file.add(exit);
+        menuBar.add(file);
 
-        model_path = new JLabel("here comes the model path");
-        leftPanel.add(model_path);
+        model = new JMenu("Model");
+        load_model = new JMenuItem("Load a tensor model");
+        load_model.addActionListener(new event_load_tensor());
+        set_params = new JMenuItem("Set model parameters");
+        set_params.addActionListener(new event_set_params());
+        model.add(load_model);
+        model.add(set_params);
+        menuBar.add(model);
 
-        result = new JLabel("Predicted results here");
-        leftPanel.add(result);
+        database = new JMenu("Database");
+        load_database = new JMenuItem("Load database");
+        load_database.addActionListener(new event_load_database());
+        reset_database = new JMenuItem("Reset database");
+        reset_database.addActionListener(new event_reset_database());
+        database.add(load_database);
+        database.add(reset_database);
+        menuBar.add(database);
+
+        model_trainer = new JMenu("Model creator");
+        train_model = new JMenuItem("Train own models");
+        train_model.addActionListener(new event_train());
+        model_trainer.add(train_model);
+        menuBar.add(model_trainer);
     }
 
     public static void main(String[] args) {
@@ -125,8 +118,8 @@ public class Main_UI extends JFrame {
         Main_UI gui = new Main_UI();
         gui.setVisible(true);
         gui.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        gui.setSize(600, 600);
-        gui.setTitle("Object recognitions");
+        gui.setSize(1000, 800);
+        gui.setTitle("Object Detector UI");
     }
 
     public void save_reload_config(boolean setting1, boolean setting2, boolean setting3, boolean setting4, String pic, String ten) {
