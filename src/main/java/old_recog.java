@@ -1,6 +1,12 @@
+import com.google.protobuf.InvalidProtocolBufferException;
 import org.tensorflow.Graph;
 import org.tensorflow.Session;
 import org.tensorflow.Tensor;
+import org.tensorflow.ndarray.ByteNdArray;
+import org.tensorflow.ndarray.NdArray;
+import org.tensorflow.ndarray.NdArrays;
+import org.tensorflow.proto.GraphDef;
+import org.tensorflow.types.TString;
 
 import javax.imageio.ImageIO;
 import javax.swing.*;
@@ -29,8 +35,6 @@ public class old_recog extends JFrame implements ActionListener {
     private final JTextField result;
     private final JTextField imgpth;
     private final JTextField modelpth;
-    private final FileNameExtensionFilter imgfilter = new FileNameExtensionFilter("JPG & JPEG Images", "jpg", "jpeg");
-    private String modelpath;
     private String imagepath;
     private boolean modelselected = false;
     private byte[] graphDef;
@@ -50,6 +54,7 @@ public class old_recog extends JFrame implements ActionListener {
 
         incepch = new JFileChooser();
         imgch = new JFileChooser();
+        FileNameExtensionFilter imgfilter = new FileNameExtensionFilter("JPG & JPEG Images", "jpg", "jpeg");
         imgch.setFileFilter(imgfilter);
         imgch.setFileSelectionMode(JFileChooser.FILES_ONLY);
         incepch.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
@@ -74,11 +79,15 @@ public class old_recog extends JFrame implements ActionListener {
 
     public static float[] executeInceptionGraph(byte[] graphDef, Tensor image) {
         try (Graph g = new Graph()) {
-            g.importGraphDef(graphDef);
+            try {
+                g.importGraphDef(GraphDef.parseFrom(graphDef));
+            } catch (InvalidProtocolBufferException e) {
+                throw new RuntimeException(e);
+            }
             try (Session s = new Session(g);
-                 Tensor result = s.runner().feed("DecodeJpeg/contents", image).fetch("softmax").run().getFirst()) {
-                final long[] rshape = result.shape();
-                if (result.numDimensions() != 2 || rshape[0] != 1) {
+                 Tensor result = s.runner().feed("DecodeJpeg/contents", image).fetch("softmax").run().get(0)) {
+                final long[] rshape = result.shape().asArray();
+                if (result.shape().numDimensions() != 2 || rshape[0] != 1) {
                     throw new RuntimeException(
                             String.format(
                                     "Expected model to produce a [1 N] shaped tensor where N is the number of labels, instead it produced one with shape %s",
@@ -86,7 +95,7 @@ public class old_recog extends JFrame implements ActionListener {
                 }
                 int nlabels = (int) rshape[1];
                 float[][] resultArray = new float[1][nlabels];
-                result.copyTo(resultArray);
+                // result.copyTo(resultArray);
                 return resultArray[0];
             }
         }
@@ -123,12 +132,7 @@ public class old_recog extends JFrame implements ActionListener {
     }
 
     public static void main(String[] args) {
-        SwingUtilities.invokeLater(new Runnable() {
-            public void run() {
-                new old_recog().setVisible(true);
-
-            }
-        });
+        SwingUtilities.invokeLater(() -> new old_recog().setVisible(true));
     }
 
     @Override
@@ -139,7 +143,7 @@ public class old_recog extends JFrame implements ActionListener {
 
             if (returnVal == JFileChooser.APPROVE_OPTION) {
                 File file = incepch.getSelectedFile();
-                modelpath = file.getAbsolutePath();
+                String modelpath = file.getAbsolutePath();
                 modelpth.setText(modelpath);
                 System.out.println("Opening: " + file.getAbsolutePath());
                 modelselected = true;
@@ -170,10 +174,12 @@ public class old_recog extends JFrame implements ActionListener {
                 System.out.println("Process was cancelled by user.");
             }
         } else if (e.getSource() == predict) {
-            byte[] imageBytes = readAllBytesOrExit(Paths.get(imagepath));
+            try {
+                byte[] imageBytes = readAllBytesOrExit(Paths.get(imagepath));
+                NdArray ndArray = NdArrays.vectorOf(imageBytes);
+                TString tensor = TString.tensorOfBytes(ndArray);
 
-            try (Tensor image = Tensor.create(imageBytes)) {
-                float[] labelProbabilities = executeInceptionGraph(graphDef, image);
+                float[] labelProbabilities = executeInceptionGraph(graphDef, tensor);
                 int bestLabelIdx = maxIndex(labelProbabilities);
                 result.setText("");
                 result.setText(String.format(
@@ -182,6 +188,8 @@ public class old_recog extends JFrame implements ActionListener {
                 System.out.printf(
                         "BEST MATCH: %s (%.2f%% likely)%n",
                         labels.get(bestLabelIdx), labelProbabilities[bestLabelIdx] * 100f);
+            } catch (Exception ex) {
+                throw new RuntimeException(ex);
             }
         }
     }

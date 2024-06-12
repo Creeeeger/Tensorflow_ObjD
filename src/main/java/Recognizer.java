@@ -1,11 +1,12 @@
+import com.google.protobuf.InvalidProtocolBufferException;
 import org.tensorflow.Graph;
 import org.tensorflow.Session;
 import org.tensorflow.Tensor;
+import org.tensorflow.ndarray.NdArray;
+import org.tensorflow.ndarray.NdArrays;
+import org.tensorflow.proto.GraphDef;
+import org.tensorflow.types.TString;
 
-import javax.swing.*;
-import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -13,25 +14,7 @@ import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.List;
 
-public class Recognizer extends JFrame implements ActionListener {
-    JButton predict;
-    JLabel result;
-    String modelPath;
-    byte[] graphDef;
-    List<String> labels;
-
-    public Recognizer() {
-        setLayout(new FlowLayout());
-        setSize(500, 500);
-        predict = new JButton("Predict");
-        predict.setEnabled(true);
-        predict.addActionListener(this);
-        result = new JLabel("I'm the result");
-        add(result);
-        add(predict);
-        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-    }
-
+public class Recognizer {
     private static int maxIndex(float[] probabilities) {
         int best = 0;
         for (int i = 1; i < probabilities.length; ++i) {
@@ -63,12 +46,12 @@ public class Recognizer extends JFrame implements ActionListener {
     }
 
     public static void main(String[] args) {
-        SwingUtilities.invokeLater(() -> new Recognizer().setVisible(true));
+        execute();
     }
 
     private static float[][] getResultArray(Tensor result) {
-        final long[] rshape = result.shape();
-        if (result.numDimensions() != 2 || rshape[0] != 1) {
+        final long[] rshape = result.shape().asArray();
+        if (result.shape().numDimensions() != 2 || rshape[0] != 1) {
             throw new RuntimeException(
                     String.format(
                             "Expected model to produce a [1 N] shaped tensor where N is the number of labels, instead it produced one with shape %s",
@@ -80,26 +63,33 @@ public class Recognizer extends JFrame implements ActionListener {
 
     public static float[] executeInceptionGraph(byte[] graphDef, Tensor image) {
         try (Graph g = new Graph()) {
-            g.importGraphDef(graphDef);
+            try {
+                g.importGraphDef(GraphDef.parseFrom(graphDef));
+            } catch (InvalidProtocolBufferException e) {
+                throw new RuntimeException(e);
+            }
             try (Session s = new Session(g);
-                 Tensor result = s.runner().feed("DecodeJpeg/contents", image).fetch("softmax").run().getFirst()) {
+                 Tensor result = s.runner().feed("DecodeJpeg/contents", image).fetch("softmax").run().get(0)) {
                 float[][] resultArray = getResultArray(result);
-                result.copyTo(resultArray);
+                //result.copyTo(resultArray);
                 return resultArray[0];
             }
         }
     }
 
-    @Override
-    public void actionPerformed(ActionEvent e) {
-        modelPath = "C:\\Users\\grego\\Desktop\\Tensorflow_ObjD\\";
-        graphDef = readAllBytesOrExit(Paths.get(modelPath, "tensorflow_inception_graph.pb"));
-        labels = readAllLinesOrExit(Paths.get(modelPath, "imagenet_comp_graph_label_strings.txt"));
+    public static void execute() {
+        String modelPath = "/Users/gregor/Desktop/Tensorflow_ObjD/";
+        byte[] graphDef = readAllBytesOrExit(Paths.get(modelPath, "tensorflow_inception_graph.pb"));
+        List<String> labels = readAllLinesOrExit(Paths.get(modelPath, "imagenet_comp_graph_label_strings.txt"));
         try {
-            Tensor imageBytes = Tensor.create(Files.readAllBytes(Paths.get("C:\\Users\\grego\\Desktop\\Tensorflow_ObjD\\bild.JPEG")));
-            float[] labelProbabilities = executeInceptionGraph(graphDef, imageBytes);
+
+            byte[] imageBytes = Files.readAllBytes(Paths.get("/Users/gregor/Desktop/Tensorflow_ObjD/bild.JPEG"));
+            NdArray byteNdArray = NdArrays.ofBytes(org.tensorflow.ndarray.Shape.of(imageBytes.length));
+            TString tensor = TString.tensorOfBytes(byteNdArray);
+
+            float[] labelProbabilities = executeInceptionGraph(graphDef, tensor);
             int bestLabelIdx = maxIndex(labelProbabilities);
-            result.setText(String.format("BEST MATCH: %s (%.2f%% likely)", labels.get(bestLabelIdx), labelProbabilities[bestLabelIdx] * 100f));
+            System.out.printf("BEST MATCH: %s (%.2f%% likely)%n", labels.get(bestLabelIdx), labelProbabilities[bestLabelIdx] * 100f);
         } catch (IOException ex) {
             System.err.println("Failed to read image: " + ex.getMessage());
         }
