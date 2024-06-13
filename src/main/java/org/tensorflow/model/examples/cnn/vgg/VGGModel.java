@@ -75,18 +75,14 @@ public class VGGModel implements AutoCloseable {
         Ops tf = Ops.create(graph);
 
         // Inputs
-        Placeholder<TUint8> input = tf.withName(INPUT_NAME).placeholder(TUint8.class,
-                Placeholder.shape(Shape.of(-1, IMAGE_SIZE, IMAGE_SIZE)));
-        Reshape<TUint8> input_reshaped = tf
-                .reshape(input, tf.array(-1, IMAGE_SIZE, IMAGE_SIZE, NUM_CHANNELS));
+        Placeholder<TUint8> input = tf.withName(INPUT_NAME).placeholder(TUint8.class, Placeholder.shape(Shape.of(-1, IMAGE_SIZE, IMAGE_SIZE)));
+        Reshape<TUint8> input_reshaped = tf.reshape(input, tf.array(-1, IMAGE_SIZE, IMAGE_SIZE, NUM_CHANNELS));
         Placeholder<TUint8> labels = tf.withName(TARGET).placeholder(TUint8.class);
 
         // Scaling the features
         Constant<TFloat32> centeringFactor = tf.constant(PIXEL_DEPTH / 2.0f);
         Constant<TFloat32> scalingFactor = tf.constant((float) PIXEL_DEPTH);
-        Operand<TFloat32> scaledInput = tf.math
-                .div(tf.math.sub(tf.dtypes.cast(input_reshaped, TFloat32.class), centeringFactor),
-                        scalingFactor);
+        Operand<TFloat32> scaledInput = tf.math.div(tf.math.sub(tf.dtypes.cast(input_reshaped, TFloat32.class), centeringFactor), scalingFactor);
 
         Relu<TFloat32> relu1 = vggConv2DLayer("1", tf, scaledInput, new int[]{3, 3, NUM_CHANNELS, 32}, 32);
 
@@ -214,8 +210,7 @@ public class VGGModel implements AutoCloseable {
                              .fetch(TRAINING_LOSS)
                              .run().get(0)) {
 
-                    logger.log(Level.INFO,
-                            "Iteration = " + interval + ", training loss = " + loss.getFloat());
+                    logger.log(Level.INFO,"Iteration = " + interval + ", training loss = " + loss.getFloat());
 
                 }
                 interval++;

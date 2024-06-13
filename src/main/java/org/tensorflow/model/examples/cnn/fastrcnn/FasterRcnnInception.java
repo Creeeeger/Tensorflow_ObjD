@@ -14,6 +14,7 @@ import org.tensorflow.op.io.WriteFile;
 import org.tensorflow.types.TFloat32;
 import org.tensorflow.types.TString;
 import org.tensorflow.types.TUint8;
+import org.tensorflow.op.image.DrawBoundingBoxes;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -127,7 +128,9 @@ public class FasterRcnnInception {
                 cocoTreeMap.put(cocoCount, cocoLabel);
                 cocoCount++;
             }
-            try (Graph g = new Graph(); Session s = new Session(g)) {
+            try (Graph g = new Graph();
+                 Session s = new Session(g))
+            {
                 Ops tf = Ops.create(g);
                 Constant<TString> fileName = tf.constant(imagePath);
                 ReadFile readFile = tf.io.readFile(fileName);
@@ -202,9 +205,8 @@ public class FasterRcnnInception {
                                         tf.image.encodeJpeg(
                                                 tf.dtypes.cast(tf.reshape(
                                                         tf.math.mul(
-                                                                tf.image.drawBoundingBoxes(tf.math.div(
-                                                                                tf.dtypes.cast(tf.constant(reshapeTensor), TFloat32.class), tf.constant(255.0f)),
-                                                                        boxesPlaceHolder, colors),
+                                                                tf.image.drawBoundingBoxes(tf.math.div(tf.dtypes.cast(
+                                                                        tf.constant(reshapeTensor), TFloat32.class), tf.constant(255.0f)), boxesPlaceHolder, colors),
                                                                 tf.constant(255.0f)
                                                         ),
                                                         tf.array(
@@ -215,7 +217,8 @@ public class FasterRcnnInception {
                                                 ), TUint8.class),
                                                 jpgOptions));
                                 //output the JPEG to file
-                                s.runner().feed(outImagePathPlaceholder, TString.scalarOf(outputImagePath))
+                                s.runner()
+                                        .feed(outImagePathPlaceholder, TString.scalarOf(outputImagePath))
                                         .feed(boxesPlaceHolder, boxes)
                                         .addTarget(writeFile).run();
                             }

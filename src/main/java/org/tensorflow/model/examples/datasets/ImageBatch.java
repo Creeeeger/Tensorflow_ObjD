@@ -18,22 +18,24 @@ package org.tensorflow.model.examples.datasets;
 
 import org.tensorflow.ndarray.ByteNdArray;
 
-/** Batch of images for batch training. */
+/**
+ * Batch of images for batch training.
+ */
 public class ImageBatch {
-  
-  public ByteNdArray images() {
-    return images;
-  }
-  
-  public ByteNdArray labels() {
-    return labels;
-  }
 
-  public ImageBatch(ByteNdArray images, ByteNdArray labels) {
-    this.images = images;
-    this.labels = labels;
-  }
+    private final ByteNdArray images;
+    private final ByteNdArray labels;
 
-  private final ByteNdArray images;
-  private final ByteNdArray labels;
+    public ImageBatch(ByteNdArray images, ByteNdArray labels) {
+        this.images = images;
+        this.labels = labels;
+    }
+
+    public ByteNdArray images() {
+        return images;
+    }
+
+    public ByteNdArray labels() {
+        return labels;
+    }
 }
