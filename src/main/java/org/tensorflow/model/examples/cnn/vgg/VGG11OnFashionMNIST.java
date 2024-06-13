@@ -26,7 +26,7 @@ import java.util.logging.Logger;
 public class VGG11OnFashionMNIST {
     // Hyper-parameters
     public static final int EPOCHS = 1;
-    public static final int BATCH_SIZE = 500;
+    public static final int BATCH_SIZE = 10;
 
     // Fashion MNIST dataset paths
     public static final String TRAINING_IMAGES_ARCHIVE = "fashionmnist/train-images-idx3-ubyte.gz";

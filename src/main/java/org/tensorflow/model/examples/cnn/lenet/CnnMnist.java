@@ -278,10 +278,8 @@ public class CnnMnist {
 
         logger.info("Loaded data.");
 
-      //  int epochs = Integer.parseInt(args[0]);
-    //    int minibatchSize = Integer.parseInt(args[1]);
-      int epochs = 10;
-      int minibatchSize = 1;
+        int epochs = 10;
+        int minibatchSize = 1;
 
         try (Graph graph = build("adam");
              Session session = new Session(graph)) {
