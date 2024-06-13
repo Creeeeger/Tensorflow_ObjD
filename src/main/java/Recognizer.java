@@ -78,12 +78,11 @@ public class Recognizer {
     }
 
     public static void execute() {
-        String modelPath = "/Users/gregor/Desktop/Tensorflow_ObjD/";
+        String modelPath = "/Users/gregor/Desktop/Tensorflow_ObjD/src/main/resources/model2";
         byte[] graphDef = readAllBytesOrExit(Paths.get(modelPath, "tensorflow_inception_graph.pb"));
         List<String> labels = readAllLinesOrExit(Paths.get(modelPath, "imagenet_comp_graph_label_strings.txt"));
         try {
-
-            byte[] imageBytes = Files.readAllBytes(Paths.get("/Users/gregor/Desktop/Tensorflow_ObjD/bild.JPEG"));
+            byte[] imageBytes = Files.readAllBytes(Paths.get("/Users/gregor/Desktop/Tensorflow_ObjD/car.jpg"));
             NdArray byteNdArray = NdArrays.ofBytes(org.tensorflow.ndarray.Shape.of(imageBytes.length));
             TString tensor = TString.tensorOfBytes(byteNdArray);
 
