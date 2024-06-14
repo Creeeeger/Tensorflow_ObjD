@@ -5,16 +5,6 @@ import java.sql.*;
 import java.util.ArrayList;
 
 public class database_handler {
-    public static void main(String[] args) {
-        String[][] sampleData = {
-                {"Item1", "10"},
-                {"Item2", "15"},
-                {"Item3", "2"}
-        };
-        addData(sampleData);
-        //!! dummy data
-    }
-
     public static void CreateDatabase() {
         Connection connection = null;
         Statement statement = null;
