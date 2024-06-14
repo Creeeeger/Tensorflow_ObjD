@@ -1,5 +1,6 @@
 package org.object_d;
 
+import org.tensorAction.detector;
 import org.tensorflow.SavedModelBundle;
 
 import javax.swing.*;
@@ -7,12 +8,12 @@ import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.image.BufferedImage;
 import java.io.File;
 import java.util.Objects;
 
 public class Main_UI extends JFrame {
-    public JLabel label, img, image_path, model_path, result;
-    public ImageIcon image = null;
+    public JLabel label, img, image_path, model_path, result, output_img;
     public JMenuBar menuBar;
     public JMenu file, model, database, model_trainer;
     public JMenuItem exit, load, load_database, reset_database, load_model, set_params, restore_last, train_model;
@@ -40,12 +41,23 @@ public class Main_UI extends JFrame {
         add(leftPanel);
         add(rightPanel);
 
+        // Create a dummy image placeholder
+        BufferedImage placeholderImage = new BufferedImage(200, 200, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D g2d = placeholderImage.createGraphics();
+        g2d.setColor(Color.GRAY);
+        g2d.fillRect(0, 0, 200, 200);
+        g2d.setColor(Color.BLACK);
+        g2d.drawString("Image comes here", 50, 100);
+        g2d.dispose();
+        ImageIcon dummyImage = new ImageIcon(placeholderImage);
+
         // Left Panel Components
         label = new JLabel("Object detector");
-        img = new JLabel(image);
-        image_path = new JLabel("here comes the image path");
-        model_path = new JLabel("here comes the model path");
+        img = new JLabel(dummyImage);
+        image_path = new JLabel("here comes the image path (select the actual image)");
+        model_path = new JLabel("here comes the model path (select the folder with the tensor file in it)");
         result = new JLabel("Predicted results here");
+        output_img = new JLabel(dummyImage);
 
         leftPanel.add(label);
         leftPanel.add(Box.createRigidArea(new Dimension(0, 10))); // Add space between components
@@ -55,6 +67,8 @@ public class Main_UI extends JFrame {
         leftPanel.add(Box.createRigidArea(new Dimension(0, 10))); // Add space between components
         leftPanel.add(model_path);
         leftPanel.add(Box.createRigidArea(new Dimension(0, 10))); // Add space between components
+        leftPanel.add(output_img);
+        leftPanel.add(Box.createRigidArea(new Dimension(0, 10))); // Add space between components
         leftPanel.add(result);
 
         detect = new JButton("Recognise Objects");
@@ -62,6 +76,7 @@ public class Main_UI extends JFrame {
         detect.addActionListener(new detect_ev());
         leftPanel.add(Box.createRigidArea(new Dimension(0, 10))); // Add space between components
         leftPanel.add(detect);
+
 
         // Right Panel Components
         scrollPane = new JScrollPane();
@@ -245,7 +260,7 @@ public class Main_UI extends JFrame {
 
         @Override
         public void actionPerformed(ActionEvent e) {
-            Trainer gui = new Trainer(Main_UI.this);
+            Trainer gui = new Trainer();
             gui.setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE);
             gui.setVisible(true);
             gui.setSize(1000, 700);
@@ -258,7 +273,27 @@ public class Main_UI extends JFrame {
 
         @Override
         public void actionPerformed(ActionEvent e) {
-            //Add whole image detection logic (detect_ev image recogniser event)!!!
+            String[] result_array;
+            detector detector = new detector();
+            result_array = detector.classify(image_path.getText(), savedModelBundle);
+
+            File imagePath = new File(result_array[0]);
+            ImageIcon icon = new ImageIcon(String.valueOf(imagePath));
+            Image originalImage = icon.getImage();
+            int desiredHeight = 300;
+            int desiredWidth = 400;
+            Image scaledImage = originalImage.getScaledInstance(desiredWidth, desiredHeight, Image.SCALE_SMOOTH);
+            ImageIcon scaledIcon = new ImageIcon(scaledImage);
+            output_img.setIcon(scaledIcon);
+
+            String[][] sampleData = {
+                    {"Item1", "10"},
+                    {"Item2", "15"},
+                    {"Item3", "2"}
+            };
+            database_handler.addData(sampleData);
+            result.setText(result_array[1]);
+            //Add data from return to database!!!
         }
     }
 
@@ -289,6 +324,7 @@ public class Main_UI extends JFrame {
         @Override
         public void actionPerformed(ActionEvent e) {
             JFileChooser fileChooser = new JFileChooser();
+            fileChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
             int returnValue = fileChooser.showOpenDialog(null);
             if (returnValue == JFileChooser.APPROVE_OPTION) {
                 tensor_file = fileChooser.getSelectedFile();
@@ -345,5 +381,4 @@ public class Main_UI extends JFrame {
         }
     }
 }
-//Add whole image detection logic (detect_ev image recogniser event)!!!
-//Make UI Better!!!
+//Add data from return to database!!!
