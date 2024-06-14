@@ -156,7 +156,7 @@ public class Trainer extends JFrame {
                 command_string = command.getText();
                 output_gen_string = op_path_gen_img.getPath();
                 if (check_if_env_exists()) {
-                    System.out.println("Starting generating images");
+                    gen.setText("Starting generating images");
                     try {
                         gen.setText("Wait some time it could take long :/");
                         // Create a new process builder
@@ -191,7 +191,7 @@ public class Trainer extends JFrame {
                     }
 
 
-                    //proceed with stable dif interaction!!!
+                    //pass args to stable dif - generate - save!!!
                 } else {
                     create_env();
                 }
@@ -230,5 +230,5 @@ public class Trainer extends JFrame {
     }
 }
 
-//proceed with stable dif interaction
+//pass args to stable dif - generate - save
 //create model logic
