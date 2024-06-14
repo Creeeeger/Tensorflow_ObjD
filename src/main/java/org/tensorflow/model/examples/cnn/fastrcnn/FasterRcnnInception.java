@@ -14,7 +14,6 @@ import org.tensorflow.op.io.WriteFile;
 import org.tensorflow.types.TFloat32;
 import org.tensorflow.types.TString;
 import org.tensorflow.types.TUint8;
-import org.tensorflow.op.image.DrawBoundingBoxes;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -22,6 +21,7 @@ import java.util.Map;
 import java.util.TreeMap;
 
 public class FasterRcnnInception {
+
     private final static String[] cocoLabels = new String[]{
             "person",
             "bicycle",
@@ -128,9 +128,7 @@ public class FasterRcnnInception {
                 cocoTreeMap.put(cocoCount, cocoLabel);
                 cocoCount++;
             }
-            try (Graph g = new Graph();
-                 Session s = new Session(g))
-            {
+            try (Graph g = new Graph(); Session s = new Session(g)) {
                 Ops tf = Ops.create(g);
                 Constant<TString> fileName = tf.constant(imagePath);
                 ReadFile readFile = tf.io.readFile(fileName);
