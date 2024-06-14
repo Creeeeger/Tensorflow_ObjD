@@ -1,16 +1,15 @@
 Config handler:
-    //Add required config values
+    //Add required config values which we actually need
 
 Main Ui:
-    //Add data from return to database!!!
+    //Add data from return to database
 
 Model param:
-    //Use right settings which we actually need!!!
+    //Use right settings which we actually need
 
 Trainer:
     //proceed with stable dif interaction
     //create model logic
-    //Rest of the setup process with git
 
 Detector:
     //Add whole image detection logic (detect_ev image recogniser event)!!!

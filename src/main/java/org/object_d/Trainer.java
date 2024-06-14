@@ -70,16 +70,37 @@ public class Trainer extends JFrame {
         stable_gen.addActionListener(new stable_gen_event());
     }
 
+    public static boolean check_if_env_exists() {
+        boolean does_exist = false;
+        Path path = Paths.get("stable_diff_env");
+        try {
+            if (Files.exists(path) && Files.isDirectory(path)) {
+                does_exist = Files.list(path).findAny().isPresent();
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return does_exist;
+    }
+
     public void create_env() {
         try {
-            //Brew install dependencies
-            ProcessBuilder BrewProcessBuilder = new ProcessBuilder("brew install cmake protobuf rust python@3.10 git wget");
-            Process BrewProcess = BrewProcessBuilder.start();
-            int brewExitCode = BrewProcess.waitFor();
+            gen.setText("Setting up environment... Just wait");
+            // Brew install dependencies
+            ProcessBuilder brewProcessBuilder = new ProcessBuilder("brew", "install", "cmake", "protobuf", "rust", "python@3.10", "git", "wget");
+            Process brewProcess = brewProcessBuilder.start();
+            int brewExitCode = brewProcess.waitFor();
             if (brewExitCode != 0) {
                 throw new RuntimeException("Brew command failed with exit code " + brewExitCode);
             }
 
+            BufferedReader reader_brew = new BufferedReader(new InputStreamReader(brewProcess.getInputStream()));
+            String line_brew;
+            while ((line_brew = reader_brew.readLine()) != null) {
+                System.out.println(line_brew);
+            }
+
+            // Clone the repository
             ProcessBuilder cloneProcessBuilder = new ProcessBuilder("git", "clone", "https://github.com/AUTOMATIC1111/stable-diffusion-webui.git", "stable_diff_env");
             Process cloneProcess = cloneProcessBuilder.start();
 
@@ -93,12 +114,11 @@ public class Trainer extends JFrame {
             // Wait for the process to complete and check the exit value
             int exitCode = cloneProcess.waitFor();
             if (exitCode != 0) {
+                gen.setText("Rerun the Process now (Press generate images again)");
                 throw new RuntimeException("Git clone failed with exit code " + exitCode);
             }
 
-            System.out.println("Git clone completed successfully and brew dependence install");
-            gen.setText("Rerun the Process now (Press generate images again)");
-
+            gen.setText("Git clone completed successfully and brew dependencies installed... Re-run generating images");
         } catch (IOException e) {
             System.err.println("IOException occurred: " + e.getMessage());
             throw new RuntimeException(e);
@@ -106,19 +126,6 @@ public class Trainer extends JFrame {
             System.err.println("InterruptedException occurred: " + e.getMessage());
             throw new RuntimeException(e);
         }
-    }
-
-    public static boolean check_if_env_exists() {
-        boolean does_exist = false;
-        Path path = Paths.get("stable_diff_env");
-        try {
-            if (Files.exists(path) && Files.isDirectory(path)) {
-                does_exist = Files.list(path).findAny().isPresent();
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        return does_exist;
     }
 
     public class create_model_event implements ActionListener {
@@ -151,6 +158,7 @@ public class Trainer extends JFrame {
                 if (check_if_env_exists()) {
                     System.out.println("Starting generating images");
                     try {
+                        gen.setText("Wait some time it could take long :/");
                         // Create a new process builder
                         ProcessBuilder processBuilder = new ProcessBuilder();
 
@@ -181,6 +189,8 @@ public class Trainer extends JFrame {
                     } catch (Exception es) {
                         es.printStackTrace();
                     }
+
+
                     //proceed with stable dif interaction!!!
                 } else {
                     create_env();
@@ -222,4 +232,3 @@ public class Trainer extends JFrame {
 
 //proceed with stable dif interaction
 //create model logic
-//Rest of the setup process with git
