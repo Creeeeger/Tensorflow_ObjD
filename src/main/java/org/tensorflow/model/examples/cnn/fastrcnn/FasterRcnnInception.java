@@ -155,23 +155,28 @@ public class FasterRcnnInception {
                     try (TFloat32 detectionClasses = (TFloat32) outputTensorMap.get("detection_classes").get();
                          TFloat32 detectionBoxes = (TFloat32) outputTensorMap.get("detection_boxes").get();
                          TFloat32 numDetections = (TFloat32) outputTensorMap.get("num_detections").get();
-                         TFloat32 detectionScores = (TFloat32) outputTensorMap.get("detection_scores").get()
-                         //;
-                         //TFloat32 rawDetectionBoxes = (TFloat32) outputTensorMap.get("raw_detection_boxes").get();
-                         //TFloat32 rawDetectionScores = (TFloat32) outputTensorMap.get("raw_detection_scores").get();
-                         //TFloat32 detectionAnchorIndices = (TFloat32) outputTensorMap.get("detection_anchor_indices").get();
-                         //TFloat32 detectionMulticlassScores = (TFloat32) outputTensorMap.get("detection_multiclass_scores").get()
-                    ) {
+                         TFloat32 detectionScores = (TFloat32) outputTensorMap.get("detection_scores").get()) {
                         int numDetects = (int) numDetections.getFloat(0);
                         if (numDetects > 0) {
                             ArrayList<FloatNdArray> boxArray = new ArrayList<>();
                             //TODO tf.image.combinedNonMaxSuppression
+                            int imageHeight = (int) reshapeTensor.shape().size(1);
+                            int imageWidth = (int) reshapeTensor.shape().size(2);
+
                             for (int n = 0; n < numDetects; n++) {
                                 //put probability and position in outputMap
                                 float detectionScore = detectionScores.getFloat(0, n);
                                 //only include those classes with detection score greater than 0.3f
                                 if (detectionScore > 0.3f) {
                                     boxArray.add(detectionBoxes.get(0, n));
+                                    FloatNdArray box = detectionBoxes.get(0, n);
+                                    // Print the coordinates of the box
+                                    float yMin = box.getFloat(0) * imageHeight;
+                                    float xMin = box.getFloat(1) * imageWidth;
+                                    float yMax = box.getFloat(2) * imageHeight;
+                                    float xMax = box.getFloat(3) * imageWidth;
+                                    System.out.println("Box coordinates: [yMin: " + yMin + ", xMin: " + xMin + ", yMax: " + yMax + ", xMax: " + xMax + "]");
+
                                     // Get the detected class index and map it to the corresponding label
                                     float detectedClassIndex = detectionClasses.getFloat(0, n);
                                     String detectedLabel = cocoLabels[(int) detectedClassIndex];

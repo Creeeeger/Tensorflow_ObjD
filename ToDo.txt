@@ -8,11 +8,14 @@ Model param:
     //Use right settings which we actually need
 
 Trainer:
-    //proceed with stable dif interaction
+    //pass args to stable dif - generate - save
     //create model logic
 
 Detector:
-    //Add whole image detection logic (detect_ev image recogniser event)!!!
+    //Add whole image detection logic!!!
+
+Labeler:
+    //Add label logic and Json file production!!!
 
 ---------------
 create model
