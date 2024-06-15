@@ -173,7 +173,7 @@ public class Trainer extends JFrame {
 
                         // Send a command to the shell
                         commandWriter.println("cd stable_diff_env");
-                        commandWriter.println("./webui.sh");
+                        commandWriter.println("./webui.sh --ckpt /path/to/your/checkpoint.ckpt --skip-install");
                         commandWriter.flush();
 
                         // Get the output of the command
