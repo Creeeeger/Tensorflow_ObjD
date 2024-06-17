@@ -17,6 +17,7 @@ import org.tensorflow.op.core.Placeholder;
 import org.tensorflow.op.core.Variable;
 import org.tensorflow.op.math.Mean;
 import org.tensorflow.op.nn.Softmax;
+import org.tensorflow.proto.GraphDef;
 import org.tensorflow.types.TFloat32;
 import org.tensorflow.types.TInt64;
 
@@ -25,6 +26,8 @@ import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -39,8 +42,8 @@ public class tensorTrainer {
         List<Tensor> labelTensors = new ArrayList<>();
 
         classDirs = new File(dataDir).listFiles(File::isDirectory);
-        Tensor imageTensor = null;
-        Tensor labelTensor = null;
+        Tensor imageTensor;
+        Tensor labelTensor;
         if (classDirs != null) {
             for (File classDir : classDirs) {
                 String className = classDir.getName();
@@ -130,7 +133,7 @@ public class tensorTrainer {
             try (Session session = new Session(graph)) {
 
                 // Train the model
-                for (int i = 0; i < 10; i++) {
+                for (int i = 0; i < 100; i++) {
                     try (TFloat32 batchImages = preprocessImages(imageNdArray);
                          TFloat32 batchLabels = preprocessLabels(labelNdArray)) {
                         session.runner()
@@ -151,6 +154,8 @@ public class tensorTrainer {
                              .run()
                              .get(0)) {
                     System.out.println("Accuracy: " + accuracyValue.getFloat());
+
+                    saveModel(graph, "/Users/gregor/Desktop");
                 }
             }
         }
@@ -223,5 +228,15 @@ public class tensorTrainer {
         float[] labelArray = new float[numClasses];
         labelArray[classLabel] = 1.0f;
         return TFloat32.tensorOf(StdArrays.ndCopyOf(labelArray));
+    }
+
+    private static void saveModel(Graph graph, String exportDir) throws IOException {
+        // Fetch the graph definition
+        GraphDef graphDef = GraphDef.parseFrom(graph.toGraphDef().toByteArray());
+
+        // Save the frozen graph
+        Files.write(Paths.get(exportDir, "/model.pb"), graphDef.toByteArray());
+
+        System.out.println("Model saved to " + exportDir + "/model.pb");
     }
 }
