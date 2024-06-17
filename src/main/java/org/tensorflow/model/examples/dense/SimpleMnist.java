@@ -116,7 +116,6 @@ public class SimpleMnist implements Runnable {
 
         // Run the graph
         try (Session session = new Session(graph)) {
-
             // Train the model
             for (ImageBatch trainingBatch : dataset.trainingBatches(TRAINING_BATCH_SIZE)) {
                 try (TFloat32 batchImages = preprocessImages(trainingBatch.images());
