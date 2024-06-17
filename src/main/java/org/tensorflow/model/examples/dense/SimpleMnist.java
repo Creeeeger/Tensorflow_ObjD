@@ -15,8 +15,13 @@ import org.tensorflow.op.core.Placeholder;
 import org.tensorflow.op.core.Variable;
 import org.tensorflow.op.math.Mean;
 import org.tensorflow.op.nn.Softmax;
+import org.tensorflow.proto.GraphDef;
 import org.tensorflow.types.TFloat32;
 import org.tensorflow.types.TInt64;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 
 public class SimpleMnist implements Runnable {
     private static final String TRAINING_IMAGES_ARCHIVE = "mnist/train-images-idx3-ubyte.gz";
@@ -140,6 +145,18 @@ public class SimpleMnist implements Runnable {
                          .get(0)) {
                 System.out.println("Accuracy: " + accuracyValue.getFloat());
             }
+            saveModel(graph, session, "/Users/gregor/Desktop");
+        } catch (IOException e) {
+            throw new RuntimeException(e);
         }
+    }
+    private static void saveModel(Graph graph, Session session, String exportDir) throws IOException {
+        // Fetch the graph definition
+        GraphDef graphDef = GraphDef.parseFrom(graph.toGraphDef().toByteString());
+
+        // Save the frozen graph
+        Files.write(Paths.get(exportDir, "/model.pb"), graphDef.toByteArray());
+
+        System.out.println("Model saved to " + exportDir + "/model.pb");
     }
 }
