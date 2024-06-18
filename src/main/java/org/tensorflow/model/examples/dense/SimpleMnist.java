@@ -29,7 +29,7 @@ public class SimpleMnist implements Runnable {
     private static final String TEST_IMAGES_ARCHIVE = "mnist/t10k-images-idx3-ubyte.gz";
     private static final String TEST_LABELS_ARCHIVE = "mnist/t10k-labels-idx1-ubyte.gz";
     private static final int VALIDATION_SIZE = 0;
-    private static final int TRAINING_BATCH_SIZE = 10000;
+    private static final int TRAINING_BATCH_SIZE = 1000;
     private static final float LEARNING_RATE = 0.1f;
     private final Graph graph;
     private final MnistDataset dataset;
@@ -45,6 +45,7 @@ public class SimpleMnist implements Runnable {
 
         try (Graph graph = new Graph()) {
             SimpleMnist mnist = new SimpleMnist(graph, dataset);
+            System.out.println(mnist.dataset.testBatch().images().shape());
             mnist.run();
         }
     }
@@ -125,6 +126,10 @@ public class SimpleMnist implements Runnable {
             for (ImageBatch trainingBatch : dataset.trainingBatches(TRAINING_BATCH_SIZE)) {
                 try (TFloat32 batchImages = preprocessImages(trainingBatch.images());
                      TFloat32 batchLabels = preprocessLabels(trainingBatch.labels())) {
+                    System.out.println(trainingBatch.images().shape() +  "tbi");
+                    System.out.println(trainingBatch.labels().shape() + "tbl");
+                    System.out.println(batchImages.shape() + "bi");
+                    System.out.println(batchLabels.shape() + "bl");
                     session.runner()
                             .addTarget(minimize)
                             .feed(images.asOutput(), batchImages)
