@@ -1,5 +1,7 @@
 package org.object_d;
 
+import org.tensorAction.tensorTrainer;
+
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
@@ -11,10 +13,10 @@ import java.nio.file.Paths;
 
 public class Trainer extends JFrame {
     JPanel leftPanel, rightPanel;
-    JButton image_folder, stable_gen, output_path_button, create_model;
+    JButton image_folder, stable_gen, output_path_button, create_model, checkpoint_button;
     JTextField command;
-    JLabel images_path, gen, output_path;
-    File op_path_gen_img, img_for_train;
+    JLabel images_path, gen, output_path, checkpoint_path;
+    File op_path_gen_img, img_for_train, checkpoint;
     String command_string, output_gen_string, image_folder_String;
 
     public Trainer() {
@@ -50,8 +52,11 @@ public class Trainer extends JFrame {
         command = new JTextField("1. Enter input for image generator -- replace with your own request", 75);
         output_path = new JLabel("Path of generated output images");
         output_path_button = new JButton("2. Select path for output generated images");
-        stable_gen = new JButton("3. Generate images");
+        checkpoint_path = new JLabel("Path of checkpoint");
+        checkpoint_button = new JButton("3. Select checkpoint file");
+        stable_gen = new JButton("4. Generate images");
         stable_gen.setEnabled(false);
+        checkpoint_button.setEnabled(false);
 
         rightPanel.add(gen);
         rightPanel.add(Box.createRigidArea(new Dimension(0, 10)));
@@ -60,6 +65,10 @@ public class Trainer extends JFrame {
         rightPanel.add(output_path);
         rightPanel.add(Box.createRigidArea(new Dimension(0, 10)));
         rightPanel.add(output_path_button);
+        rightPanel.add(Box.createRigidArea(new Dimension(0, 10)));
+        rightPanel.add(checkpoint_path);
+        rightPanel.add(Box.createRigidArea(new Dimension(0, 20)));
+        rightPanel.add(checkpoint_button);
         rightPanel.add(Box.createRigidArea(new Dimension(0, 20)));
         rightPanel.add(stable_gen);
 
@@ -67,7 +76,22 @@ public class Trainer extends JFrame {
         image_folder.addActionListener(new image_path_function());
         create_model.addActionListener(new create_model_event());
         output_path_button.addActionListener(new output_path_button_action());
+        checkpoint_button.addActionListener(new checkpoint_button_action());
         stable_gen.addActionListener(new stable_gen_event());
+    }
+    public class checkpoint_button_action implements ActionListener {
+
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            JFileChooser fileChooser = new JFileChooser();
+            fileChooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
+            int returnValue = fileChooser.showOpenDialog(null);
+            if (returnValue == JFileChooser.APPROVE_OPTION) {
+                checkpoint = fileChooser.getSelectedFile();
+                checkpoint_path.setText(img_for_train.getPath());
+                stable_gen.setEnabled(true);
+            }
+        }
     }
 
     public static boolean check_if_env_exists() {
@@ -134,7 +158,12 @@ public class Trainer extends JFrame {
         public void actionPerformed(ActionEvent e) {
             image_folder_String = img_for_train.getPath(); //path for images
             System.out.println("Start Training Model");
-            //create model logic!!!
+            tensorTrainer tensorTrainer = new tensorTrainer();
+            try {
+                tensorTrainer.access(image_folder_String);
+            } catch (IOException ex) {
+                throw new RuntimeException(ex);
+            }
         }
     }
 
@@ -173,7 +202,7 @@ public class Trainer extends JFrame {
 
                         // Send a command to the shell
                         commandWriter.println("cd stable_diff_env");
-                        commandWriter.println("./webui.sh --ckpt /path/to/your/checkpoint.ckpt --skip-install");
+                        commandWriter.println("./webui.sh --skip-install");
                         commandWriter.flush();
 
                         // Get the output of the command
@@ -185,6 +214,8 @@ public class Trainer extends JFrame {
 
                         // Wait for the process to exit
                         process.waitFor();
+
+                        //add logic for paylaod!!!
 
                     } catch (Exception es) {
                         es.printStackTrace();
@@ -209,7 +240,7 @@ public class Trainer extends JFrame {
             if (returnValue == JFileChooser.APPROVE_OPTION) {
                 op_path_gen_img = fileChooser.getSelectedFile();
                 output_path.setText(op_path_gen_img.getPath());
-                stable_gen.setEnabled(true);
+                checkpoint_button.setEnabled(true);
             }
         }
     }
@@ -231,4 +262,4 @@ public class Trainer extends JFrame {
 }
 
 //pass args to stable dif - generate - save
-//create model logic
+//add logic for paylaod!!!
