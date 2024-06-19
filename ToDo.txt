@@ -9,7 +9,7 @@ Model param:
 
 Trainer:
     //pass args to stable dif - generate - save
-    //create model logic
+    //add logic for paylaod
 
 Detector:
     //Add whole image detection logic!!!

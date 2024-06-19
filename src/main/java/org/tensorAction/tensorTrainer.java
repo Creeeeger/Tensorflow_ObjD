@@ -40,7 +40,7 @@ public class tensorTrainer {
     static List<TFloat32> imageTensors;
     static List<TFloat32> labelTensors;
 
-    public static void main(String[] args) throws IOException {
+    static void main(String[] args) throws IOException {
         String dataDir = "/Users/gregor/Desktop/Tensorflow_ObjD/flower_photos";
 
         imageTensors = new ArrayList<>();
@@ -71,7 +71,6 @@ public class tensorTrainer {
         }
         displayImages(images);
     }
-
 
     private static BufferedImage createBufferedImage(ByteNdArray imageSlice) {
         int targetWidth = 224;
@@ -272,5 +271,29 @@ public class tensorTrainer {
         GraphDef graphDef = GraphDef.parseFrom(graph.toGraphDef().toByteArray());
         Files.write(Paths.get(exportDir, "model.pb"), graphDef.toByteArray());
         System.out.println("Model saved to " + exportDir + "/model.pb");
+    }
+
+    public void access(String folder) throws IOException {
+        String dataDir = folder;
+
+        imageTensors = new ArrayList<>();
+        labelTensors = new ArrayList<>();
+
+        // Load and preprocess the dataset
+        loadDataset(dataDir, imageTensors, labelTensors);
+        System.out.println("Dataset loaded. Number of photos: " + imageTensors.size());
+
+        // Convert imageTensors list to ByteNdArray
+        ByteNdArray imageNdArray = NdArrays.ofBytes(Shape.of(TRAINING_BATCH_SIZE, 224, 224, 3));
+        for (int i = 0; i < imageTensors.size(); i++) {
+            imageNdArray.slice(Indices.at(i)).copyFrom(imageTensors.get(i).asRawTensor().data());
+        }
+        // Convert labelTensors list to FloatNdArray
+        ByteNdArray labelNdArray = NdArrays.ofBytes(Shape.of(TRAINING_BATCH_SIZE));
+        for (int i = 0; i < labelTensors.size(); i++) {
+            labelNdArray.slice(Indices.at(i)).copyFrom(labelTensors.get(i).asRawTensor().data());
+        }
+
+        train(imageNdArray, labelNdArray);
     }
 }
