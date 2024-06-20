@@ -273,6 +273,8 @@ public class Main_UI extends JFrame {
 
         @Override
         public void actionPerformed(ActionEvent e) {
+            savedModelBundle = SavedModelBundle.load(tensor_file.getPath(), "serve");
+            System.out.println("Model loaded");
             String[] result_array;
             detector detector = new detector();
             result_array = detector.classify(image_path.getText(), savedModelBundle);
@@ -286,14 +288,19 @@ public class Main_UI extends JFrame {
             ImageIcon scaledIcon = new ImageIcon(scaledImage);
             output_img.setIcon(scaledIcon);
 
-            String[][] sampleData = {
-                    {"Item1", "10"},
-                    {"Item2", "15"},
-                    {"Item3", "2"}
-            };
-            database_handler.addData(sampleData);
+            String[] data1D = result_array[1].split("\n");
+            for (int i = 0; i < data1D.length; i++) {
+                data1D[i] = data1D[i].toLowerCase().substring(0, data1D[i].indexOf(":"));
+            }
+
+            String[][] data2d = new String[data1D.length][2];
+            for (int i = 0; i < data1D.length; i++) {
+                data2d[i][0] = data1D[i];
+                data2d[i][1] = String.valueOf(1);
+            }
+
+            database_handler.addData(data2d);
             result.setText(result_array[1]);
-            //Add data from return to database!!!
         }
     }
 
@@ -381,4 +388,3 @@ public class Main_UI extends JFrame {
         }
     }
 }
-//Add data from return to database!!!

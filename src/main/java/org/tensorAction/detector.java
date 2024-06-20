@@ -1,6 +1,7 @@
 package org.tensorAction;
 
 import org.tensorflow.*;
+import org.tensorflow.ndarray.FloatNdArray;
 import org.tensorflow.ndarray.Shape;
 import org.tensorflow.op.Ops;
 import org.tensorflow.op.core.Reshape;
@@ -11,113 +12,33 @@ import org.tensorflow.types.TString;
 import org.tensorflow.types.TUint8;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.TreeMap;
 
 public class detector {
     private final static String[] cocoLabels = new String[]{
-            "person",
-            "bicycle",
-            "car",
-            "motorcycle",
-            "airplane",
-            "bus",
-            "train",
-            "truck",
-            "boat",
-            "traffic light",
-            "fire hydrant",
-            "street sign",
-            "stop sign",
-            "parking meter",
-            "bench",
-            "bird",
-            "cat",
-            "dog",
-            "horse",
-            "sheep",
-            "cow",
-            "elephant",
-            "bear",
-            "zebra",
-            "giraffe",
-            "hat",
-            "backpack",
-            "umbrella",
-            "shoe",
-            "eye glasses",
-            "handbag",
-            "tie",
-            "suitcase",
-            "frisbee",
-            "skis",
-            "snowboard",
-            "sports ball",
-            "kite",
-            "baseball bat",
-            "baseball glove",
-            "skateboard",
-            "surfboard",
-            "tennis racket",
-            "bottle",
-            "plate",
-            "wine glass",
-            "cup",
-            "fork",
-            "knife",
-            "spoon",
-            "bowl",
-            "banana",
-            "apple",
-            "sandwich",
-            "orange",
-            "broccoli",
-            "carrot",
-            "hot dog",
-            "pizza",
-            "donut",
-            "cake",
-            "chair",
-            "couch",
-            "potted plant",
-            "bed",
-            "mirror",
-            "dining table",
-            "window",
-            "desk",
-            "toilet",
-            "door",
-            "tv",
-            "laptop",
-            "mouse",
-            "remote",
-            "keyboard",
-            "cell phone",
-            "microwave",
-            "oven",
-            "toaster",
-            "sink",
-            "refrigerator",
-            "blender",
-            "book",
-            "clock",
-            "vase",
-            "scissors",
-            "teddy bear",
-            "hair drier",
-            "toothbrush",
+            "person", "bicycle", "car", "motorcycle", "airplane", "bus", "train", "truck", "boat",
+            "traffic light", "fire hydrant", "street sign", "stop sign", "parking meter", "bench",
+            "bird", "cat", "dog", "horse", "sheep", "cow", "elephant", "bear", "zebra", "giraffe",
+            "hat", "backpack", "umbrella", "shoe", "eye glasses", "handbag", "tie", "suitcase",
+            "frisbee", "skis", "snowboard", "sports ball", "kite", "baseball bat", "baseball glove",
+            "skateboard", "surfboard", "tennis racket", "bottle", "plate", "wine glass", "cup",
+            "fork", "knife", "spoon", "bowl", "banana", "apple", "sandwich", "orange", "broccoli",
+            "carrot", "hot dog", "pizza", "donut", "cake", "chair", "couch", "potted plant", "bed",
+            "mirror", "dining table", "window", "desk", "toilet", "door", "tv", "laptop", "mouse",
+            "remote", "keyboard", "cell phone", "microwave", "oven", "toaster", "sink", "refrigerator",
+            "blender", "book", "clock", "vase", "scissors", "teddy bear", "hair drier", "toothbrush",
             "hair brush"
     };
 
     public String[] classify(String imagePath, SavedModelBundle ModelBundle) {
 
         //Base logic for returning image path and labels
-        String path = "";
-        String predict = "";
         String[] returnArray = new String[2];
-        returnArray[0] = path;
-        returnArray[1] = predict;
+        returnArray[0] = imagePath;
+        returnArray[1] = "";
 
         //Create output directory
         File output_dir = new File("output_images");
@@ -185,23 +106,55 @@ public class detector {
                                 //Get the amount of detections we got and cast it
                                 int detections = (int) amount.getFloat(0);
 
-                                //only proceed when we got more then 0 detections
+                                //Array for boxes for visualising objects later with open cv
+                                ArrayList<FloatNdArray> boxList = new ArrayList<>();
+
+                                //only proceed when we got more than 0 detections
                                 if (detections > 0) {
                                     //Get the image dimensions
                                     int imageHeight = (int) reshape_Tensor.shape().get(1);
                                     int imageWidth = (int) reshape_Tensor.shape().get(2);
-                                    System.out.println(imageHeight + " +  " + imageWidth);
+                                    System.out.println(imageHeight + " + " + imageWidth);
 
+                                    //Loop through all detected objects
+                                    for (int i = 0; i < detections; i++) {
+                                        //get the score of each object
+                                        float score = scores.getFloat(0, i);
 
+                                        //Just take objects with 30% or higher chance
+                                        if (score > 0.3f) {
+                                            //get the boxes where the objects are
+                                            FloatNdArray boxFloat = boxes.get(0, i);
+                                            boxList.add(boxFloat);
+
+                                            // Print the coordinates of the box
+                                            float yMin = boxFloat.getFloat(0) * imageHeight;
+                                            float xMin = boxFloat.getFloat(1) * imageWidth;
+                                            float yMax = boxFloat.getFloat(2) * imageHeight;
+                                            float xMax = boxFloat.getFloat(3) * imageWidth;
+                                            System.out.println("Box coordinates: [yMin: " + yMin + ", xMin: " + xMin + ", yMax: " + yMax + ", xMax: " + xMax + "]");
+
+                                            // Get the detected class index and map it to the corresponding label
+                                            float classIndex = classes.getFloat(0, i);
+                                            String detectedLabel = cocoLabels[(int) classIndex];
+                                            System.out.println("Detected: " + detectedLabel + " with score: " + String.format("%.2f", (score * 100)) + "%.");
+                                            returnArray[1] = returnArray[1] + detectedLabel + ": " + String.format("%.2f", (score * 100)) + "%\n";
+                                        }
+                                    }
+
+                                } else {
+                                    returnArray[0] = imagePath;
+                                    returnArray[1] = "Nothing detected";
+                                    return returnArray;
                                 }
                             }
                         }
                     }
                 }
             }
-
             return returnArray;
         }
     }
 }
 //Add whole image detection logic!!!
+//Add label logic and Json file production!!!
