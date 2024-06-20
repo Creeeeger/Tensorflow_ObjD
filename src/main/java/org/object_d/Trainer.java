@@ -212,16 +212,9 @@ public class Trainer extends JFrame {
                             System.out.println(line);
                         }
 
-                        // Wait for the process to exit
-                        process.waitFor();
-
-                        //add logic for paylaod!!!
-
                     } catch (Exception es) {
                         es.printStackTrace();
                     }
-
-
                     //pass args to stable dif - generate - save!!!
                 } else {
                     create_env();

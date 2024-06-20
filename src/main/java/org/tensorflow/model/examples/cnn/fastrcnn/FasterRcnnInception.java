@@ -130,13 +130,17 @@ public class FasterRcnnInception {
             }
             try (Graph g = new Graph(); Session s = new Session(g)) {
                 Ops tf = Ops.create(g);
+                Session.Runner runner = s.runner();
+
                 Constant<TString> fileName = tf.constant(imagePath);
                 ReadFile readFile = tf.io.readFile(fileName);
-                Session.Runner runner = s.runner();
+
                 DecodeJpeg.Options options = DecodeJpeg.channels(3L);
                 DecodeJpeg decodeImage = tf.image.decodeJpeg(readFile.contents(), options);
+
                 //fetch image from file
                 Shape imageShape = runner.fetch(decodeImage).run().get(0).shape();
+
                 //reshape the tensor to 4D for input to model
                 Reshape<TUint8> reshape = tf.reshape(decodeImage,
                         tf.array(1,
@@ -145,6 +149,7 @@ public class FasterRcnnInception {
                                 imageShape.asArray()[2]
                         )
                 );
+
                 try (TUint8 reshapeTensor = (TUint8) s.runner().fetch(reshape).run().get(0)) {
                     Map<String, Tensor> feedDict = new HashMap<>();
                     //The given SavedModel SignatureDef input
@@ -156,8 +161,10 @@ public class FasterRcnnInception {
                          TFloat32 detectionBoxes = (TFloat32) outputTensorMap.get("detection_boxes").get();
                          TFloat32 numDetections = (TFloat32) outputTensorMap.get("num_detections").get();
                          TFloat32 detectionScores = (TFloat32) outputTensorMap.get("detection_scores").get()) {
+
                         int numDetects = (int) numDetections.getFloat(0);
                         if (numDetects > 0) {
+
                             ArrayList<FloatNdArray> boxArray = new ArrayList<>();
                             //TODO tf.image.combinedNonMaxSuppression
                             int imageHeight = (int) reshapeTensor.shape().size(1);
