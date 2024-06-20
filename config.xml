@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <config>
-    <img_path>/Users/gregor/Desktop/Tensorflow_ObjD/car.jpg</img_path>
+    <img_path>/Users/gregor/Desktop/key-west-beach-florida-BEACHWKNDS0620-e2faf227f60c48978cea6c62bccf5650.jpg</img_path>
     <ts_path>/Users/gregor/Desktop/Tensorflow_ObjD/src/main/resources/model</ts_path>
     <setting1>false</setting1>
     <setting2>false</setting2>

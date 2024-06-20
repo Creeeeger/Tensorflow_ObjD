@@ -190,6 +190,9 @@ public class FasterRcnnInception {
                                     System.out.println("Detected: " + detectedLabel + " with score: " + String.format("%.2f", (detectionScore * 100)) + "%.");
                                 }
                             }
+
+
+
                             //2-D. A list of RGBA colors to cycle through for the boxes.
                             Operand<TFloat32> colors = tf.constant(new float[][]{
                                     {0.9f, 0.3f, 0.3f, 0.0f},
@@ -197,6 +200,9 @@ public class FasterRcnnInception {
                                     {0.3f, 0.9f, 0.3f, 0.0f}
                             });
                             Shape boxesShape = Shape.of(1, boxArray.size(), 4);
+
+
+
                             //3-D with shape `[batch, num_bounding_boxes, 4]` containing bounding boxes
                             try (TFloat32 boxes = TFloat32.tensorOf(boxesShape)) {
                                 // batch size of 1
