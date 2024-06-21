@@ -297,3 +297,4 @@ public class tensorTrainer {
         train(imageNdArray, labelNdArray);
     }
 }
+//Fix training process!!!

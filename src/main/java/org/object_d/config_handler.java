@@ -15,55 +15,6 @@ import javax.xml.transform.stream.StreamResult;
 import java.io.File;
 
 public class config_handler {
-    public void create_config() {
-        //Add required config values!!!
-
-        try {
-            DocumentBuilderFactory builderFactory = DocumentBuilderFactory.newInstance();
-            DocumentBuilder builder = builderFactory.newDocumentBuilder();
-            Document doc = builder.newDocument();
-            Element root = doc.createElement("config");
-            doc.appendChild(root);
-
-            Element last_path = doc.createElement("img_path");
-            last_path.appendChild(doc.createTextNode("/"));
-            root.appendChild(last_path);
-
-            Element database_path = doc.createElement("ts_path");
-            database_path.appendChild(doc.createTextNode("/"));
-            root.appendChild(database_path);
-
-            Element setting1 = doc.createElement("setting1");
-            setting1.appendChild(doc.createTextNode("true"));
-            root.appendChild(setting1);
-
-            Element setting2 = doc.createElement("setting2");
-            setting2.appendChild(doc.createTextNode("true"));
-            root.appendChild(setting2);
-
-            Element setting3 = doc.createElement("setting3");
-            setting3.appendChild(doc.createTextNode("true"));
-            root.appendChild(setting3);
-
-            Element setting4 = doc.createElement("setting4");
-            setting4.appendChild(doc.createTextNode("true"));
-            root.appendChild(setting4);
-
-            //Set new keys on demand here
-            TransformerFactory transformerFactory = TransformerFactory.newInstance();
-            Transformer transformer = transformerFactory.newTransformer();
-            transformer.setOutputProperty(OutputKeys.INDENT, "yes");
-            transformer.setOutputProperty("{http://xml.apache.org/xslt}indent-amount", "4");
-            DOMSource domSource = new DOMSource(doc);
-            StreamResult result = new StreamResult(new File("config.xml"));
-            transformer.transform(domSource, result);
-
-            System.out.println("Config file created successfully!");
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
     public static String[][] load_config() {
         try {
             File inputFile = new File("config.xml");
@@ -138,6 +89,55 @@ public class config_handler {
 
             System.out.println("Config file saved successfully!");
 
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void create_config() {
+        //Add required config values!!!
+
+        try {
+            DocumentBuilderFactory builderFactory = DocumentBuilderFactory.newInstance();
+            DocumentBuilder builder = builderFactory.newDocumentBuilder();
+            Document doc = builder.newDocument();
+            Element root = doc.createElement("config");
+            doc.appendChild(root);
+
+            Element last_path = doc.createElement("img_path");
+            last_path.appendChild(doc.createTextNode("/"));
+            root.appendChild(last_path);
+
+            Element database_path = doc.createElement("ts_path");
+            database_path.appendChild(doc.createTextNode("/"));
+            root.appendChild(database_path);
+
+            Element setting1 = doc.createElement("setting1");
+            setting1.appendChild(doc.createTextNode("true"));
+            root.appendChild(setting1);
+
+            Element setting2 = doc.createElement("setting2");
+            setting2.appendChild(doc.createTextNode("true"));
+            root.appendChild(setting2);
+
+            Element setting3 = doc.createElement("setting3");
+            setting3.appendChild(doc.createTextNode("true"));
+            root.appendChild(setting3);
+
+            Element setting4 = doc.createElement("setting4");
+            setting4.appendChild(doc.createTextNode("true"));
+            root.appendChild(setting4);
+
+            //Set new keys on demand here
+            TransformerFactory transformerFactory = TransformerFactory.newInstance();
+            Transformer transformer = transformerFactory.newTransformer();
+            transformer.setOutputProperty(OutputKeys.INDENT, "yes");
+            transformer.setOutputProperty("{http://xml.apache.org/xslt}indent-amount", "4");
+            DOMSource domSource = new DOMSource(doc);
+            StreamResult result = new StreamResult(new File("config.xml"));
+            transformer.transform(domSource, result);
+
+            System.out.println("Config file created successfully!");
         } catch (Exception e) {
             e.printStackTrace();
         }

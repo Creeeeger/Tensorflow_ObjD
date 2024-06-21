@@ -251,3 +251,4 @@ public class Trainer extends JFrame {
         }
     }
 }
+//Add panel and technique for coreMl trainer!!!
