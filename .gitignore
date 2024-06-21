@@ -38,5 +38,10 @@ build/
 .DS_Store
 
 ### Stable env ###
-stable_diff_env/
 flower_photos/
+output_images/
+stable_diff_env/
+text_encoder/
+text_tokenizer/
+Unet/
+vae_decoder/
