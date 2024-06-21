@@ -4,9 +4,6 @@ Config handler:
 Model param:
     //Use right settings which we actually need
 
-Trainer:
-    //pass args to stable dif - generate - save
-
 Detector:
     //Add whole image detection logic!!!
     //Add label logic and Json file production!!!
@@ -14,4 +11,3 @@ Detector:
 ---------------
 create model
 Detect images
-Generate images

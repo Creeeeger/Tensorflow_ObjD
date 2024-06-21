@@ -1,5 +1,7 @@
 package org.object_d;
 
+import ai.onnxruntime.OrtException;
+import org.stabled.CLIApp;
 import org.tensorAction.tensorTrainer;
 
 import javax.swing.*;
@@ -13,10 +15,11 @@ import java.nio.file.Paths;
 
 public class Trainer extends JFrame {
     JPanel leftPanel, rightPanel;
-    JButton image_folder, stable_gen, output_path_button, create_model, checkpoint_button;
+    JButton image_folder, stable_gen, output_path_button, create_model, sd4j;
     JTextField command;
-    JLabel images_path, gen, output_path, checkpoint_path;
-    File op_path_gen_img, img_for_train, checkpoint;
+    JSlider steps, batch_size;
+    JLabel images_path, gen, output_path;
+    File op_path_gen_img, img_for_train;
     String command_string, output_gen_string, image_folder_String;
 
     public Trainer() {
@@ -49,14 +52,16 @@ public class Trainer extends JFrame {
 
         // Right Panel Components
         gen = new JLabel("If you want to generate images with Stable Diffusion use this:");
-        command = new JTextField("1. Enter input for image generator -- replace with your own request", 75);
+        command = new JTextField("1. Enter input for image generator", 75);
         output_path = new JLabel("Path of generated output images");
         output_path_button = new JButton("2. Select path for output generated images");
-        checkpoint_path = new JLabel("Path of checkpoint");
-        checkpoint_button = new JButton("3. Select checkpoint file");
-        stable_gen = new JButton("4. Generate images");
-        stable_gen.setEnabled(false);
-        checkpoint_button.setEnabled(false);
+        JLabel step = new JLabel("3. Select steps for generation: more is better image quality");
+        steps = new JSlider(SwingConstants.HORIZONTAL, 1, 50, 5);
+        JLabel batch = new JLabel("4. Select how many images should get generated");
+        batch_size = new JSlider(SwingConstants.HORIZONTAL, 1, 20, 1);
+        stable_gen = new JButton("5. Generate images -  Over web");
+        sd4j = new JButton("5. Generate images directly");
+        sd4j.setEnabled(false);
 
         rightPanel.add(gen);
         rightPanel.add(Box.createRigidArea(new Dimension(0, 10)));
@@ -65,36 +70,29 @@ public class Trainer extends JFrame {
         rightPanel.add(output_path);
         rightPanel.add(Box.createRigidArea(new Dimension(0, 10)));
         rightPanel.add(output_path_button);
-        rightPanel.add(Box.createRigidArea(new Dimension(0, 10)));
-        rightPanel.add(checkpoint_path);
         rightPanel.add(Box.createRigidArea(new Dimension(0, 20)));
-        rightPanel.add(checkpoint_button);
+        rightPanel.add(step);
+        rightPanel.add(Box.createRigidArea(new Dimension(0, 20)));
+        rightPanel.add(steps);
+        rightPanel.add(Box.createRigidArea(new Dimension(0, 20)));
+        rightPanel.add(batch);
+        rightPanel.add(Box.createRigidArea(new Dimension(0, 20)));
+        rightPanel.add(batch_size);
         rightPanel.add(Box.createRigidArea(new Dimension(0, 20)));
         rightPanel.add(stable_gen);
+        rightPanel.add(Box.createRigidArea(new Dimension(0, 20)));
+        rightPanel.add(sd4j);
 
         // Add action listeners
         image_folder.addActionListener(new image_path_function());
         create_model.addActionListener(new create_model_event());
         output_path_button.addActionListener(new output_path_button_action());
-        checkpoint_button.addActionListener(new checkpoint_button_action());
-        stable_gen.addActionListener(new stable_gen_event());
-    }
-    public class checkpoint_button_action implements ActionListener {
-
-        @Override
-        public void actionPerformed(ActionEvent e) {
-            JFileChooser fileChooser = new JFileChooser();
-            fileChooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
-            int returnValue = fileChooser.showOpenDialog(null);
-            if (returnValue == JFileChooser.APPROVE_OPTION) {
-                checkpoint = fileChooser.getSelectedFile();
-                checkpoint_path.setText(img_for_train.getPath());
-                stable_gen.setEnabled(true);
-            }
-        }
+        stable_gen.addActionListener(new stable_gen_event_web());
+        sd4j.addActionListener(new sd4J_event());
     }
 
     public static boolean check_if_env_exists() {
+
         boolean does_exist = false;
         Path path = Paths.get("stable_diff_env");
         try {
@@ -108,6 +106,7 @@ public class Trainer extends JFrame {
     }
 
     public void create_env() {
+
         try {
             gen.setText("Setting up environment... Just wait");
             // Brew install dependencies
@@ -152,6 +151,18 @@ public class Trainer extends JFrame {
         }
     }
 
+    public class sd4J_event implements ActionListener {
+
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            try {
+                CLIApp.gen(new String[]{}, steps.getValue(), command.getText(), batch_size.getValue(), op_path_gen_img.getPath());
+            } catch (OrtException | IOException ex) {
+                throw new RuntimeException(ex);
+            }
+        }
+    }
+
     public class create_model_event implements ActionListener {
 
         @Override
@@ -167,58 +178,45 @@ public class Trainer extends JFrame {
         }
     }
 
-    public class stable_gen_event implements ActionListener {
+    public class stable_gen_event_web implements ActionListener {
 
         @Override
         public void actionPerformed(ActionEvent e) {
-            if (command.getText().isEmpty()) {
-                command.setBackground(new Color(255, 1, 1));
-            } else {
-                command.setBackground(new Color(255, 255, 255));
-            }
+            command_string = command.getText();
+            output_gen_string = op_path_gen_img.getPath();
+            if (check_if_env_exists()) {
+                gen.setText("Starting generating images");
+                try {
+                    gen.setText("Wait some time it could take long :/");
+                    // Create a new process builder
+                    ProcessBuilder processBuilder = new ProcessBuilder();
 
-            if (op_path_gen_img == null) {
-                output_path.setText("select the path first");
-            }
+                    // Specify the command to start the shell (bash for Unix/Linux, cmd for Windows)
+                    processBuilder.command("bash");
 
-            if (!command.getText().isEmpty() && !op_path_gen_img.getPath().isEmpty()) {
-                command_string = command.getText();
-                output_gen_string = op_path_gen_img.getPath();
-                if (check_if_env_exists()) {
-                    gen.setText("Starting generating images");
-                    try {
-                        gen.setText("Wait some time it could take long :/");
-                        // Create a new process builder
-                        ProcessBuilder processBuilder = new ProcessBuilder();
+                    // Start the process
+                    Process process = processBuilder.start();
 
-                        // Specify the command to start the shell (bash for Unix/Linux, cmd for Windows)
-                        processBuilder.command("bash");
+                    // Create a PrintWriter to send commands to the shell
+                    PrintWriter commandWriter = new PrintWriter(process.getOutputStream());
 
-                        // Start the process
-                        Process process = processBuilder.start();
+                    // Send a command to the shell
+                    commandWriter.println("cd stable_diff_env");
+                    commandWriter.println("./webui.sh --skip-install");
+                    commandWriter.flush();
 
-                        // Create a PrintWriter to send commands to the shell
-                        PrintWriter commandWriter = new PrintWriter(process.getOutputStream());
-
-                        // Send a command to the shell
-                        commandWriter.println("cd stable_diff_env");
-                        commandWriter.println("./webui.sh --skip-install");
-                        commandWriter.flush();
-
-                        // Get the output of the command
-                        BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
-                        String line;
-                        while ((line = reader.readLine()) != null) {
-                            System.out.println(line);
-                        }
-
-                    } catch (Exception es) {
-                        es.printStackTrace();
+                    // Get the output of the command
+                    BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        System.out.println(line);
                     }
-                    //pass args to stable dif - generate - save!!!
-                } else {
-                    create_env();
+
+                } catch (Exception es) {
+                    es.printStackTrace();
                 }
+            } else {
+                create_env();
             }
         }
     }
@@ -233,7 +231,7 @@ public class Trainer extends JFrame {
             if (returnValue == JFileChooser.APPROVE_OPTION) {
                 op_path_gen_img = fileChooser.getSelectedFile();
                 output_path.setText(op_path_gen_img.getPath());
-                checkpoint_button.setEnabled(true);
+                sd4j.setEnabled(true);
             }
         }
     }
@@ -253,6 +251,3 @@ public class Trainer extends JFrame {
         }
     }
 }
-
-//pass args to stable dif - generate - save
-//add logic for paylaod!!!
