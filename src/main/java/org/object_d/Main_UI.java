@@ -133,7 +133,7 @@ public class Main_UI extends JFrame {
         Main_UI gui = new Main_UI();
         gui.setVisible(true);
         gui.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        gui.setSize(1000, 800);
+        gui.setSize(1200, 1000);
         gui.setTitle("Object Detector UI");
     }
 
