@@ -2,7 +2,9 @@ package org.object_d;
 
 import ai.onnxruntime.OrtException;
 import org.stabled.CLIApp;
+import org.tensorAction.detector;
 import org.tensorAction.tensorTrainer;
+import org.tensorflow.SavedModelBundle;
 
 import javax.swing.*;
 import java.awt.*;
@@ -14,41 +16,88 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 
 public class Trainer extends JFrame {
-    JPanel leftPanel, rightPanel;
-    JButton image_folder, stable_gen, output_path_button, create_model, sd4j;
+    JPanel leftPanel, rightPanel, leftUpperPanel, leftLowerPanel;
+    JButton image_folder, stable_gen, output_path_button, create_model, sd4j, CoreML_input_path, CoreML_output_path, prepare,model;
     JTextField command;
     JSlider steps, batch_size;
-    JLabel images_path, gen, output_path;
-    File op_path_gen_img, img_for_train;
+    JLabel images_path, gen, output_path, ML_inp, Ml_out, model_path;
+    File op_path_gen_img, img_for_train, Ml_inp_file, Ml_out_file, tensor_file;
     String command_string, output_gen_string, image_folder_String;
+    SavedModelBundle savedModelBundle;
 
     public Trainer() {
         setLayout(new GridLayout(1, 2, 10, 10)); // Use horizontal grid layout with spacing
 
         // Create left and right panels
-        leftPanel = new JPanel();
-        leftPanel.setLayout(new BoxLayout(leftPanel, BoxLayout.Y_AXIS));
+        leftPanel = new JPanel(new GridLayout(2, 1)); // Use GridLayout for equal spacing
         leftPanel.setBorder(BorderFactory.createTitledBorder("Training Panel")); // Add border with title
 
         rightPanel = new JPanel();
         rightPanel.setLayout(new BoxLayout(rightPanel, BoxLayout.Y_AXIS));
         rightPanel.setBorder(BorderFactory.createTitledBorder("Image Generation Panel")); // Add border with title
 
+        // Create upper and lower panels for the left panel
+        leftUpperPanel = new JPanel();
+        leftUpperPanel.setLayout(new BoxLayout(leftUpperPanel, BoxLayout.Y_AXIS));
+        leftUpperPanel.setBorder(BorderFactory.createTitledBorder("Train Tensorflow model")); // Add border with title
+
+        leftLowerPanel = new JPanel();
+        leftLowerPanel.setLayout(new BoxLayout(leftLowerPanel, BoxLayout.Y_AXIS));
+        leftLowerPanel.setBorder(BorderFactory.createTitledBorder("Prepare for CoreML training")); // Add border with title
+
+        // Add upper and lower panels to left panel
+        leftPanel.add(leftUpperPanel);
+        leftPanel.add(leftLowerPanel);
+
         // Add panels to main frame
         add(leftPanel);
         add(rightPanel);
 
-        // Left Panel Components
+        // Left Upper Panel Components
         images_path = new JLabel("Select a folder with images first");
         image_folder = new JButton("1. Select folder with images");
         create_model = new JButton("2. Create model");
         create_model.setEnabled(false);
 
-        leftPanel.add(images_path);
-        leftPanel.add(Box.createRigidArea(new Dimension(0, 10))); // Add space between components
-        leftPanel.add(image_folder);
-        leftPanel.add(Box.createRigidArea(new Dimension(0, 20))); // Add more space between components
-        leftPanel.add(create_model);
+        leftUpperPanel.add(images_path);
+        leftUpperPanel.add(Box.createRigidArea(new Dimension(0, 10))); // Add space between components
+        leftUpperPanel.add(image_folder);
+        leftUpperPanel.add(Box.createRigidArea(new Dimension(0, 20))); // Add more space between components
+        leftUpperPanel.add(create_model);
+        leftUpperPanel.add(Box.createRigidArea(new Dimension(0, 20))); // Add more space between components
+
+        // Left Lower components
+        JLabel title = new JLabel("Prepare a folder of images with subfolders for training in core ml\nImport the folder later to core ml and train it there");
+        ML_inp = new JLabel("Input path comes here");
+        CoreML_input_path = new JButton("Select folder for input for conversion");
+        Ml_out = new JLabel("Output path comes here");
+        CoreML_output_path = new JButton("Select path for converted folder");
+        model_path = new JLabel("model path comes here");
+        model = new JButton("select tensor file");
+        prepare = new JButton("Start preparing folder and JSON");
+
+        CoreML_input_path.setEnabled(true);
+        CoreML_output_path.setEnabled(false);
+        model.setEnabled(false);
+        prepare.setEnabled(false);
+
+        leftLowerPanel.add(title);
+        leftUpperPanel.add(Box.createRigidArea(new Dimension(0, 20))); // Add more space between components
+        leftLowerPanel.add(ML_inp);
+        leftUpperPanel.add(Box.createRigidArea(new Dimension(0, 20))); // Add more space between components
+        leftLowerPanel.add(CoreML_input_path);
+        leftUpperPanel.add(Box.createRigidArea(new Dimension(0, 20))); // Add more space between components
+        leftLowerPanel.add(Ml_out);
+        leftUpperPanel.add(Box.createRigidArea(new Dimension(0, 20))); // Add more space between components
+        leftLowerPanel.add(CoreML_output_path);
+        leftUpperPanel.add(Box.createRigidArea(new Dimension(0, 20))); // Add more space between components
+        leftLowerPanel.add(model_path);
+        leftUpperPanel.add(Box.createRigidArea(new Dimension(0, 20))); // Add more space between components
+        leftLowerPanel.add(model);
+        leftUpperPanel.add(Box.createRigidArea(new Dimension(0, 20))); // Add more space between components
+        leftLowerPanel.add(prepare);
+        leftUpperPanel.add(Box.createRigidArea(new Dimension(0, 20))); // Add more space between components
+
 
         // Right Panel Components
         gen = new JLabel("If you want to generate images with Stable Diffusion use this:");
@@ -89,6 +138,76 @@ public class Trainer extends JFrame {
         output_path_button.addActionListener(new output_path_button_action());
         stable_gen.addActionListener(new stable_gen_event_web());
         sd4j.addActionListener(new sd4J_event());
+
+        CoreML_input_path.addActionListener(new Core_input());
+        CoreML_output_path.addActionListener(new Core_output());
+        prepare.addActionListener(new convert_to_coreML());
+        model.addActionListener(new event_load_tensor());
+    }
+
+    public class event_load_tensor implements ActionListener { // returns tensor_file as loaded tensor
+
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            JFileChooser fileChooser = new JFileChooser();
+            fileChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+            int returnValue = fileChooser.showOpenDialog(null);
+            if (returnValue == JFileChooser.APPROVE_OPTION) {
+                tensor_file = fileChooser.getSelectedFile();
+                model_path.setText(tensor_file.getPath());
+                prepare.setEnabled(true);
+            }
+
+            try {
+                savedModelBundle = SavedModelBundle.load(tensor_file.getPath(), "serve");
+                System.out.println("Model loaded");
+            } catch (Exception ex) {
+                ex.printStackTrace();
+            }
+        }
+    }
+
+    public class Core_input implements ActionListener{
+
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            JFileChooser fileChooser = new JFileChooser();
+            fileChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY); // Set the file chooser to select directories
+            int returnValue = fileChooser.showOpenDialog(null);
+            if (returnValue == JFileChooser.APPROVE_OPTION) {
+                Ml_inp_file = fileChooser.getSelectedFile();
+                ML_inp.setText(Ml_inp_file.getPath());
+                CoreML_output_path.setEnabled(true);
+            }
+        }
+    }
+
+    public class Core_output implements ActionListener{
+
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            JFileChooser fileChooser = new JFileChooser();
+            fileChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY); // Set the file chooser to select directories
+            int returnValue = fileChooser.showOpenDialog(null);
+            if (returnValue == JFileChooser.APPROVE_OPTION) {
+                Ml_out_file = fileChooser.getSelectedFile();
+                Ml_out.setText(Ml_out_file.getPath());
+                model.setEnabled(true);
+            }
+        }
+    }
+
+    public class convert_to_coreML implements ActionListener{
+
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            //reload model to prevent errors when used multiple times
+            savedModelBundle = SavedModelBundle.load(tensor_file.getPath(), "serve");
+            System.out.println("Model loaded");
+            //initialise detector
+            detector detector = new detector();
+            //Add data coreMl trainer!!!
+        }
     }
 
     public static boolean check_if_env_exists() {
@@ -251,4 +370,4 @@ public class Trainer extends JFrame {
         }
     }
 }
-//Add panel and technique for coreMl trainer!!!
+//Add data coreMl trainer!!!

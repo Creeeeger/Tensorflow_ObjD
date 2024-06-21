@@ -12,7 +12,7 @@ Tensor Trainer:
     //Fix training process!!!
 
 Trainer:
-    //Add panel and technique for coreMl trainer!!!
+    //Add data coreMl trainer!!!
 
 ---------------
 create model - fix process to create a usable model
