@@ -1,7 +1,5 @@
 package org.tensorAction;
 
-import org.tensorflow.SavedModelBundle;
-
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -109,8 +107,7 @@ public class coreML_converter {
 
     private static boolean isImageFile(String fileName) {
         String fileExtension = getFileExtension(fileName).toLowerCase();
-        return fileExtension.equals(".jpg") || fileExtension.equals(".jpeg") || fileExtension.equals(".png")
-                || fileExtension.equals(".gif") || fileExtension.equals(".bmp") || fileExtension.equals(".tiff");
+        return fileExtension.equals(".jpg") || fileExtension.equals(".jpeg") || fileExtension.equals(".png");
     }
 
     private static void deleteDirectory(Path path) throws IOException {
@@ -120,18 +117,72 @@ public class coreML_converter {
                 .forEach(File::delete);
     }
 
-    public static void labelImages(SavedModelBundle modelBundle) {
-
+    public static void labelImages(String modelBundle_path) {
         detector detector = new detector();
-        String[] labels = detector.label("CoreML_out", modelBundle);
+        String[] labels = detector.label("CoreML_out", modelBundle_path);
         prepareOutput(labels);
     }
 
     public static void prepareOutput(String[] labels) {
+        //2.jpg [scissors,88.373215,205.99133,58.800613,173.9099][scissors,172.04897,208.84727,161.88799,275.86224]
+        //1.jpg [scissors,173.99504,263.0,49.67339,295.79303]
+        //image file "[" + detectedLabel + "," + yMin + "," + yMax + "," + xMin + "," + xMax + "]";
+        for (int i = 0; i < labels.length; i++) {
+            int label_amount;
+            String filename;
 
+            try {
+                filename = labels[i].substring(0, labels[i].indexOf(" ")).trim();
+                label_amount = (int) labels[i].chars().filter(ch -> ch == '[').count();
+                String data = labels[i].substring(labels[i].indexOf("["));
+                String[] obj = new String[label_amount];
+
+                int startIndex = 0;
+                int endIndex = data.indexOf("]");
+                for (int j = 0; j < label_amount; j++) {
+                    obj[j] = data.substring(startIndex, endIndex + 1);
+                    startIndex = endIndex + 1;
+                    if (startIndex < data.length()) {
+                        endIndex = data.indexOf("]", startIndex);
+                        if (endIndex == -1) {
+                            endIndex = data.length();
+                        }
+                    }
+                }
+
+                for (int j = 0; j < label_amount; j++) {
+                    String[] parts = obj[j].split(",");
+
+                    String label = parts[0].substring(1);
+                    int yMin = (int) Double.parseDouble(parts[1]);
+                    int yMax = (int) Double.parseDouble(parts[2]);
+                    int xMin = (int) Double.parseDouble(parts[3]);
+                    int xMax = (int) Double.parseDouble(parts[4].substring(0, parts[4].length() - 1));
+
+                    int height = yMax - yMin;
+                    int width = xMax - xMin;
+
+                    System.out.println();
+                    System.out.println("x " + (j + 1) + ": " + xMin);
+                    System.out.println("y " + (j + 1) + ": " + yMax);
+                    System.out.println("height " + (j + 1) + ": " + height);
+                    System.out.println("width " + (j + 1) + ": " + width);
+                    System.out.println("label " + (j + 1) + ": " + label);
+                }
+
+            } catch (StringIndexOutOfBoundsException e) {
+                continue;
+            }
+
+            System.out.println("label amount " + label_amount);
+            System.out.println("File name " + filename);
+        }
     }
 
     public static void main(String[] args) {
-        organiseFiles("/Users/gregor/Desktop/Tensorflow_ObjD/flower_photos");
+        String[] data = {"2.jpg [idk,88.373215,205.99133,58.800613,173.9099][scissors,88.373215,205.99133,58.800613,173.9099][scissors,172.04897,208.84727,161.88799,275.86224]", "1.jpg [scissors,173.99504,263.0,49.67339,295.79303]", "3.jpg"};
+        prepareOutput(data);
     }
 }
+
+//Create the json file and prepare output!!!

@@ -12,12 +12,12 @@ import org.tensorflow.types.TString;
 import org.tensorflow.types.TUint8;
 
 import java.io.File;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.TreeMap;
 import java.io.IOException;
-import java.nio.file.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.*;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class detector {
@@ -159,117 +159,115 @@ public class detector {
         }
     }
 
-    private int getFileCount(String imagePath) {
-        try (Stream<Path> files = Files.walk(Paths.get(imagePath))) {
-            return (int) files.filter(Files::isRegularFile).count();
-        } catch (IOException e) {
-            e.printStackTrace();
-            return 0; // Return 0 if there's an error
-        }
-    }
+    public String[] label(String imagePath, String TensorPath) {
+        try (Stream<Path> paths = Files.walk(Paths.get(imagePath))) {
+            // Filter only regular image files (you might need to adjust this based on your file types)
+            List<Path> imageFiles = paths.filter(Files::isRegularFile)
+                    .filter(p -> p.toString().endsWith(".jpg") || p.toString().endsWith(".png") || p.toString().endsWith(".jpeg"))
+                    .collect(Collectors.toList());
 
-    public String[] label(String imagePath, SavedModelBundle ModelBundle) { //Add label logic and Json file production!!!
+            String[] returnArray = new String[imageFiles.size()];
 
-        //Base logic for returning image path and labels
-        String[] returnArray = new String[getFileCount(imagePath)];
-        System.out.println(returnArray.length);
+            for (int i = 0; i < imageFiles.size(); i++) {
+                SavedModelBundle ModelBundle = SavedModelBundle.load(TensorPath, "serve");
 
-        for(int i = 0; i < returnArray.length; i++) {
+                String imageFile = imageFiles.get(i).toString();
+                String returnString = "";
 
-            try (ModelBundle) {
-                //initialise model bundle
-                //Load our labels in
-                TreeMap<Float, String> cocoLabelMap = new TreeMap<>();
-                float Label_count = 0;
+                try (ModelBundle) {
+                    //initialise model bundle
+                    //Load our labels in
+                    TreeMap<Float, String> cocoLabelMap = new TreeMap<>();
+                    float Label_count = 0;
 
-                for (String cocoLabel : cocoLabels) {
-                    cocoLabelMap.put(Label_count, cocoLabel);
-                    Label_count++;
-                }
+                    for (String cocoLabel : cocoLabels) {
+                        cocoLabelMap.put(Label_count, cocoLabel);
+                        Label_count++;
+                    }
 
-                //Setup graph and session and operation graph
-                try (Graph graph = new Graph()) {
-                    try (Session session = new Session(graph)) {
+                    //Setup graph and session and operation graph
+                    try (Graph graph = new Graph()) {
+                        try (Session session = new Session(graph)) {
 
-                        //Setup the sessions and runners
-                        Ops operation = Ops.create(graph);
-                        Session.Runner runner = session.runner();
+                            //Setup the sessions and runners
+                            Ops operation = Ops.create(graph);
+                            Session.Runner runner = session.runner();
 
-                        //get the file from the file path
-                        Operand<TString> filePath = operation.constant(imagePath);
-                        ReadFile file = operation.io.readFile(filePath);
+                            //get the file from the file path
+                            Operand<TString> filePath = operation.constant(imageFile);
+                            ReadFile file = operation.io.readFile(filePath);
 
-                        //Decode the jpeg
-                        DecodeJpeg.Options jpeg_options = DecodeJpeg.channels(3L);
-                        DecodeJpeg decodeJpeg = operation.image.decodeJpeg(file.contents(), jpeg_options);
+                            //Decode the jpeg
+                            DecodeJpeg.Options jpeg_options = DecodeJpeg.channels(3L);
+                            DecodeJpeg decodeJpeg = operation.image.decodeJpeg(file.contents(), jpeg_options);
 
-                        //Get the shape of the image
-                        Shape imageShape = runner.fetch(decodeJpeg).run().get(0).shape();
+                            //Get the shape of the image
+                            Shape imageShape = runner.fetch(decodeJpeg).run().get(0).shape();
 
-                        //Now we got to reshape it as we saw over debugging that its in an unusable shape
-                        Reshape<TUint8> reshape = operation.reshape(decodeJpeg, operation.array(1,
-                                imageShape.asArray()[0],
-                                imageShape.asArray()[1],
-                                imageShape.asArray()[2]
-                        )); //shape is in form of 1|height|width|color channels
+                            //Now we got to reshape it as we saw over debugging that its in an unusable shape
+                            Reshape<TUint8> reshape = operation.reshape(decodeJpeg, operation.array(1,
+                                    imageShape.asArray()[0],
+                                    imageShape.asArray()[1],
+                                    imageShape.asArray()[2]
+                            )); //shape is in form of 1|height|width|color channels
 
-                        //Reshape operations now, we need to cast because we need integer format from the tensor
-                        try (TUint8 reshape_Tensor = (TUint8) session.runner().fetch(reshape).run().get(0)) {
-                            System.out.println(reshape_Tensor.shape()); //check the shape
+                            //Reshape operations now, we need to cast because we need integer format from the tensor
+                            try (TUint8 reshape_Tensor = (TUint8) session.runner().fetch(reshape).run().get(0)) {
 
-                            //Create hashmap and add our image as input tensor to it
-                            Map<String, Tensor> tensorMap = new HashMap<>();
-                            tensorMap.put("input_tensor", reshape_Tensor);
+                                //Create hashmap and add our image as input tensor to it
+                                Map<String, Tensor> tensorMap = new HashMap<>();
+                                tensorMap.put("input_tensor", reshape_Tensor);
 
-                            //Setup the result operations
-                            Result result = ModelBundle.function("serving_default").call(tensorMap);
-                            if (result.get("detection_scores").isPresent() &&
-                                    result.get("num_detections").isPresent() &&
-                                    result.get("detection_classes").isPresent() &&
-                                    result.get("detection_boxes").isPresent()) {
+                                //Setup the result operations
+                                Result result = ModelBundle.function("serving_default").call(tensorMap);
+                                if (result.get("detection_scores").isPresent() &&
+                                        result.get("num_detections").isPresent() &&
+                                        result.get("detection_classes").isPresent() &&
+                                        result.get("detection_boxes").isPresent()) {
 
-                                //Setup the functions of the model we use
-                                try (TFloat32 scores = (TFloat32) result.get("detection_scores").get();
-                                     TFloat32 amount = (TFloat32) result.get("num_detections").get();
-                                     TFloat32 classes = (TFloat32) result.get("detection_classes").get();
-                                     TFloat32 boxes = (TFloat32) result.get("detection_boxes").get()) {
+                                    //Setup the functions of the model we use
+                                    try (TFloat32 scores = (TFloat32) result.get("detection_scores").get();
+                                         TFloat32 amount = (TFloat32) result.get("num_detections").get();
+                                         TFloat32 classes = (TFloat32) result.get("detection_classes").get();
+                                         TFloat32 boxes = (TFloat32) result.get("detection_boxes").get()) {
 
-                                    //Get the amount of detections we got and cast it
-                                    int detections = (int) amount.getFloat(0);
+                                        //Get the amount of detections we got and cast it
+                                        int detections = (int) amount.getFloat(0);
 
-                                    //Array for boxes for visualising objects later with open cv
-                                    ArrayList<FloatNdArray> boxList = new ArrayList<>();
+                                        //Array for boxes for visualising objects later with open cv
+                                        ArrayList<FloatNdArray> boxList = new ArrayList<>();
+                                        returnString = "";
 
-                                    //only proceed when we got more than 0 detections
-                                    if (detections > 0) {
-                                        //Get the image dimensions
-                                        int imageHeight = (int) reshape_Tensor.shape().get(1);
-                                        int imageWidth = (int) reshape_Tensor.shape().get(2);
-                                        System.out.println(imageHeight + " + " + imageWidth);
+                                        //only proceed when we got more than 0 detections
+                                        if (detections > 0) {
+                                            //Get the image dimensions
+                                            int imageHeight = (int) reshape_Tensor.shape().get(1);
+                                            int imageWidth = (int) reshape_Tensor.shape().get(2);
 
-                                        //Loop through all detected objects
-                                        for (int j = 0; j < detections; j++) {
-                                            //get the score of each object
-                                            float score = scores.getFloat(0, j);
+                                            //Loop through all detected objects
+                                            for (int j = 0; j < detections; j++) {
+                                                //get the score of each object
+                                                float score = scores.getFloat(0, j);
 
-                                            //Just take objects with 30% or higher chance
-                                            if (score > 0.3f) {
-                                                //get the boxes where the objects are
-                                                FloatNdArray boxFloat = boxes.get(0, j);
-                                                boxList.add(boxFloat);
+                                                //Just take objects with 30% or higher chance
+                                                if (score > 0.3f) {
+                                                    //get the boxes where the objects are
+                                                    FloatNdArray boxFloat = boxes.get(0, j);
+                                                    boxList.add(boxFloat);
 
-                                                // Print the coordinates of the box
-                                                float yMin = boxFloat.getFloat(0) * imageHeight;
-                                                float xMin = boxFloat.getFloat(1) * imageWidth;
-                                                float yMax = boxFloat.getFloat(2) * imageHeight;
-                                                float xMax = boxFloat.getFloat(3) * imageWidth;
-                                                System.out.println("Box coordinates: [yMin: " + yMin + ", xMin: " + xMin + ", yMax: " + yMax + ", xMax: " + xMax + "]");
+                                                    // Print the coordinates of the box
+                                                    float yMin = boxFloat.getFloat(0) * imageHeight;
+                                                    float xMin = boxFloat.getFloat(1) * imageWidth;
+                                                    float yMax = boxFloat.getFloat(2) * imageHeight;
+                                                    float xMax = boxFloat.getFloat(3) * imageWidth;
 
-                                                // Get the detected class index and map it to the corresponding label
-                                                float classIndex = classes.getFloat(0, j);
-                                                String detectedLabel = cocoLabels[(int) classIndex];
-                                                System.out.println("Detected: " + detectedLabel + " with score: " + String.format("%.2f", (score * 100)) + "%.");
+                                                    // Get the detected class index and map it to the corresponding label
+                                                    float classIndex = classes.getFloat(0, j);
+                                                    String detectedLabel = cocoLabels[(int) classIndex];
+                                                    returnString = returnString + "[" + detectedLabel + "," + yMin + "," + yMax + "," + xMin + "," + xMax + "]";
+                                                }
                                             }
+                                            System.out.println(imageFile.substring(imageFile.indexOf("/") + 1) + " " + returnString);
                                         }
                                     }
                                 }
@@ -277,10 +275,12 @@ public class detector {
                         }
                     }
                 }
+                returnArray[i] = imageFile.substring(imageFile.indexOf("/") + 1) + " " + returnString;
             }
+            return returnArray;
+        } catch (IOException e) {
+            throw new RuntimeException(e);
         }
-        return returnArray;
     }
 }
-//Add whole image detection logic!!!
-//Add label logic and Json file production!!!
+//detector - add boxes and labels with it openCV!!!

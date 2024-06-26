@@ -241,12 +241,7 @@ public class Trainer extends JFrame {
             //initialise detector
             coreML_converter coreML_converter = new coreML_converter();
             coreML_converter.organiseFiles(Ml_inp_file.getPath());
-
-            //reload model to prevent errors when used multiple times
-            savedModelBundle = SavedModelBundle.load(tensor_file.getPath(), "serve");
-            System.out.println("Model loaded");
-            coreML_converter.labelImages(savedModelBundle);
-            System.out.println("Done");
+            coreML_converter.labelImages(tensor_file.getPath());
         }
     }
 
