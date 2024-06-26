@@ -5,15 +5,10 @@ Model param:
     //Use right settings which we actually need
 
 Detector:
-    //Add whole image detection logic!!!
-    //Add label logic and Json file production for coreML!!!
+    //detector - add boxes and labels with it openCV
 
 Tensor Trainer:
     //Fix training process!!!
 
----------------
-create model - fix process to create a usable model
-detector - add boxes and labels with it openCV
-CoreMl preparatory - add methods to detector
-
-test json creation !!!
+Core ml converter:
+    //Create the json file and prepare output!!!
