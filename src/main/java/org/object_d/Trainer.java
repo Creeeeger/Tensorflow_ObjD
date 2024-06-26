@@ -2,7 +2,7 @@ package org.object_d;
 
 import ai.onnxruntime.OrtException;
 import org.stabled.CLIApp;
-import org.tensorAction.detector;
+import org.tensorAction.coreML_converter;
 import org.tensorAction.tensorTrainer;
 import org.tensorflow.SavedModelBundle;
 
@@ -17,11 +17,11 @@ import java.nio.file.Paths;
 
 public class Trainer extends JFrame {
     JPanel leftPanel, rightPanel, leftUpperPanel, leftLowerPanel;
-    JButton image_folder, stable_gen, output_path_button, create_model, sd4j, CoreML_input_path, CoreML_output_path, prepare,model;
+    JButton image_folder, stable_gen, output_path_button, create_model, sd4j, CoreML_input_path, prepare, model;
     JTextField command;
     JSlider steps, batch_size;
-    JLabel images_path, gen, output_path, ML_inp, Ml_out, model_path;
-    File op_path_gen_img, img_for_train, Ml_inp_file, Ml_out_file, tensor_file;
+    JLabel images_path, gen, output_path, ML_inp, model_path;
+    File op_path_gen_img, img_for_train, Ml_inp_file, tensor_file;
     String command_string, output_gen_string, image_folder_String;
     SavedModelBundle savedModelBundle;
 
@@ -70,14 +70,11 @@ public class Trainer extends JFrame {
         JLabel title = new JLabel("Prepare a folder of images with subfolders for training in core ml\nImport the folder later to core ml and train it there");
         ML_inp = new JLabel("Input path comes here");
         CoreML_input_path = new JButton("Select folder for input for conversion");
-        Ml_out = new JLabel("Output path comes here");
-        CoreML_output_path = new JButton("Select path for converted folder");
         model_path = new JLabel("model path comes here");
         model = new JButton("select tensor file");
         prepare = new JButton("Start preparing folder and JSON");
 
         CoreML_input_path.setEnabled(true);
-        CoreML_output_path.setEnabled(false);
         model.setEnabled(false);
         prepare.setEnabled(false);
 
@@ -86,10 +83,6 @@ public class Trainer extends JFrame {
         leftLowerPanel.add(ML_inp);
         leftUpperPanel.add(Box.createRigidArea(new Dimension(0, 20))); // Add more space between components
         leftLowerPanel.add(CoreML_input_path);
-        leftUpperPanel.add(Box.createRigidArea(new Dimension(0, 20))); // Add more space between components
-        leftLowerPanel.add(Ml_out);
-        leftUpperPanel.add(Box.createRigidArea(new Dimension(0, 20))); // Add more space between components
-        leftLowerPanel.add(CoreML_output_path);
         leftUpperPanel.add(Box.createRigidArea(new Dimension(0, 20))); // Add more space between components
         leftLowerPanel.add(model_path);
         leftUpperPanel.add(Box.createRigidArea(new Dimension(0, 20))); // Add more space between components
@@ -140,74 +133,8 @@ public class Trainer extends JFrame {
         sd4j.addActionListener(new sd4J_event());
 
         CoreML_input_path.addActionListener(new Core_input());
-        CoreML_output_path.addActionListener(new Core_output());
         prepare.addActionListener(new convert_to_coreML());
         model.addActionListener(new event_load_tensor());
-    }
-
-    public class event_load_tensor implements ActionListener { // returns tensor_file as loaded tensor
-
-        @Override
-        public void actionPerformed(ActionEvent e) {
-            JFileChooser fileChooser = new JFileChooser();
-            fileChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
-            int returnValue = fileChooser.showOpenDialog(null);
-            if (returnValue == JFileChooser.APPROVE_OPTION) {
-                tensor_file = fileChooser.getSelectedFile();
-                model_path.setText(tensor_file.getPath());
-                prepare.setEnabled(true);
-            }
-
-            try {
-                savedModelBundle = SavedModelBundle.load(tensor_file.getPath(), "serve");
-                System.out.println("Model loaded");
-            } catch (Exception ex) {
-                ex.printStackTrace();
-            }
-        }
-    }
-
-    public class Core_input implements ActionListener{
-
-        @Override
-        public void actionPerformed(ActionEvent e) {
-            JFileChooser fileChooser = new JFileChooser();
-            fileChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY); // Set the file chooser to select directories
-            int returnValue = fileChooser.showOpenDialog(null);
-            if (returnValue == JFileChooser.APPROVE_OPTION) {
-                Ml_inp_file = fileChooser.getSelectedFile();
-                ML_inp.setText(Ml_inp_file.getPath());
-                CoreML_output_path.setEnabled(true);
-            }
-        }
-    }
-
-    public class Core_output implements ActionListener{
-
-        @Override
-        public void actionPerformed(ActionEvent e) {
-            JFileChooser fileChooser = new JFileChooser();
-            fileChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY); // Set the file chooser to select directories
-            int returnValue = fileChooser.showOpenDialog(null);
-            if (returnValue == JFileChooser.APPROVE_OPTION) {
-                Ml_out_file = fileChooser.getSelectedFile();
-                Ml_out.setText(Ml_out_file.getPath());
-                model.setEnabled(true);
-            }
-        }
-    }
-
-    public class convert_to_coreML implements ActionListener{
-
-        @Override
-        public void actionPerformed(ActionEvent e) {
-            //reload model to prevent errors when used multiple times
-            savedModelBundle = SavedModelBundle.load(tensor_file.getPath(), "serve");
-            System.out.println("Model loaded");
-            //initialise detector
-            detector detector = new detector();
-            //Add data coreMl trainer!!!
-        }
     }
 
     public static boolean check_if_env_exists() {
@@ -267,6 +194,59 @@ public class Trainer extends JFrame {
         } catch (InterruptedException e) {
             System.err.println("InterruptedException occurred: " + e.getMessage());
             throw new RuntimeException(e);
+        }
+    }
+
+    public class event_load_tensor implements ActionListener { // returns tensor_file as loaded tensor
+
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            JFileChooser fileChooser = new JFileChooser();
+            fileChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+            int returnValue = fileChooser.showOpenDialog(null);
+            if (returnValue == JFileChooser.APPROVE_OPTION) {
+                tensor_file = fileChooser.getSelectedFile();
+                model_path.setText(tensor_file.getPath());
+                prepare.setEnabled(true);
+            }
+
+            try {
+                savedModelBundle = SavedModelBundle.load(tensor_file.getPath(), "serve");
+                System.out.println("Model loaded");
+            } catch (Exception ex) {
+                ex.printStackTrace();
+            }
+        }
+    }
+
+    public class Core_input implements ActionListener {
+
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            JFileChooser fileChooser = new JFileChooser();
+            fileChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY); // Set the file chooser to select directories
+            int returnValue = fileChooser.showOpenDialog(null);
+            if (returnValue == JFileChooser.APPROVE_OPTION) {
+                Ml_inp_file = fileChooser.getSelectedFile();
+                ML_inp.setText(Ml_inp_file.getPath());
+                model.setEnabled(true);
+            }
+        }
+    }
+
+    public class convert_to_coreML implements ActionListener {
+
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            //initialise detector
+            coreML_converter coreML_converter = new coreML_converter();
+            coreML_converter.organiseFiles(Ml_inp_file.getPath());
+
+            //reload model to prevent errors when used multiple times
+            savedModelBundle = SavedModelBundle.load(tensor_file.getPath(), "serve");
+            System.out.println("Model loaded");
+            coreML_converter.labelImages(savedModelBundle);
+            System.out.println("Done");
         }
     }
 
@@ -370,4 +350,3 @@ public class Trainer extends JFrame {
         }
     }
 }
-//Add data coreMl trainer!!!
