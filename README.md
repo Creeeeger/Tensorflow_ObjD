@@ -10,6 +10,8 @@
 
 - Train / Create your own models
 
-- Generate images with stable diffusion for training models
+- Generate images with stable diffusion
 
-- Based on tensorflow 2.x
+- Generate images with SD4J
+
+- Based on tensorflow 2.x for unix systems (Tested on macOS 14 M1 Pro)

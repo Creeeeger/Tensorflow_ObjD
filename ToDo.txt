@@ -8,7 +8,14 @@ Detector:
     //detector - add boxes and labels with it openCV
 
 Tensor Trainer:
-    //Fix training process!!!
+    //Fix training process
 
 Core ml converter:
-    //Create the json file and prepare output!!!
+    //test if core ml accepts it
+
+----------
+model creation (tensor Trainer file)
+
+------------
+clean Up project
+General Code Polishing and bug fixes / Testing

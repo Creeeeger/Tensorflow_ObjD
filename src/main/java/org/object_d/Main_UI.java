@@ -203,6 +203,19 @@ public class Main_UI extends JFrame {
         }
     }
 
+    public static class event_train implements ActionListener {
+
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            Trainer gui = new Trainer();
+            gui.setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE);
+            gui.setVisible(true);
+            gui.setSize(1400, 900);
+            gui.setLocation(100, 100);
+            gui.setTitle("Model trainer");
+        }
+    }
+
     public class event_set_params implements ActionListener {
 
         @Override
@@ -253,19 +266,6 @@ public class Main_UI extends JFrame {
             };
             config_handler.save_config(values);
             System.exit(0);
-        }
-    }
-
-    public class event_train implements ActionListener {
-
-        @Override
-        public void actionPerformed(ActionEvent e) {
-            Trainer gui = new Trainer();
-            gui.setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE);
-            gui.setVisible(true);
-            gui.setSize(1400, 900);
-            gui.setLocation(100, 100);
-            gui.setTitle("Model trainer");
         }
     }
 

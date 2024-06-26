@@ -1,6 +1,10 @@
 package org.tensorAction;
 
+import org.json.JSONArray;
+import org.json.JSONObject;
+
 import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -124,17 +128,13 @@ public class coreML_converter {
     }
 
     public static void prepareOutput(String[] labels) {
-        //2.jpg [scissors,88.373215,205.99133,58.800613,173.9099][scissors,172.04897,208.84727,161.88799,275.86224]
-        //1.jpg [scissors,173.99504,263.0,49.67339,295.79303]
-        //image file "[" + detectedLabel + "," + yMin + "," + yMax + "," + xMin + "," + xMax + "]";
-        for (int i = 0; i < labels.length; i++) {
-            int label_amount;
-            String filename;
+        JSONArray jsonArray = new JSONArray();
 
+        for (String label : labels) {
             try {
-                filename = labels[i].substring(0, labels[i].indexOf(" ")).trim();
-                label_amount = (int) labels[i].chars().filter(ch -> ch == '[').count();
-                String data = labels[i].substring(labels[i].indexOf("["));
+                String filename = label.substring(0, label.indexOf(" ")).trim();
+                int label_amount = (int) label.chars().filter(ch -> ch == '[').count();
+                String data = label.substring(label.indexOf("["));
                 String[] obj = new String[label_amount];
 
                 int startIndex = 0;
@@ -150,10 +150,11 @@ public class coreML_converter {
                     }
                 }
 
-                for (int j = 0; j < label_amount; j++) {
-                    String[] parts = obj[j].split(",");
+                JSONArray annotations = new JSONArray();
+                for (String s : obj) {
+                    String[] parts = s.split(",");
 
-                    String label = parts[0].substring(1);
+                    String labelName = parts[0].substring(1);
                     int yMin = (int) Double.parseDouble(parts[1]);
                     int yMax = (int) Double.parseDouble(parts[2]);
                     int xMin = (int) Double.parseDouble(parts[3]);
@@ -161,28 +162,37 @@ public class coreML_converter {
 
                     int height = yMax - yMin;
                     int width = xMax - xMin;
+                    int xCenter = xMin + width / 2;
+                    int yCenter = yMin + height / 2;
 
-                    System.out.println();
-                    System.out.println("x " + (j + 1) + ": " + xMin);
-                    System.out.println("y " + (j + 1) + ": " + yMax);
-                    System.out.println("height " + (j + 1) + ": " + height);
-                    System.out.println("width " + (j + 1) + ": " + width);
-                    System.out.println("label " + (j + 1) + ": " + label);
+                    JSONObject annotation = new JSONObject();
+                    JSONObject coordinates = new JSONObject();
+                    coordinates.put("y", yCenter);
+                    coordinates.put("x", xCenter);
+                    coordinates.put("height", height);
+                    coordinates.put("width", width);
+                    annotation.put("coordinates", coordinates);
+                    annotation.put("label", labelName);
+                    annotations.put(annotation);
                 }
+
+                JSONObject jsonObject = new JSONObject();
+                jsonObject.put("imagefilename", filename);
+                jsonObject.put("annotation", annotations);
+                jsonArray.put(jsonObject);
 
             } catch (StringIndexOutOfBoundsException e) {
                 continue;
             }
-
-            System.out.println("label amount " + label_amount);
-            System.out.println("File name " + filename);
+        }
+        File file = new File("CoreML_out/Annotations.json");
+        try {
+            file.createNewFile();
+            FileWriter fileWriter = new FileWriter(file);
+            fileWriter.write(jsonArray.toString(4));
+            fileWriter.close();
+        } catch (Exception x) {
+            System.out.println(x.getMessage());
         }
     }
-
-    public static void main(String[] args) {
-        String[] data = {"2.jpg [idk,88.373215,205.99133,58.800613,173.9099][scissors,88.373215,205.99133,58.800613,173.9099][scissors,172.04897,208.84727,161.88799,275.86224]", "1.jpg [scissors,173.99504,263.0,49.67339,295.79303]", "3.jpg"};
-        prepareOutput(data);
-    }
 }
-
-//Create the json file and prepare output!!!
