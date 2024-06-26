@@ -10,9 +10,6 @@ Detector:
 Tensor Trainer:
     //Fix training process
 
-Core ml converter:
-    //test if core ml accepts it
-
 ----------
 model creation (tensor Trainer file)
 
