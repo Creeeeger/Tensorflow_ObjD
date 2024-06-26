@@ -267,7 +267,6 @@ public class detector {
                                                     returnString = returnString + "[" + detectedLabel + "," + yMin + "," + yMax + "," + xMin + "," + xMax + "]";
                                                 }
                                             }
-                                            System.out.println(imageFile.substring(imageFile.indexOf("/") + 1) + " " + returnString);
                                         }
                                     }
                                 }

@@ -2,7 +2,6 @@ package org.object_d;
 
 import ai.onnxruntime.OrtException;
 import org.stabled.CLIApp;
-import org.tensorAction.coreML_converter;
 import org.tensorAction.tensorTrainer;
 import org.tensorflow.SavedModelBundle;
 
@@ -239,9 +238,8 @@ public class Trainer extends JFrame {
         @Override
         public void actionPerformed(ActionEvent e) {
             //initialise detector
-            coreML_converter coreML_converter = new coreML_converter();
-            coreML_converter.organiseFiles(Ml_inp_file.getPath());
-            coreML_converter.labelImages(tensor_file.getPath());
+            org.tensorAction.coreML_converter.organiseFiles(Ml_inp_file.getPath());
+            org.tensorAction.coreML_converter.labelImages(tensor_file.getPath());
         }
     }
 
