@@ -66,7 +66,7 @@ public class Trainer extends JFrame {
         leftUpperPanel.add(Box.createRigidArea(new Dimension(0, 20))); // Add more space between components
 
         // Left Lower components
-        JLabel title = new JLabel("Prepare a folder of images with subfolders for training in core ml\nImport the folder later to core ml and train it there");
+        JLabel title = new JLabel("Prepare a folder of images with subfolders for training in core ml Import the folder later to core ml and train it there");
         ML_inp = new JLabel("Input path comes here");
         CoreML_input_path = new JButton("Select folder for input for conversion");
         model_path = new JLabel("model path comes here");
