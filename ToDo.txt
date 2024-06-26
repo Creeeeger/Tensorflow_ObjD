@@ -11,9 +11,9 @@ Detector:
 Tensor Trainer:
     //Fix training process!!!
 
-Trainer:
-    //Add data coreMl trainer!!!
-
 ---------------
 create model - fix process to create a usable model
 detector - add boxes and labels with it openCV
+CoreMl preparatory - add methods to detector
+
+test json creation !!!
