@@ -4,9 +4,6 @@ Config handler:
 Model param:
     //Use right settings which we actually need
 
-Detector:
-    //detector - add boxes and labels with it openCV
-
 Tensor Trainer:
     //Fix training process
 

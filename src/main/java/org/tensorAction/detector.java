@@ -1,5 +1,10 @@
 package org.tensorAction;
 
+import org.opencv.core.Mat;
+import org.opencv.core.Point;
+import org.opencv.core.Scalar;
+import org.opencv.imgcodecs.Imgcodecs;
+import org.opencv.imgproc.Imgproc;
 import org.tensorflow.*;
 import org.tensorflow.ndarray.FloatNdArray;
 import org.tensorflow.ndarray.Shape;
@@ -17,12 +22,11 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class detector {
     private final static String[] cocoLabels = new String[]{
-            "person", "bicycle", "car", "motorcycle", "airplane", "bus", "train", "truck", "boat",
+            "bicycle", "person", "car", "motorcycle", "airplane", "bus", "train", "truck", "boat",
             "traffic light", "fire hydrant", "street sign", "stop sign", "parking meter", "bench",
             "bird", "cat", "dog", "horse", "sheep", "cow", "elephant", "bear", "zebra", "giraffe",
             "hat", "backpack", "umbrella", "shoe", "eye glasses", "handbag", "tie", "suitcase",
@@ -48,6 +52,8 @@ public class detector {
         if (!output_dir.exists()) {
             output_dir.mkdir();
         }
+        nu.pattern.OpenCV.loadLocally();
+
         try (ModelBundle) {
             //initialise model bundle
             //Load our labels in
@@ -63,7 +69,7 @@ public class detector {
             try (Graph graph = new Graph()) {
                 try (Session session = new Session(graph)) {
 
-                    //Setup the sessions and runners
+                    //Set up the sessions and runners
                     Ops operation = Ops.create(graph);
                     Session.Runner runner = session.runner();
 
@@ -93,14 +99,14 @@ public class detector {
                         Map<String, Tensor> tensorMap = new HashMap<>();
                         tensorMap.put("input_tensor", reshape_Tensor);
 
-                        //Setup the result operations
+                        //Set up the result operations
                         Result result = ModelBundle.function("serving_default").call(tensorMap);
                         if (result.get("detection_scores").isPresent() &&
                                 result.get("num_detections").isPresent() &&
                                 result.get("detection_classes").isPresent() &&
                                 result.get("detection_boxes").isPresent()) {
 
-                            //Setup the functions of the model we use
+                            //Set up the functions of the model we use
                             try (TFloat32 scores = (TFloat32) result.get("detection_scores").get();
                                  TFloat32 amount = (TFloat32) result.get("num_detections").get();
                                  TFloat32 classes = (TFloat32) result.get("detection_classes").get();
@@ -117,7 +123,8 @@ public class detector {
                                     //Get the image dimensions
                                     int imageHeight = (int) reshape_Tensor.shape().get(1);
                                     int imageWidth = (int) reshape_Tensor.shape().get(2);
-                                    System.out.println(imageHeight + " + " + imageWidth);
+
+                                    Mat image = Imgcodecs.imread(imagePath);
 
                                     //Loop through all detected objects
                                     for (int i = 0; i < detections; i++) {
@@ -142,8 +149,21 @@ public class detector {
                                             String detectedLabel = cocoLabels[(int) classIndex];
                                             System.out.println("Detected: " + detectedLabel + " with score: " + String.format("%.2f", (score * 100)) + "%.");
                                             returnArray[1] = returnArray[1] + detectedLabel + ": " + String.format("%.2f", (score * 100)) + "%\n";
+
+                                            // Draw the rectangle on the image
+                                            Imgproc.rectangle(image, new Point(xMin, yMin), new Point(xMax, yMax), new Scalar(0, 255, 0), 2);
+
+                                            // Optionally, you can put the label text on the image
+                                            Imgproc.putText(image, detectedLabel, new Point(xMin, yMin - 10), Imgproc.FONT_HERSHEY_SIMPLEX, 0.5, new Scalar(0, 255, 0), 1);
                                         }
                                     }
+
+                                    // Save the modified image to the output directory
+                                    String outputImagePath = "output_images/annotated_" + new File(imagePath).getName();
+                                    Imgcodecs.imwrite(outputImagePath, image);
+
+                                    // Update the return array to include the path to the annotated image
+                                    returnArray[0] = outputImagePath;
 
                                 } else {
                                     returnArray[0] = imagePath;
@@ -163,8 +183,7 @@ public class detector {
         try (Stream<Path> paths = Files.walk(Paths.get(imagePath))) {
             // Filter only regular image files (you might need to adjust this based on your file types)
             List<Path> imageFiles = paths.filter(Files::isRegularFile)
-                    .filter(p -> p.toString().endsWith(".jpg") || p.toString().endsWith(".png") || p.toString().endsWith(".jpeg"))
-                    .collect(Collectors.toList());
+                    .filter(p -> p.toString().endsWith(".jpg") || p.toString().endsWith(".png") || p.toString().endsWith(".jpeg")).toList();
 
             String[] returnArray = new String[imageFiles.size()];
 
@@ -172,7 +191,7 @@ public class detector {
                 SavedModelBundle ModelBundle = SavedModelBundle.load(TensorPath, "serve");
 
                 String imageFile = imageFiles.get(i).toString();
-                String returnString = "";
+                StringBuilder returnString = new StringBuilder();
 
                 try (ModelBundle) {
                     //initialise model bundle
@@ -189,7 +208,7 @@ public class detector {
                     try (Graph graph = new Graph()) {
                         try (Session session = new Session(graph)) {
 
-                            //Setup the sessions and runners
+                            //Set up the sessions and runners
                             Ops operation = Ops.create(graph);
                             Session.Runner runner = session.runner();
 
@@ -218,14 +237,14 @@ public class detector {
                                 Map<String, Tensor> tensorMap = new HashMap<>();
                                 tensorMap.put("input_tensor", reshape_Tensor);
 
-                                //Setup the result operations
+                                //Set up the result operations
                                 Result result = ModelBundle.function("serving_default").call(tensorMap);
                                 if (result.get("detection_scores").isPresent() &&
                                         result.get("num_detections").isPresent() &&
                                         result.get("detection_classes").isPresent() &&
                                         result.get("detection_boxes").isPresent()) {
 
-                                    //Setup the functions of the model we use
+                                    //Set up the functions of the model we use
                                     try (TFloat32 scores = (TFloat32) result.get("detection_scores").get();
                                          TFloat32 amount = (TFloat32) result.get("num_detections").get();
                                          TFloat32 classes = (TFloat32) result.get("detection_classes").get();
@@ -236,7 +255,7 @@ public class detector {
 
                                         //Array for boxes for visualising objects later with open cv
                                         ArrayList<FloatNdArray> boxList = new ArrayList<>();
-                                        returnString = "";
+                                        returnString = new StringBuilder();
 
                                         //only proceed when we got more than 0 detections
                                         if (detections > 0) {
@@ -264,7 +283,7 @@ public class detector {
                                                     // Get the detected class index and map it to the corresponding label
                                                     float classIndex = classes.getFloat(0, j);
                                                     String detectedLabel = cocoLabels[(int) classIndex];
-                                                    returnString = returnString + "[" + detectedLabel + "," + yMin + "," + yMax + "," + xMin + "," + xMax + "]";
+                                                    returnString.append("[").append(detectedLabel).append(",").append(yMin).append(",").append(yMax).append(",").append(xMin).append(",").append(xMax).append("]");
                                                 }
                                             }
                                         }
@@ -275,6 +294,7 @@ public class detector {
                     }
                 }
                 returnArray[i] = imageFile.substring(imageFile.indexOf("/") + 1) + " " + returnString;
+                System.out.println(returnArray[i]);
             }
             return returnArray;
         } catch (IOException e) {
@@ -282,4 +302,3 @@ public class detector {
         }
     }
 }
-//detector - add boxes and labels with it openCV!!!
