@@ -3,5 +3,10 @@
   <component name="VcsDirectoryMappings">
     <mapping directory="" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/stable_diff_env" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/stable_diff_env/repositories/BLIP" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/stable_diff_env/repositories/generative-models" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/stable_diff_env/repositories/k-diffusion" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/stable_diff_env/repositories/stable-diffusion-stability-ai" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/stable_diff_env/repositories/stable-diffusion-webui-assets" vcs="Git" />
   </component>
 </project>

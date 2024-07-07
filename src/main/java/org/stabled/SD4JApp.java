@@ -37,25 +37,10 @@
  */
 package org.stabled;
 
-import javax.swing.ImageIcon;
-import javax.swing.JButton;
-import javax.swing.JComboBox;
-import javax.swing.JFileChooser;
-import javax.swing.JFrame;
-import javax.swing.JLabel;
-import javax.swing.JPanel;
-import javax.swing.JProgressBar;
-import javax.swing.JTextArea;
-import javax.swing.JTextField;
-import javax.swing.SwingUtilities;
-import javax.swing.BorderFactory;
-import javax.swing.UIManager;
-import javax.swing.UnsupportedLookAndFeelException;
+import javax.swing.*;
 import javax.swing.border.Border;
 import javax.swing.filechooser.FileNameExtensionFilter;
-import java.awt.Container;
-import java.awt.GridBagConstraints;
-import java.awt.GridBagLayout;
+import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.io.File;
 import java.io.IOException;
@@ -90,8 +75,8 @@ public final class SD4JApp extends JFrame {
 
         setTitle("SD4J");
 
-        Supplier<Border> border10px = () -> BorderFactory.createEmptyBorder(10,10,10,10);
-        Supplier<Border> border5px = () -> BorderFactory.createEmptyBorder(5,5,5,5);
+        Supplier<Border> border10px = () -> BorderFactory.createEmptyBorder(10, 10, 10, 10);
+        Supplier<Border> border5px = () -> BorderFactory.createEmptyBorder(5, 5, 5, 5);
 
         GridBagLayout layout = new GridBagLayout();
         panel = new JPanel();
@@ -235,6 +220,23 @@ public final class SD4JApp extends JFrame {
     }
 
     /**
+     * Swing app entry point.
+     *
+     * @param args The CLI args.
+     */
+    public static void main(String[] args) throws UnsupportedLookAndFeelException, ClassNotFoundException, InstantiationException, IllegalAccessException {
+        UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+        Optional<SD4J.SD4JConfig> config = SD4J.SD4JConfig.parseArgs(args);
+        if (config.isPresent()) {
+            SD4JApp gui = new SD4JApp(config.get());
+            gui.setVisible(true);
+        } else {
+            System.out.println(SD4J.SD4JConfig.help());
+            System.exit(1);
+        }
+    }
+
+    /**
      * A holding class for the generation thread and the window for this image.
      */
     static final class SwingDisplayWindow extends JFrame {
@@ -246,6 +248,49 @@ public final class SD4JApp extends JFrame {
             FileNameExtensionFilter filter = new FileNameExtensionFilter(
                     "PNG Images", "png");
             chooser.setFileFilter(filter);
+        }
+
+        /**
+         * Creates a window and triggers the image generation in a separate thread.
+         *
+         * @param diffusion The SD4J pipeline.
+         * @param request   The generation request.
+         */
+        static void create(SD4J diffusion, SD4J.Request request) {
+            List<SwingDisplayWindow> windows = new ArrayList<>(request.batchSize());
+            List<Consumer<Integer>> callbacks = new ArrayList<>(request.batchSize());
+
+            for (int i = 0; i < request.batchSize(); i++) {
+                SwingDisplayWindow window = new SwingDisplayWindow();
+                windows.add(window);
+                Consumer<Integer> progressCallback = window.drawProgress(request);
+                callbacks.add(progressCallback);
+            }
+            Consumer<Integer> progressCallback = (i) -> {
+                for (var callback : callbacks) {
+                    callback.accept(i);
+                }
+            };
+
+            Runnable r = () -> {
+                var images = diffusion.generateImage(request, progressCallback);
+                for (int i = 0; i < request.batchSize(); i++) {
+                    var image = images.get(i);
+                    final var finalI = i;
+                    if (image.isValid()) {
+                        SwingUtilities.invokeLater(() -> windows.get(finalI).drawImage(image));
+                    } else {
+                        SwingUtilities.invokeLater(() -> windows.get(finalI).drawInvalid(request));
+                    }
+                }
+            };
+            Thread t = new Thread(r);
+            t.setDaemon(true);
+            for (int i = 0; i < request.batchSize(); i++) {
+                windows.get(i).setThread(t);
+                windows.get(i).setVisible(true);
+            }
+            t.start();
         }
 
         /**
@@ -366,66 +411,6 @@ public final class SD4JApp extends JFrame {
             setSize(request.size().width() + 100, request.size().height() + 100);
             pack();
             contents.setVisible(true);
-        }
-
-        /**
-         * Creates a window and triggers the image generation in a separate thread.
-         *
-         * @param diffusion The SD4J pipeline.
-         * @param request   The generation request.
-         */
-        static void create(SD4J diffusion, SD4J.Request request) {
-            List<SwingDisplayWindow> windows = new ArrayList<>(request.batchSize());
-            List<Consumer<Integer>> callbacks = new ArrayList<>(request.batchSize());
-
-            for (int i = 0; i < request.batchSize(); i++) {
-                SwingDisplayWindow window = new SwingDisplayWindow();
-                windows.add(window);
-                Consumer<Integer> progressCallback = window.drawProgress(request);
-                callbacks.add(progressCallback);
-            }
-            Consumer<Integer> progressCallback = (i) -> {
-                for (var callback : callbacks) {
-                    callback.accept(i);
-                }
-            };
-
-            Runnable r = () -> {
-                var images = diffusion.generateImage(request, progressCallback);
-                for (int i = 0; i < request.batchSize(); i++) {
-                    var image = images.get(i);
-                    final var finalI = i;
-                    if (image.isValid()) {
-                        SwingUtilities.invokeLater(() -> windows.get(finalI).drawImage(image));
-                    } else {
-                        SwingUtilities.invokeLater(() -> windows.get(finalI).drawInvalid(request));
-                    }
-                }
-            };
-            Thread t = new Thread(r);
-            t.setDaemon(true);
-            for (int i = 0; i < request.batchSize(); i++) {
-                windows.get(i).setThread(t);
-                windows.get(i).setVisible(true);
-            }
-            t.start();
-        }
-    }
-
-    /**
-     * Swing app entry point.
-     *
-     * @param args The CLI args.
-     */
-    public static void main(String[] args) throws UnsupportedLookAndFeelException, ClassNotFoundException, InstantiationException, IllegalAccessException {
-        UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
-        Optional<SD4J.SD4JConfig> config = SD4J.SD4JConfig.parseArgs(args);
-        if (config.isPresent()) {
-            SD4JApp gui = new SD4JApp(config.get());
-            gui.setVisible(true);
-        } else {
-            System.out.println(SD4J.SD4JConfig.help());
-            System.exit(1);
         }
     }
 }

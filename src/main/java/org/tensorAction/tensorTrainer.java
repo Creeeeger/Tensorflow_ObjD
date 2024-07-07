@@ -3,46 +3,113 @@ package org.tensorAction;
 import org.tensorflow.Graph;
 import org.tensorflow.Operand;
 import org.tensorflow.Session;
-import org.tensorflow.framework.optimizers.GradientDescent;
+import org.tensorflow.framework.optimizers.Adam;
 import org.tensorflow.framework.optimizers.Optimizer;
-import org.tensorflow.ndarray.ByteNdArray;
-import org.tensorflow.ndarray.NdArrays;
 import org.tensorflow.ndarray.Shape;
-import org.tensorflow.ndarray.StdArrays;
+import org.tensorflow.ndarray.*;
 import org.tensorflow.ndarray.index.Indices;
 import org.tensorflow.op.Op;
 import org.tensorflow.op.Ops;
-import org.tensorflow.op.core.Placeholder;
-import org.tensorflow.op.core.Variable;
+import org.tensorflow.op.core.*;
+import org.tensorflow.op.math.Add;
 import org.tensorflow.op.math.Mean;
-import org.tensorflow.op.nn.Softmax;
-import org.tensorflow.proto.GraphDef;
+import org.tensorflow.op.nn.*;
+import org.tensorflow.op.random.TruncatedNormal;
 import org.tensorflow.types.TFloat32;
-import org.tensorflow.types.TInt64;
+import org.tensorflow.types.TUint8;
 
 import javax.imageio.IIOException;
 import javax.imageio.ImageIO;
-import javax.swing.*;
-import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
-
 public class tensorTrainer {
-    private static final int TRAINING_BATCH_SIZE = 143;
-    private static final float LEARNING_RATE = 0.1f;
+    public static final String INPUT_NAME = "input";
+    public static final String OUTPUT_NAME = "output";
+    private static final int PIXEL_DEPTH = 255;
+    private static final int NUM_CHANNELS = 3;
+    private static final int IMAGE_SIZE = 224;
+    private static final int NUM_LABELS = 10;
+    private static final long SEED = 123456789L;
+    private static final String PADDING_TYPE = "SAME";
     static File[] classDirs;
     static List<TFloat32> imageTensors;
     static List<TFloat32> labelTensors;
 
-    static void main(String[] args) throws IOException {
-        String dataDir = "/Users/gregor/Desktop/Tensorflow_ObjD/flower_photos";
+    public static Graph build() {
+        Graph graph = new Graph();
+        Ops tf = Ops.create(graph);
 
+        // Inputs
+        Placeholder<TUint8> input = tf.withName(INPUT_NAME).placeholder(TUint8.class, Placeholder.shape(Shape.of(-1, IMAGE_SIZE, IMAGE_SIZE)));
+        Reshape<TUint8> input_reshaped = tf.reshape(input, tf.array(-1, IMAGE_SIZE, IMAGE_SIZE, NUM_CHANNELS));
+        Placeholder<TUint8> labels = tf.withName("target").placeholder(TUint8.class);
+
+        // Scaling the features
+        Constant<TFloat32> centeringFactor = tf.constant(PIXEL_DEPTH / 2.0f);
+        Constant<TFloat32> scalingFactor = tf.constant((float) PIXEL_DEPTH);
+        Operand<TFloat32> scaledInput = tf.math.div(tf.math.sub(tf.dtypes.cast(input_reshaped, TFloat32.class), centeringFactor), scalingFactor);
+
+        // First conv layer
+        Variable<TFloat32> conv1Weights = tf.variable(tf.math.mul(tf.random.truncatedNormal(tf.array(5, 5, NUM_CHANNELS, 32), TFloat32.class, TruncatedNormal.seed(SEED)), tf.constant(0.1f)));
+        Conv2d<TFloat32> conv1 = tf.nn.conv2d(scaledInput, conv1Weights, Arrays.asList(1L, 1L, 1L, 1L), PADDING_TYPE);
+        Variable<TFloat32> conv1Biases = tf.variable(tf.fill(tf.array(32), tf.constant(0.0f)));
+        Relu<TFloat32> relu1 = tf.nn.relu(tf.nn.biasAdd(conv1, conv1Biases));
+
+        // First pooling layer
+        MaxPool<TFloat32> pool1 = tf.nn.maxPool(relu1, tf.array(1, 2, 2, 1), tf.array(1, 2, 2, 1), PADDING_TYPE);
+
+        // Second conv layer
+        Variable<TFloat32> conv2Weights = tf.variable(tf.math.mul(tf.random.truncatedNormal(tf.array(5, 5, 32, 64), TFloat32.class, TruncatedNormal.seed(SEED)), tf.constant(0.1f)));
+        Conv2d<TFloat32> conv2 = tf.nn.conv2d(pool1, conv2Weights, Arrays.asList(1L, 1L, 1L, 1L), PADDING_TYPE);
+        Variable<TFloat32> conv2Biases = tf.variable(tf.fill(tf.array(64), tf.constant(0.1f)));
+        Relu<TFloat32> relu2 = tf.nn.relu(tf.nn.biasAdd(conv2, conv2Biases));
+
+        // Second pooling layer
+        MaxPool<TFloat32> pool2 = tf.nn.maxPool(relu2, tf.array(1, 2, 2, 1), tf.array(1, 2, 2, 1), PADDING_TYPE);
+
+        // Flatten inputs
+        Reshape<TFloat32> flatten = tf.reshape(pool2, tf.concat(Arrays.asList(tf.slice(tf.shape(pool2), tf.array(0), tf.array(1)), tf.array(-1)), tf.constant(0)));
+
+        // Fully connected layer
+        Variable<TFloat32> fc1Weights = tf.variable(tf.math.mul(tf.random.truncatedNormal(tf.array(IMAGE_SIZE * IMAGE_SIZE * 4, 512), TFloat32.class, TruncatedNormal.seed(SEED)), tf.constant(0.1f)));
+        Variable<TFloat32> fc1Biases = tf.variable(tf.fill(tf.array(512), tf.constant(0.1f)));
+        Relu<TFloat32> relu3 = tf.nn.relu(tf.math.add(tf.linalg.matMul(flatten, fc1Weights), fc1Biases));
+
+        // Softmax layer
+        Variable<TFloat32> fc2Weights = tf.variable(tf.math.mul(tf.random.truncatedNormal(tf.array(512, NUM_LABELS), TFloat32.class, TruncatedNormal.seed(SEED)), tf.constant(0.1f)));
+        Variable<TFloat32> fc2Biases = tf.variable(tf.fill(tf.array(NUM_LABELS), tf.constant(0.1f)));
+
+        Add<TFloat32> logits = tf.math.add(tf.linalg.matMul(relu3, fc2Weights), fc2Biases);
+
+        // Predicted outputs
+        Softmax<TFloat32> prediction = tf.withName(OUTPUT_NAME).nn.softmax(logits);
+
+        // Loss function & regularization
+        OneHot<TFloat32> oneHot = tf.oneHot(labels, tf.constant(10), tf.constant(1.0f), tf.constant(0.0f));
+        SoftmaxCrossEntropyWithLogits<TFloat32> batchLoss = tf.nn.softmaxCrossEntropyWithLogits(logits, oneHot);
+        Mean<TFloat32> labelLoss = tf.math.mean(batchLoss.loss(), tf.constant(0));
+        Add<TFloat32> regularizers = tf.math.add(tf.nn.l2Loss(fc1Weights), tf.math.add(tf.nn.l2Loss(fc1Biases), tf.math.add(tf.nn.l2Loss(fc2Weights), tf.nn.l2Loss(fc2Biases))));
+        Add<TFloat32> loss = tf.withName("training_loss").math.add(labelLoss, tf.math.mul(regularizers, tf.constant(5e-4f)));
+
+        // Optimizer
+        Optimizer optimizer = new Adam(graph, 0.001f, 0.9f, 0.999f, 1e-8f);
+
+        System.out.println("Optimizer = " + optimizer);
+        Op minimize = optimizer.minimize(loss, "train");
+
+        return graph;
+    }
+
+    public static void main(String[] args) throws IOException {
+        String dataDir = "/Users/gregor/Desktop/Tensorflow_ObjD/flower_photos";
+        nu.pattern.OpenCV.loadLocally();
         imageTensors = new ArrayList<>();
         labelTensors = new ArrayList<>();
 
@@ -51,129 +118,109 @@ public class tensorTrainer {
         System.out.println("Dataset loaded. Number of photos: " + imageTensors.size());
 
         // Convert imageTensors list to ByteNdArray
-        ByteNdArray imageNdArray = NdArrays.ofBytes(Shape.of(TRAINING_BATCH_SIZE, 224, 224, 3));
+        ByteNdArray imageNdArray = NdArrays.ofBytes(Shape.of(imageTensors.size(), 224, 224, 3));
         for (int i = 0; i < imageTensors.size(); i++) {
             imageNdArray.slice(Indices.at(i)).copyFrom(imageTensors.get(i).asRawTensor().data());
         }
         // Convert labelTensors list to FloatNdArray
-        ByteNdArray labelNdArray = NdArrays.ofBytes(Shape.of(TRAINING_BATCH_SIZE));
+        ByteNdArray labelNdArray = NdArrays.ofBytes(Shape.of(imageTensors.size()));
         for (int i = 0; i < labelTensors.size(); i++) {
             labelNdArray.slice(Indices.at(i)).copyFrom(labelTensors.get(i).asRawTensor().data());
         }
-
         train(imageNdArray, labelNdArray);
     }
 
-    public static void display_images(ByteNdArray imageNdArray) {
-        BufferedImage[] images = new BufferedImage[2];
-        for (int i = 0; i < 2; i++) {
-            images[i] = createBufferedImage(imageNdArray.slice(Indices.at(i)));
-        }
-        displayImages(images);
-    }
-
-    private static BufferedImage createBufferedImage(ByteNdArray imageSlice) {
-        int targetWidth = 224;
-        int targetHeight = 224;
-        BufferedImage image = new BufferedImage(targetWidth, targetHeight, BufferedImage.TYPE_INT_RGB);
-
-        for (int y = 0; y < targetHeight; y++) {
-            for (int x = 0; x < targetWidth; x++) {
-                int r = Byte.toUnsignedInt(imageSlice.getByte(y, x, 0));
-                int g = Byte.toUnsignedInt(imageSlice.getByte(y, x, 1));
-                int b = Byte.toUnsignedInt(imageSlice.getByte(y, x, 2));
-                int rgb = (r << 16) | (g << 8) | b;
-                image.setRGB(x, y, rgb);
-            }
-        }
-        return image;
-    }
-
-    // Display an array of BufferedImages using Swing
-    private static void displayImages(BufferedImage[] images) {
-        JFrame frame = new JFrame("Image Visualization");
-        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        frame.setLayout(new GridLayout(1, images.length));
-
-        for (BufferedImage image : images) {
-            JLabel label = new JLabel(new ImageIcon(image));
-            frame.add(label);
-        }
-
-        frame.pack();
-        frame.setVisible(true);
-    }
-
     public static void train(ByteNdArray imageNdArray, ByteNdArray labelNdArray) {
-        try (Graph graph = new Graph()) {
-            Ops tf = Ops.create(graph);
-
-            // Create placeholders and variables, which should fit batches of an unknown number of images
-            Placeholder<TFloat32> images = tf.placeholder(TFloat32.class);
-            Placeholder<TFloat32> labels = tf.placeholder(TFloat32.class);
-
-            // Create weights with an initial value of 0
-            Shape weightShape = Shape.of(imageNdArray.get(9).shape().size(), classDirs.length);
-            Variable<TFloat32> weights = tf.variable(tf.zeros(tf.constant(weightShape), TFloat32.class));
-
-            // Create biases with an initial value of 0
-            Shape biasShape = Shape.of(classDirs.length);
-            Variable<TFloat32> biases = tf.variable(tf.zeros(tf.constant(biasShape), TFloat32.class));
-
-            // Predict the class of each image in the batch and compute the loss
-            Softmax<TFloat32> softmax =
-                    tf.nn.softmax(
-                            tf.math.add(tf.linalg.matMul(images, weights), biases)
-                    );
-            Mean<TFloat32> crossEntropy =
-                    tf.math.mean(
-                            tf.math.neg(
-                                    tf.reduceSum(
-                                            tf.math.mul(labels, tf.math.log(softmax)),
-                                            tf.array(1))), tf.array(0)
-                    );
-
-            // Back-propagate gradients to variables for training
-            Optimizer optimizer = new GradientDescent(graph, LEARNING_RATE);
-            Op minimize = optimizer.minimize(crossEntropy);
-
-            // Compute the accuracy of the model
-            Operand<TInt64> predicted = tf.math.argMax(softmax, tf.constant(1));
-            Operand<TInt64> expected = tf.math.argMax(labels, tf.constant(1));
-            Operand<TFloat32> accuracy = tf.math.mean(tf.dtypes.cast(tf.math.equal(predicted, expected), TFloat32.class), tf.array(0));
-
+        try (Graph graph = build()) {
             // Run the graph
             try (Session session = new Session(graph)) {
                 // Train the model
-                System.out.println(labelTensors.size());
                 for (int i = 0; i < 10; i++) {
-                    try (TFloat32 batchImages = preprocessImages(imageNdArray);
-                         TFloat32 batchLabels = preprocessLabels(labelNdArray)) {
-                        session.runner()
-                                .addTarget(minimize)
-                                .feed(images.asOutput(), batchImages)
-                                .feed(labels.asOutput(), batchLabels)
-                                .run();
+                    try (TUint8 batchImages = TUint8.tensorOf(imageNdArray);
+                         TUint8 batchLabels = TUint8.tensorOf(labelNdArray)) {
+                        TFloat32 loss = (TFloat32) session.runner()
+                                .feed("target", batchLabels)
+                                .feed("input", batchImages)
+                                .addTarget("train")
+                                .fetch("training_loss")
+                                .run().get(0);
+                        System.out.println(loss.getFloat());
                     }
                 }
+                test(session, imageNdArray, labelNdArray);
 
-                // Test the model
-                try (TFloat32 testImages = preprocessImages(imageNdArray);
-                     TFloat32 testLabels = preprocessLabels(labelNdArray);
-                     TFloat32 accuracyValue = (TFloat32) session.runner()
-                             .fetch(accuracy)
-                             .feed(images.asOutput(), testImages)
-                             .feed(labels.asOutput(), testLabels)
-                             .run()
-                             .get(0)) {
-                    System.out.println("Accuracy: " + accuracyValue.getFloat());
-
-                    saveModel(graph, "/Users/gregor/Desktop");
+                try {
+                    saveModel(graph, session, "/Users/gregor/Desktop");
                 } catch (IOException e) {
                     throw new RuntimeException(e);
                 }
             }
         }
+    }
+
+    public static void test(Session session, ByteNdArray byteNdArray, ByteNdArray labelarray) {
+        int correctCount = 0;
+        int[][] confusionMatrix = new int[10][10];
+
+        for (int i = 0; i < 10; i++) {
+            try (TUint8 transformedInput = TUint8.tensorOf(byteNdArray);
+                 TFloat32 outputTensor = (TFloat32) session.runner()
+                         .feed(INPUT_NAME, transformedInput)
+                         .fetch(OUTPUT_NAME).run().get(0)) {
+
+                for (int k = 0; k < labelarray.shape().size(0); k++) {
+                    byte trueLabel = labelarray.getByte(k);
+                    int predLabel;
+
+                    predLabel = argmax(outputTensor.slice(Indices.at(k), Indices.all()));
+                    if (predLabel == trueLabel) {
+                        correctCount++;
+                    }
+
+                    confusionMatrix[trueLabel][predLabel]++;
+                }
+            }
+        }
+
+        System.out.println("Final accuracy = " + ((float) correctCount) / labelarray.shape().size(0));
+
+        StringBuilder sb = getStringBuilder(confusionMatrix);
+
+        System.out.println(sb);
+
+        session.save("/Users/gregor/Desktop/modeltest");
+
+    }
+
+    private static StringBuilder getStringBuilder(int[][] confusionMatrix) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("Label");
+        for (int i = 0; i < confusionMatrix.length; i++) {
+            sb.append(String.format("%1$5s", "" + i));
+        }
+        sb.append("\n");
+
+        for (int i = 0; i < confusionMatrix.length; i++) {
+            sb.append(String.format("%1$5s", "" + i));
+            for (int j = 0; j < confusionMatrix[i].length; j++) {
+                sb.append(String.format("%1$5s", "" + confusionMatrix[i][j]));
+            }
+            sb.append("\n");
+        }
+        return sb;
+    }
+
+    public static int argmax(FloatNdArray probabilities) {
+        float maxVal = Float.NEGATIVE_INFINITY;
+        int idx = 0;
+        for (int i = 0; i < probabilities.shape().size(0); i++) {
+            float curVal = probabilities.getFloat(i);
+            if (curVal > maxVal) {
+                maxVal = curVal;
+                idx = i;
+            }
+        }
+        return idx;
     }
 
     public static void loadDataset(String dataDir, List<TFloat32> imageTensors, List<TFloat32> labelTensors) throws IOException {
@@ -195,23 +242,11 @@ public class tensorTrainer {
                             }
                         } catch (IIOException e) {
                             System.out.println("Error reading image file: " + imageFile.getName() + " - " + e.getMessage());
-                            continue;
                         }
                     }
                 }
             }
         }
-    }
-
-    private static TFloat32 preprocessLabels(ByteNdArray rawLabels) {
-        Ops tf = Ops.create();
-        // Map labels to one hot vectors where only the expected predictions as a value of 1.0
-        return tf.oneHot(
-                tf.constant(rawLabels),
-                tf.constant(classDirs.length),
-                tf.constant(1.0f),
-                tf.constant(0.0f)
-        ).asTensor();
     }
 
     private static TFloat32 preprocessLabel(int classLabel, int numClasses) {
@@ -229,14 +264,6 @@ public class tensorTrainer {
             case "tulips" -> 4;
             default -> throw new IllegalArgumentException("unknown class: " + className);
         };
-    }
-
-    private static TFloat32 preprocessImages(ByteNdArray rawImages) {
-        Ops tf = Ops.create();
-
-        // Flatten images in a single dimension and normalize their pixels as floats.
-        long imageSize = rawImages.get(0).shape().size();
-        return tf.math.div(tf.reshape(tf.dtypes.cast(tf.constant(rawImages), TFloat32.class), tf.array(-1L, imageSize)), tf.constant(255.0f)).asTensor();
     }
 
     private static TFloat32 preprocessImage(BufferedImage img) {
@@ -267,33 +294,31 @@ public class tensorTrainer {
         return TFloat32.tensorOf(StdArrays.ndCopyOf(imgArray));
     }
 
-    private static void saveModel(Graph graph, String exportDir) throws IOException {
-        GraphDef graphDef = GraphDef.parseFrom(graph.toGraphDef().toByteArray());
-        Files.write(Paths.get(exportDir, "model.pb"), graphDef.toByteArray());
+    private static void saveModel(Graph graph, Session session, String exportDir) throws IOException {
+        session.save("/Users/gregor/Desktop/model");
+        Files.write(Paths.get(exportDir, "model.pb"), graph.toGraphDef().toByteArray());
         System.out.println("Model saved to " + exportDir + "/model.pb");
     }
 
     public void access(String folder) throws IOException {
-        String dataDir = folder;
-
+        nu.pattern.OpenCV.loadLocally();
         imageTensors = new ArrayList<>();
         labelTensors = new ArrayList<>();
 
         // Load and preprocess the dataset
-        loadDataset(dataDir, imageTensors, labelTensors);
+        loadDataset(folder, imageTensors, labelTensors);
         System.out.println("Dataset loaded. Number of photos: " + imageTensors.size());
 
         // Convert imageTensors list to ByteNdArray
-        ByteNdArray imageNdArray = NdArrays.ofBytes(Shape.of(TRAINING_BATCH_SIZE, 224, 224, 3));
+        ByteNdArray imageNdArray = NdArrays.ofBytes(Shape.of(imageTensors.size(), 224, 224, 3));
         for (int i = 0; i < imageTensors.size(); i++) {
             imageNdArray.slice(Indices.at(i)).copyFrom(imageTensors.get(i).asRawTensor().data());
         }
         // Convert labelTensors list to FloatNdArray
-        ByteNdArray labelNdArray = NdArrays.ofBytes(Shape.of(TRAINING_BATCH_SIZE));
+        ByteNdArray labelNdArray = NdArrays.ofBytes(Shape.of(imageTensors.size()));
         for (int i = 0; i < labelTensors.size(); i++) {
             labelNdArray.slice(Indices.at(i)).copyFrom(labelTensors.get(i).asRawTensor().data());
         }
-
         train(imageNdArray, labelNdArray);
     }
 }

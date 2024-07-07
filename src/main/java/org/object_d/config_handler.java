@@ -52,6 +52,7 @@ public class config_handler {
 
         } catch (Exception e) {
             e.printStackTrace();
+            create_config();
             return null; // Return null if an error occurs
         }
     }
@@ -94,7 +95,7 @@ public class config_handler {
         }
     }
 
-    public void create_config() {
+    public static void create_config() {
         //Add required config values!!!
 
         try {

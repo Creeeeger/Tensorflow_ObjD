@@ -54,8 +54,9 @@ public final class LongTensor extends Tensor<LongBuffer> {
 
     /**
      * Creates a long tensor from the supplied buffer and shape.
+     *
      * @param buffer The buffer.
-     * @param shape The shape.
+     * @param shape  The shape.
      */
     public LongTensor(LongBuffer buffer, long[] shape) {
         super(buffer, shape);
@@ -63,10 +64,26 @@ public final class LongTensor extends Tensor<LongBuffer> {
 
     /**
      * Creates an empty long tensor of the supplied shape backed by a direct byte buffer.
+     *
      * @param shape The shape.
      */
     public LongTensor(long[] shape) {
         super(alloc(shape), shape);
+    }
+
+    /**
+     * Creates a direct{@link LongBuffer} with capacity equal to the supplied shape.
+     *
+     * @param shape The shape.
+     * @return An int buffer.
+     * @throws IllegalArgumentException if the shape is larger than the largest buffer.
+     */
+    private static LongBuffer alloc(long[] shape) {
+        int elements = computeNumElements(shape);
+        if (elements < 0) {
+            throw new IllegalArgumentException("Invalid shape for Java tensor, expected less than Integer.MAX_VALUE elements, found " + Arrays.toString(shape));
+        }
+        return ByteBuffer.allocateDirect(elements * Long.BYTES).order(ByteOrder.LITTLE_ENDIAN).asLongBuffer();
     }
 
     @Override
@@ -87,16 +104,18 @@ public final class LongTensor extends Tensor<LongBuffer> {
      * Scales each element of the buffer by the supplied long.
      * <p>
      * Leaves the buffer position unchanged.
+     *
      * @param scalar The scalar.
      */
     public void scale(long scalar) {
         for (int i = 0; i < buffer.capacity(); i++) {
-            buffer.put(i,buffer.get(i)*scalar);
+            buffer.put(i, buffer.get(i) * scalar);
         }
     }
 
     /**
      * Gets an element from this tensor.
+     *
      * @param idxArr The index to return.
      * @return The element at the index.
      */
@@ -104,19 +123,5 @@ public final class LongTensor extends Tensor<LongBuffer> {
         int idx = computeIdx(idxArr);
 
         return buffer.get(idx);
-    }
-
-    /**
-     * Creates a direct{@link LongBuffer} with capacity equal to the supplied shape.
-     * @throws IllegalArgumentException if the shape is larger than the largest buffer.
-     * @param shape The shape.
-     * @return An int buffer.
-     */
-    private static LongBuffer alloc(long[] shape) {
-        int elements = computeNumElements(shape);
-        if (elements < 0) {
-            throw new IllegalArgumentException("Invalid shape for Java tensor, expected less than Integer.MAX_VALUE elements, found " + Arrays.toString(shape));
-        }
-        return ByteBuffer.allocateDirect(elements * Long.BYTES).order(ByteOrder.LITTLE_ENDIAN).asLongBuffer();
     }
 }

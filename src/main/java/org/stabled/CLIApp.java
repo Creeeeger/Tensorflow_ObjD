@@ -50,6 +50,7 @@ import java.util.logging.Logger;
  */
 public final class CLIApp {
     private static final Logger logger = Logger.getLogger(CLIApp.class.getName());
+
     private CLIApp() {
     }
 
