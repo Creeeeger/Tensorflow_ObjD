@@ -46,9 +46,59 @@ package org.stabled;
 public interface Scheduler {
 
     /**
+     * The initial noise standard deviation.
+     *
+     * @return The noise standard deviation.
+     */
+    float getInitialNoiseSigma();
+
+    /**
+     * Sets the number of timesteps for this inference run.
+     * <p>
+     * This mutates the object and configures it for the next run.
+     *
+     * @param numInferenceSteps The number of timesteps.
+     * @return An array
+     */
+    int[] setTimesteps(int numInferenceSteps);
+
+    /**
+     * Scales the input tensor for the appropriate timestep if necessary.
+     *
+     * @param sample   The input tensor.
+     * @param timestep The current timestep.
+     */
+    void scaleInPlace(FloatTensor sample, int timestep);
+
+    /**
+     * Takes a diffusion step, producing the next latent sample.
+     * <p>
+     * Sets the order to 4.
+     *
+     * @param modelOutput The model output.
+     * @param timestep    The current timestep.
+     * @param sample      The noise sample.
+     * @return The next latent sample.
+     */
+    default FloatTensor step(FloatTensor modelOutput, int timestep, FloatTensor sample) {
+        return step(modelOutput, timestep, sample, 4);
+    }
+
+    /**
+     * Takes a diffusion step, producing the next latent sample.
+     *
+     * @param modelOutput The model output.
+     * @param timestep    The current timestep.
+     * @param sample      The noise sample.
+     * @param order       The order of the scheduler.
+     * @return The next latent sample.
+     */
+    FloatTensor step(FloatTensor modelOutput, int timestep, FloatTensor sample, int order);
+
+    /**
      * The type of the schedule.
      */
-    public enum ScheduleType {
+    enum ScheduleType {
         /**
          * Linear noise schedule.
          */
@@ -58,49 +108,4 @@ public interface Scheduler {
          */
         SCALED_LINEAR
     }
-
-    /**
-     * The initial noise standard deviation.
-     * @return The noise standard deviation.
-     */
-    public float getInitialNoiseSigma();
-
-    /**
-     * Sets the number of timesteps for this inference run.
-     * <p>
-     * This mutates the object and configures it for the next run.
-     * @param numInferenceSteps The number of timesteps.
-     * @return An array
-     */
-    public int[] setTimesteps(int numInferenceSteps);
-
-    /**
-     * Scales the input tensor for the appropriate timestep if necessary.
-     * @param sample The input tensor.
-     * @param timestep The current timestep.
-     */
-    public void scaleInPlace(FloatTensor sample, int timestep);
-
-    /**
-     * Takes a diffusion step, producing the next latent sample.
-     * <p>
-     * Sets the order to 4.
-     * @param modelOutput The model output.
-     * @param timestep The current timestep.
-     * @param sample The noise sample.
-     * @return The next latent sample.
-     */
-    default public FloatTensor step(FloatTensor modelOutput, int timestep, FloatTensor sample) {
-        return step(modelOutput, timestep, sample, 4);
-    }
-
-    /**
-     * Takes a diffusion step, producing the next latent sample.
-     * @param modelOutput The model output.
-     * @param timestep The current timestep.
-     * @param sample The noise sample.
-     * @param order The order of the scheduler.
-     * @return The next latent sample.
-     */
-    public FloatTensor step(FloatTensor modelOutput, int timestep, FloatTensor sample, int order);
 }

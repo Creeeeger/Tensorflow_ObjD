@@ -54,16 +54,15 @@ public final class EulerAncestralDiscreteScheduler implements Scheduler {
     private final int numTrainTimesteps;
     private final float[] alphasCumulativeProducts;
     private final float[] initialVariance;
+    private final SplittableRandom rng;
     private float initNoiseSigma;
-
     private float[] sigmas = null;
     private int[] timesteps = null;
-
-    private final SplittableRandom rng;
 
     /**
      * Creates an Euler ancestral scheduler with the default parameters:
      * train timesteps = 1000, beta start = 0.00085f, beta end = 0.012f, Scaled Linear schedule.
+     *
      * @param seed The RNG seed for generating the per step noise.
      */
     public EulerAncestralDiscreteScheduler(long seed) {
@@ -72,11 +71,12 @@ public final class EulerAncestralDiscreteScheduler implements Scheduler {
 
     /**
      * Creates an Euler ancestral scheduler with the specified parameters.
+     *
      * @param numTrainTimesteps The number of training time diffusion steps.
-     * @param betaStart The start value of the noise level.
-     * @param betaEnd The end value of the noise level.
-     * @param betaSchedule The noise schedule.
-     * @param seed The RNG seed for generating the per step noise.
+     * @param betaStart         The start value of the noise level.
+     * @param betaEnd           The end value of the noise level.
+     * @param betaSchedule      The noise schedule.
+     * @param seed              The RNG seed for generating the per step noise.
      */
     public EulerAncestralDiscreteScheduler(int numTrainTimesteps, float betaStart, float betaEnd, ScheduleType betaSchedule, long seed) {
         this.numTrainTimesteps = numTrainTimesteps;
@@ -109,8 +109,8 @@ public final class EulerAncestralDiscreteScheduler implements Scheduler {
         float curMax = Float.NEGATIVE_INFINITY;
         this.initialVariance = new float[alphasCumulativeProducts.length];
         for (int i = 0; i < alphasCumulativeProducts.length; i++) {
-            float curVal = alphasCumulativeProducts[(alphasCumulativeProducts.length-1) - i];
-            float newVal = (float) Math.sqrt((1-curVal) / curVal);
+            float curVal = alphasCumulativeProducts[(alphasCumulativeProducts.length - 1) - i];
+            float newVal = (float) Math.sqrt((1 - curVal) / curVal);
             initialVariance[i] = newVal;
             if (newVal > curMax) {
                 curMax = newVal;
@@ -128,6 +128,7 @@ public final class EulerAncestralDiscreteScheduler implements Scheduler {
 
     /**
      * Reinitializes the scheduler with the specified number of inference steps.
+     *
      * @param numInferenceSteps The number of inference steps.
      * @return The new timesteps.
      */
@@ -139,7 +140,7 @@ public final class EulerAncestralDiscreteScheduler implements Scheduler {
 
         this.timesteps = new int[timesteps.length];
         for (int i = 0; i < timesteps.length; i++) {
-            this.timesteps[i] = (int) timesteps[(timesteps.length-1)-i];
+            this.timesteps[i] = (int) timesteps[(timesteps.length - 1) - i];
         }
 
         var range = MathUtils.arange(0, initialVariance.length, 1.0f);
@@ -160,14 +161,14 @@ public final class EulerAncestralDiscreteScheduler implements Scheduler {
         int stepIndex = MathUtils.findIdx(this.timesteps, timestep);
         // Get sigma at stepIndex
         var sigma = this.sigmas[stepIndex];
-        sigma = (float)Math.sqrt((sigma*sigma) + 1);
+        sigma = (float) Math.sqrt((sigma * sigma) + 1);
 
-        sample.scale(1/sigma);
+        sample.scale(1 / sigma);
     }
 
     @Override
     public FloatTensor step(FloatTensor modelOutput, int timestep, FloatTensor sample, int order) {
-        int stepIndex = MathUtils.findIdx(this.timesteps,timestep);
+        int stepIndex = MathUtils.findIdx(this.timesteps, timestep);
         final float sigma = this.sigmas[stepIndex];
 
         // 1. compute predicted original sample (x_0) from sigma-scaled predicted noise
@@ -178,13 +179,13 @@ public final class EulerAncestralDiscreteScheduler implements Scheduler {
 
         final float sigmaTo = this.sigmas[stepIndex + 1];
 
-        var sigmaSq = sigma*sigma;
-        var sigmaToSq = sigmaTo*sigmaTo;
+        var sigmaSq = sigma * sigma;
+        var sigmaToSq = sigmaTo * sigmaTo;
         var sigmaFromLessSigmaTo = sigmaSq - sigmaToSq;
         var sigmaUpResult = (sigmaToSq * sigmaFromLessSigmaTo) / sigmaSq;
         float sigmaUp = (float) (sigmaUpResult < 0 ? -Math.sqrt(Math.abs(sigmaUpResult)) : Math.sqrt(sigmaUpResult));
 
-        var sigmaDownResult = sigmaToSq - (sigmaUp*sigmaUp);
+        var sigmaDownResult = sigmaToSq - (sigmaUp * sigmaUp);
         var sigmaDown = (float) (sigmaDownResult < 0 ? -Math.sqrt(Math.abs(sigmaDownResult)) : Math.sqrt(sigmaDownResult));
 
         // 2. Convert to an ODE derivative
@@ -212,7 +213,7 @@ public final class EulerAncestralDiscreteScheduler implements Scheduler {
     private FloatTensor generateNoiseTensor(long[] shape) {
         var latents = new FloatTensor(shape);
 
-        for(int i = 0; i < latents.buffer.capacity(); i++) {
+        for (int i = 0; i < latents.buffer.capacity(); i++) {
             double stdNormal = rng.nextGaussian(0, 1);
             latents.buffer.put(i, (float) stdNormal);
         }

@@ -54,8 +54,9 @@ public final class IntTensor extends Tensor<IntBuffer> {
 
     /**
      * Creates an int tensor from the supplied buffer and shape.
+     *
      * @param buffer The buffer.
-     * @param shape The shape.
+     * @param shape  The shape.
      */
     public IntTensor(IntBuffer buffer, long[] shape) {
         super(buffer, shape);
@@ -63,10 +64,26 @@ public final class IntTensor extends Tensor<IntBuffer> {
 
     /**
      * Creates an empty int tensor of the supplied shape backed by a direct byte buffer.
+     *
      * @param shape The shape.
      */
     public IntTensor(long[] shape) {
         super(alloc(shape), shape);
+    }
+
+    /**
+     * Creates a direct{@link IntBuffer} with capacity equal to the supplied shape.
+     *
+     * @param shape The shape.
+     * @return An int buffer.
+     * @throws IllegalArgumentException if the shape is larger than the largest buffer.
+     */
+    private static IntBuffer alloc(long[] shape) {
+        int elements = computeNumElements(shape);
+        if (elements < 0) {
+            throw new IllegalArgumentException("Invalid shape for Java tensor, expected less than Integer.MAX_VALUE elements, found " + Arrays.toString(shape));
+        }
+        return ByteBuffer.allocateDirect(elements * Integer.BYTES).order(ByteOrder.LITTLE_ENDIAN).asIntBuffer();
     }
 
     @Override
@@ -87,16 +104,18 @@ public final class IntTensor extends Tensor<IntBuffer> {
      * Scales each element of the buffer by the supplied integer.
      * <p>
      * Leaves the buffer position unchanged.
+     *
      * @param scalar The scalar.
      */
     public void scale(int scalar) {
         for (int i = 0; i < buffer.capacity(); i++) {
-            buffer.put(i,buffer.get(i)*scalar);
+            buffer.put(i, buffer.get(i) * scalar);
         }
     }
 
     /**
      * Gets an element from this tensor.
+     *
      * @param idxArr The index to return.
      * @return The element at the index.
      */
@@ -108,6 +127,7 @@ public final class IntTensor extends Tensor<IntBuffer> {
 
     /**
      * Returns a new long tensor containing all the elements of this tensor.
+     *
      * @return A long tensor containing the same elements.
      */
     public LongTensor convertToLongTensor() {
@@ -118,19 +138,5 @@ public final class IntTensor extends Tensor<IntBuffer> {
         }
 
         return output;
-    }
-
-    /**
-     * Creates a direct{@link IntBuffer} with capacity equal to the supplied shape.
-     * @throws IllegalArgumentException if the shape is larger than the largest buffer.
-     * @param shape The shape.
-     * @return An int buffer.
-     */
-    private static IntBuffer alloc(long[] shape) {
-        int elements = computeNumElements(shape);
-        if (elements < 0) {
-            throw new IllegalArgumentException("Invalid shape for Java tensor, expected less than Integer.MAX_VALUE elements, found " + Arrays.toString(shape));
-        }
-        return ByteBuffer.allocateDirect(elements * Integer.BYTES).order(ByteOrder.LITTLE_ENDIAN).asIntBuffer();
     }
 }

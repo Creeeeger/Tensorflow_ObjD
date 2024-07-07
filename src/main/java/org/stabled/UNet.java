@@ -38,12 +38,7 @@
 
 package org.stabled;
 
-import ai.onnxruntime.OnnxTensor;
-import ai.onnxruntime.OnnxValue;
-import ai.onnxruntime.OrtEnvironment;
-import ai.onnxruntime.OrtException;
-import ai.onnxruntime.OrtSession;
-import ai.onnxruntime.TensorInfo;
+import ai.onnxruntime.*;
 
 import java.nio.file.Path;
 import java.util.Arrays;
@@ -97,58 +92,6 @@ public final class UNet implements AutoCloseable {
     }
 
     /**
-     * Packages the inputs into the supplied map suitable for inference in ONNX Runtime.
-     *
-     * @param map                 The input map, will be cleared.
-     * @param encoderHiddenStates The encoder hidden states (i.e. the text input).
-     * @param sample              The current image sample.
-     * @param timestep            The timestep number.
-     * @throws OrtException If the OnnxTensor construction failed.
-     */
-    private void createUnetModelInput(Map<String, OnnxTensor> map, FloatTensor encoderHiddenStates, FloatTensor sample, long timestep) throws OrtException {
-        map.clear();
-
-        map.put("encoder_hidden_states", encoderHiddenStates.wrapForORT(env));
-        map.put("sample", sample.wrapForORT(env));
-        OnnxTensor timestepTensor = switch (this.timestepType) {
-            case ONNX_TENSOR_ELEMENT_DATA_TYPE_INT32 -> OnnxTensor.createTensor(env, new int[]{(int) timestep});
-            case ONNX_TENSOR_ELEMENT_DATA_TYPE_INT64 -> OnnxTensor.createTensor(env, new long[]{timestep});
-            case ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT -> OnnxTensor.createTensor(env, new float[]{timestep});
-            case ONNX_TENSOR_ELEMENT_DATA_TYPE_DOUBLE -> OnnxTensor.createTensor(env, new double[]{timestep});
-            default -> throw new IllegalStateException("Invalid tensor type for timestep tensor.");
-        };
-        map.put("timestep", timestepTensor);
-    }
-
-    /**
-     * Packages the inputs into the supplied map suitable for SDXL inference in ONNX Runtime.
-     *
-     * @param map                 The input map, will be cleared.
-     * @param encoderHiddenStates The encoder hidden states (i.e. the text input).
-     * @param sample              The current image sample.
-     * @param timestep            The timestep number.
-     * @param textEmbeds            The pooled text embeddings.
-     * @param additionalImageInputs The timeids input (source & target image size, along with crop position)
-     * @throws OrtException If the OnnxTensor construction failed.
-     */
-    private void createUnetXLModelInput(Map<String, OnnxTensor> map, FloatTensor encoderHiddenStates, FloatTensor sample, long timestep, FloatTensor textEmbeds, FloatTensor additionalImageInputs) throws OrtException {
-        map.clear();
-
-        map.put("encoder_hidden_states", encoderHiddenStates.wrapForORT(env));
-        map.put("sample", sample.wrapForORT(env));
-        OnnxTensor timestepTensor = switch (this.timestepType) {
-            case ONNX_TENSOR_ELEMENT_DATA_TYPE_INT32 -> OnnxTensor.createTensor(env, new int[]{(int) timestep});
-            case ONNX_TENSOR_ELEMENT_DATA_TYPE_INT64 -> OnnxTensor.createTensor(env, new long[]{timestep});
-            case ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT -> OnnxTensor.createTensor(env, new float[]{timestep});
-            case ONNX_TENSOR_ELEMENT_DATA_TYPE_DOUBLE -> OnnxTensor.createTensor(env, new double[]{timestep});
-            default -> throw new IllegalStateException("Invalid tensor type for timestep tensor.");
-        };
-        map.put("timestep", timestepTensor);
-        map.put("text_embeds", textEmbeds.wrapForORT(env));
-        map.put("time_ids", additionalImageInputs.wrapForORT(env));
-    }
-
-    /**
      * Samples an initial latent space tensor by sampling from a zero mean gaussian with the supplied noise level.
      *
      * @param batchSize          The number of images to create.
@@ -190,6 +133,58 @@ public final class UNet implements AutoCloseable {
     }
 
     /**
+     * Packages the inputs into the supplied map suitable for inference in ONNX Runtime.
+     *
+     * @param map                 The input map, will be cleared.
+     * @param encoderHiddenStates The encoder hidden states (i.e. the text input).
+     * @param sample              The current image sample.
+     * @param timestep            The timestep number.
+     * @throws OrtException If the OnnxTensor construction failed.
+     */
+    private void createUnetModelInput(Map<String, OnnxTensor> map, FloatTensor encoderHiddenStates, FloatTensor sample, long timestep) throws OrtException {
+        map.clear();
+
+        map.put("encoder_hidden_states", encoderHiddenStates.wrapForORT(env));
+        map.put("sample", sample.wrapForORT(env));
+        OnnxTensor timestepTensor = switch (this.timestepType) {
+            case ONNX_TENSOR_ELEMENT_DATA_TYPE_INT32 -> OnnxTensor.createTensor(env, new int[]{(int) timestep});
+            case ONNX_TENSOR_ELEMENT_DATA_TYPE_INT64 -> OnnxTensor.createTensor(env, new long[]{timestep});
+            case ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT -> OnnxTensor.createTensor(env, new float[]{timestep});
+            case ONNX_TENSOR_ELEMENT_DATA_TYPE_DOUBLE -> OnnxTensor.createTensor(env, new double[]{timestep});
+            default -> throw new IllegalStateException("Invalid tensor type for timestep tensor.");
+        };
+        map.put("timestep", timestepTensor);
+    }
+
+    /**
+     * Packages the inputs into the supplied map suitable for SDXL inference in ONNX Runtime.
+     *
+     * @param map                   The input map, will be cleared.
+     * @param encoderHiddenStates   The encoder hidden states (i.e. the text input).
+     * @param sample                The current image sample.
+     * @param timestep              The timestep number.
+     * @param textEmbeds            The pooled text embeddings.
+     * @param additionalImageInputs The timeids input (source & target image size, along with crop position)
+     * @throws OrtException If the OnnxTensor construction failed.
+     */
+    private void createUnetXLModelInput(Map<String, OnnxTensor> map, FloatTensor encoderHiddenStates, FloatTensor sample, long timestep, FloatTensor textEmbeds, FloatTensor additionalImageInputs) throws OrtException {
+        map.clear();
+
+        map.put("encoder_hidden_states", encoderHiddenStates.wrapForORT(env));
+        map.put("sample", sample.wrapForORT(env));
+        OnnxTensor timestepTensor = switch (this.timestepType) {
+            case ONNX_TENSOR_ELEMENT_DATA_TYPE_INT32 -> OnnxTensor.createTensor(env, new int[]{(int) timestep});
+            case ONNX_TENSOR_ELEMENT_DATA_TYPE_INT64 -> OnnxTensor.createTensor(env, new long[]{timestep});
+            case ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT -> OnnxTensor.createTensor(env, new float[]{timestep});
+            case ONNX_TENSOR_ELEMENT_DATA_TYPE_DOUBLE -> OnnxTensor.createTensor(env, new double[]{timestep});
+            default -> throw new IllegalStateException("Invalid tensor type for timestep tensor.");
+        };
+        map.put("timestep", timestepTensor);
+        map.put("text_embeds", textEmbeds.wrapForORT(env));
+        map.put("time_ids", additionalImageInputs.wrapForORT(env));
+    }
+
+    /**
      * Runs UNet inverse diffusion for the specified number of steps.
      *
      * @param numInferenceSteps The number of inference steps.
@@ -214,16 +209,16 @@ public final class UNet implements AutoCloseable {
      * <p>When pooledTextEmbeddings is null this performs regular SD v1.5 or v2 inference, when it is non-null it
      * performs SDXL inference.
      *
-     * @param numInferenceSteps The number of inference steps.
-     * @param textEmbeddings    The text embedding vectors.
+     * @param numInferenceSteps    The number of inference steps.
+     * @param textEmbeddings       The text embedding vectors.
      * @param pooledTextEmbeddings The pooled text embedding vectors. When this is non-null it performs SDXL inference.
-     * @param guidanceScale     The strength of the classifier-free guidance.
-     * @param batchSize         The number of generated images.
-     * @param height            The image height.
-     * @param width             The image width.
-     * @param seed              The RNG seed.
-     * @param callback          The callback function, called with the step count after each step.
-     * @param schedulerEnum     The scheduler to use.
+     * @param guidanceScale        The strength of the classifier-free guidance.
+     * @param batchSize            The number of generated images.
+     * @param height               The image height.
+     * @param width                The image width.
+     * @param seed                 The RNG seed.
+     * @param callback             The callback function, called with the step count after each step.
+     * @param schedulerEnum        The scheduler to use.
      * @return A batch of images in latent space.
      * @throws OrtException If the inference call failed in ONNX Runtime.
      */
@@ -248,7 +243,7 @@ public final class UNet implements AutoCloseable {
                 // guidance means we duplicate this vector
                 // technically there are negative embeddings for those things which can change generation behaviour
                 // but given we're fixing them anyway let's not bother about that
-                additionalImageConditions = new FloatTensor(new long[]{2L*batchSize, 6L});
+                additionalImageConditions = new FloatTensor(new long[]{2L * batchSize, 6L});
                 for (int i = 0; i < batchSize; i++) {
                     additionalImageConditions.buffer.put(conditionsArr);
                     additionalImageConditions.buffer.put(conditionsArr);
@@ -265,7 +260,7 @@ public final class UNet implements AutoCloseable {
             additionalImageConditions = null;
         }
 
-        long[] guidedLatentShape = new long[]{2L*batchSize, 4L, height / 8, width / 8};
+        long[] guidedLatentShape = new long[]{2L * batchSize, 4L, height / 8, width / 8};
         long[] unguidedLatentShape = new long[]{batchSize, 4L, height / 8, width / 8};
 
         var input = new HashMap<String, OnnxTensor>(6);

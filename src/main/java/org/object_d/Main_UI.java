@@ -126,8 +126,7 @@ public class Main_UI extends JFrame {
     public static void main(String[] args) {
         File config = new File("config.xml");
         if (!config.exists()) {
-            config_handler config_handler = new config_handler();
-            config_handler.create_config();
+            org.object_d.config_handler.create_config();
             System.out.println("Config Created");
         }
         Main_UI gui = new Main_UI();

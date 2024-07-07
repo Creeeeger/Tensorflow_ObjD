@@ -56,8 +56,9 @@ public final class FloatTensor extends Tensor<FloatBuffer> {
 
     /**
      * Creates a float tensor from the supplied buffer and shape.
+     *
      * @param buffer The buffer.
-     * @param shape The shape.
+     * @param shape  The shape.
      */
     public FloatTensor(FloatBuffer buffer, long[] shape) {
         super(buffer, shape);
@@ -65,10 +66,71 @@ public final class FloatTensor extends Tensor<FloatBuffer> {
 
     /**
      * Creates an empty float tensor of the supplied shape backed by a direct byte buffer.
+     *
      * @param shape The shape.
      */
     public FloatTensor(long[] shape) {
         super(alloc(shape), shape);
+    }
+
+    /**
+     * Concatenates two tensors along their last dimension. All other dimensions must be equal.
+     *
+     * <p>For example a = [5, 10, 15], b = [5, 10, 3] gives concat(a,b) = [5, 10, 18].
+     *
+     * @param first  The first tensor.
+     * @param second The second tensor.
+     * @return The row-wise concatenation of the two tensors.
+     */
+    public static FloatTensor concat(FloatTensor first, FloatTensor second) {
+        // validate shapes
+        if (first.shape.length != second.shape.length) {
+            throw new IllegalArgumentException("Invalid shapes for concatenation, got " + Arrays.toString(first.shape) + " and " + Arrays.toString(second.shape));
+        }
+        long numRows = 1;
+        for (int i = 0; i < first.shape.length - 1; i++) {
+            if (first.shape[i] != second.shape[i]) {
+                throw new IllegalArgumentException("Invalid shapes for concatenation, got " + Arrays.toString(first.shape) + " and " + Arrays.toString(second.shape));
+            }
+            numRows *= first.shape[i];
+        }
+
+        // create output
+        var newShape = Arrays.copyOf(first.shape, first.shape.length);
+        newShape[newShape.length - 1] += second.shape[newShape.length - 1];
+        FloatTensor output = new FloatTensor(newShape);
+
+        // concatenate row-wise, which is just reading from first then second until we run out
+        int firstRowLength = (int) first.shape[first.shape.length - 1];
+        int secondRowLength = (int) second.shape[second.shape.length - 1];
+        int firstOffset = 0;
+        int secondOffset = 0;
+        int outputOffset = 0;
+        for (int i = 0; i < numRows; i++) {
+            output.buffer.put(outputOffset, first.buffer, firstOffset, firstRowLength);
+            outputOffset += firstRowLength;
+            firstOffset += firstRowLength;
+            output.buffer.put(outputOffset, second.buffer, secondOffset, secondRowLength);
+            outputOffset += secondRowLength;
+            secondOffset += secondRowLength;
+        }
+
+        return output;
+    }
+
+    /**
+     * Creates a direct {@link FloatBuffer} with capacity equal to the supplied shape.
+     *
+     * @param shape The shape.
+     * @return An int buffer.
+     * @throws IllegalArgumentException if the shape is larger than the largest buffer.
+     */
+    private static FloatBuffer alloc(long[] shape) {
+        int elements = computeNumElements(shape);
+        if (elements < 0) {
+            throw new IllegalArgumentException("Invalid shape for Java tensor, expected less than Integer.MAX_VALUE elements, found " + Arrays.toString(shape));
+        }
+        return ByteBuffer.allocateDirect(elements * Float.BYTES).order(ByteOrder.LITTLE_ENDIAN).asFloatBuffer();
     }
 
     @Override
@@ -84,9 +146,10 @@ public final class FloatTensor extends Tensor<FloatBuffer> {
      * Splits this tensor into a list of new {@code FloatTensor}s.
      * <p>
      * The tensors are split in linear row major order, partitioned on the leading dimension.
-     * @throws IllegalArgumentException If the supplied shape does not split this tensor in equal chunks.
+     *
      * @param newShape The new shape for the tensors.
      * @return A list containing the new tensors.
+     * @throws IllegalArgumentException If the supplied shape does not split this tensor in equal chunks.
      */
     public List<FloatTensor> split(long[] newShape) {
         int newNumElements = computeNumElements(newShape);
@@ -112,11 +175,12 @@ public final class FloatTensor extends Tensor<FloatBuffer> {
 
     /**
      * Adds the supplied tensor to this one.
-     * @throws IllegalArgumentException If the other tensor is not the same shape as this one.
+     *
      * @param t The tensor to add.
+     * @throws IllegalArgumentException If the other tensor is not the same shape as this one.
      */
     public void add(FloatTensor t) {
-        if (!Arrays.equals(t.shape,shape)) {
+        if (!Arrays.equals(t.shape, shape)) {
             throw new IllegalArgumentException("Invalid shape. Expected " + Arrays.toString(shape) + ", found " + Arrays.toString(t.shape));
         }
         for (int i = 0; i < numElements; i++) {
@@ -128,80 +192,23 @@ public final class FloatTensor extends Tensor<FloatBuffer> {
      * Scales each element of the buffer by the supplied float.
      * <p>
      * Leaves the buffer position unchanged.
+     *
      * @param scalar The scalar.
      */
     public void scale(float scalar) {
         for (int i = 0; i < buffer.capacity(); i++) {
-            buffer.put(i,buffer.get(i)*scalar);
+            buffer.put(i, buffer.get(i) * scalar);
         }
     }
 
     /**
      * Gets an element from this tensor.
+     *
      * @param idxArr The index to return.
      * @return The element at the index.
      */
     public float get(long... idxArr) {
         int idx = computeIdx(idxArr);
         return buffer.get(idx);
-    }
-
-    /**
-     * Concatenates two tensors along their last dimension. All other dimensions must be equal.
-     *
-     * <p>For example a = [5, 10, 15], b = [5, 10, 3] gives concat(a,b) = [5, 10, 18].
-     *
-     * @param first The first tensor.
-     * @param second The second tensor.
-     * @return The row-wise concatenation of the two tensors.
-     */
-    public static FloatTensor concat(FloatTensor first, FloatTensor second) {
-        // validate shapes
-        if (first.shape.length != second.shape.length) {
-            throw new IllegalArgumentException("Invalid shapes for concatenation, got " + Arrays.toString(first.shape) + " and " + Arrays.toString(second.shape));
-        }
-        long numRows = 1;
-        for (int i = 0; i < first.shape.length - 1; i++) {
-            if (first.shape[i] != second.shape[i]) {
-                throw new IllegalArgumentException("Invalid shapes for concatenation, got " + Arrays.toString(first.shape) + " and " + Arrays.toString(second.shape));
-            }
-            numRows *= first.shape[i];
-        }
-
-        // create output
-        var newShape = Arrays.copyOf(first.shape, first.shape.length);
-        newShape[newShape.length-1] += second.shape[newShape.length-1];
-        FloatTensor output = new FloatTensor(newShape);
-
-        // concatenate row-wise, which is just reading from first then second until we run out
-        int firstRowLength = (int) first.shape[first.shape.length-1];
-        int secondRowLength = (int) second.shape[second.shape.length-1];
-        int firstOffset = 0;
-        int secondOffset = 0;
-        int outputOffset = 0;
-        for (int i = 0; i < numRows; i++) {
-            output.buffer.put(outputOffset, first.buffer, firstOffset, firstRowLength);
-            outputOffset += firstRowLength;
-            firstOffset += firstRowLength;
-            output.buffer.put(outputOffset, second.buffer, secondOffset, secondRowLength);
-            outputOffset += secondRowLength;
-            secondOffset += secondRowLength;
-        }
-
-        return output;
-    }
-
-    /**
-     * Creates a direct {@link FloatBuffer} with capacity equal to the supplied shape.
-     * @throws IllegalArgumentException if the shape is larger than the largest buffer.
-     * @param shape The shape.
-     * @return An int buffer.
-     */
-    private static FloatBuffer alloc(long[] shape) {
-        int elements = computeNumElements(shape);
-        if (elements < 0) {
-            throw new IllegalArgumentException("Invalid shape for Java tensor, expected less than Integer.MAX_VALUE elements, found " + Arrays.toString(shape));
-        }
-        return ByteBuffer.allocateDirect(elements * Float.BYTES).order(ByteOrder.LITTLE_ENDIAN).asFloatBuffer();
     }
 }

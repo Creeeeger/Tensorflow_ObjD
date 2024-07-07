@@ -56,7 +56,7 @@ public enum Schedulers {
     final String displayName;
     final String descriptionName;
 
-    Schedulers(Function<Long,Scheduler> factory, String displayName, String descriptionName) {
+    Schedulers(Function<Long, Scheduler> factory, String displayName, String descriptionName) {
         this.factory = factory;
         this.displayName = displayName;
         this.descriptionName = descriptionName;
@@ -69,6 +69,7 @@ public enum Schedulers {
 
     /**
      * The name to be used in the image metadata.
+     *
      * @return The image metadata scheduler name.
      */
     public String descriptionName() {
@@ -77,6 +78,7 @@ public enum Schedulers {
 
     /**
      * Creates a scheduler and supplies a seed for RNG.
+     *
      * @param seed The RNG seed.
      * @return The scheduler object.
      */

@@ -55,18 +55,15 @@ import java.util.logging.Logger;
  * The Variational Auto-Encoder which decodes from the latent space of the UNet to pixel space, running in ONNX Runtime.
  */
 public final class VAEDecoder implements AutoCloseable {
-    private static final Logger logger = Logger.getLogger(VAEDecoder.class.getName());
-
     /**
      * Scaling coefficient for transforming SD models from latent to pixel space.
      */
     public static final float SD_LATENT_SCALAR = 1.0f / 0.18215f;
-
     /**
      * Scaling coefficient for transforming SDXL models from latent to pixel space.
      */
     public static final float SDXL_LATENT_SCALAR = 1.0f / 0.13025f;
-
+    private static final Logger logger = Logger.getLogger(VAEDecoder.class.getName());
     private final OrtEnvironment env;
 
     private final OrtSession.SessionOptions vaeOpts;
@@ -74,6 +71,7 @@ public final class VAEDecoder implements AutoCloseable {
 
     /**
      * Constructs a VAEDecoder from the supplied model using the default session options.
+     *
      * @param vaeModelPath The path to the VAE decoder ONNX file.
      * @throws OrtException If the model could not be loaded.
      */
@@ -83,8 +81,9 @@ public final class VAEDecoder implements AutoCloseable {
 
     /**
      * Constructs a VAEDecoder from the supplied model path and session options.
+     *
      * @param vaeModelPath The path to the VAE decoder ONNX file.
-     * @param opts The session options.
+     * @param opts         The session options.
      * @throws OrtException If the model could not be loaded.
      */
     public VAEDecoder(Path vaeModelPath, OrtSession.SessionOptions opts) throws OrtException {
@@ -94,25 +93,8 @@ public final class VAEDecoder implements AutoCloseable {
     }
 
     /**
-     * Decodes the latents into the image. Mutates the input latents
-     * @param latents The latent image variables.
-     * @param scalar The scaling factor applied to the latents before decoding.
-     * @return The image stored as a float tensor.
-     * @throws OrtException If the model failed.
-     */
-    public FloatTensor decoder(FloatTensor latents, float scalar) throws OrtException {
-        logger.info("Decoding latents");
-        latents.scale(scalar);
-        try (var inputTensor = OnnxTensor.createTensor(env, latents.buffer, latents.shape);
-            var result = vae.run(Map.of("latent_sample", inputTensor))) {
-            var outputTensor = (OnnxTensor) result.get(0);
-            var fb = outputTensor.getFloatBuffer();
-            return new FloatTensor(fb, outputTensor.getInfo().getShape());
-        }
-    }
-
-    /**
      * Converts the pixel space tensor into a batch of {@link BufferedImage} instances.
+     *
      * @param imageTensor The pixel space tensor [batch_size, 3, height, width].
      * @return A list of images.
      */
@@ -128,9 +110,9 @@ public final class VAEDecoder implements AutoCloseable {
             for (var y = 0; y < height; y++) {
                 for (var x = 0; x < width; x++) {
                     // output image is ARGB, but input floats are RGB
-                    int red = convertValue(imageTensor.get(i,0,y,x));
-                    int green = convertValue(imageTensor.get(i,1,y,x));
-                    int blue = convertValue(imageTensor.get(i,2,y,x));
+                    int red = convertValue(imageTensor.get(i, 0, y, x));
+                    int green = convertValue(imageTensor.get(i, 1, y, x));
+                    int blue = convertValue(imageTensor.get(i, 2, y, x));
 
                     raster.setSample(x, y, 0, red);
                     raster.setSample(x, y, 1, green);
@@ -143,19 +125,8 @@ public final class VAEDecoder implements AutoCloseable {
     }
 
     /**
-     * Decodes a latent space tensor into a batch of images.
-     * @param latents The latent space tensor [batch_size, 4, height/8, width/8].
-     * @param scalar The scaling factor applied to the latents before decoding.
-     * @return A list of generated images.
-     * @throws OrtException If the decode operation failed.
-     */
-    public List<BufferedImage> decodeToBufferedImage(FloatTensor latents, float scalar) throws OrtException {
-        var floatImage = decoder(latents, scalar);
-        return convertToBufferedImage(floatImage);
-    }
-
-    /**
      * Converts a colour value from the range [-1, 1] to [0, 255].
+     *
      * @param colourValue The colour value to convert.
      * @return An unsigned colour byte.
      */
@@ -164,6 +135,38 @@ public final class VAEDecoder implements AutoCloseable {
         float clamped = Math.min(1.0f, Math.max(scaled, 0.0f));
         int round = Math.round(clamped * 255);
         return round;
+    }
+
+    /**
+     * Decodes the latents into the image. Mutates the input latents
+     *
+     * @param latents The latent image variables.
+     * @param scalar  The scaling factor applied to the latents before decoding.
+     * @return The image stored as a float tensor.
+     * @throws OrtException If the model failed.
+     */
+    public FloatTensor decoder(FloatTensor latents, float scalar) throws OrtException {
+        logger.info("Decoding latents");
+        latents.scale(scalar);
+        try (var inputTensor = OnnxTensor.createTensor(env, latents.buffer, latents.shape);
+             var result = vae.run(Map.of("latent_sample", inputTensor))) {
+            var outputTensor = (OnnxTensor) result.get(0);
+            var fb = outputTensor.getFloatBuffer();
+            return new FloatTensor(fb, outputTensor.getInfo().getShape());
+        }
+    }
+
+    /**
+     * Decodes a latent space tensor into a batch of images.
+     *
+     * @param latents The latent space tensor [batch_size, 4, height/8, width/8].
+     * @param scalar  The scaling factor applied to the latents before decoding.
+     * @return A list of generated images.
+     * @throws OrtException If the decode operation failed.
+     */
+    public List<BufferedImage> decodeToBufferedImage(FloatTensor latents, float scalar) throws OrtException {
+        var floatImage = decoder(latents, scalar);
+        return convertToBufferedImage(floatImage);
     }
 
     @Override

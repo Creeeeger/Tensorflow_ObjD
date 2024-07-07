@@ -45,18 +45,20 @@ import java.util.Arrays;
  */
 public final class MathUtils {
 
-    private MathUtils() {}
+    private MathUtils() {
+    }
 
     /**
      * Interpolate the range for the given timesteps.
+     *
      * @param timesteps The timesteps to interpolate the value.
-     * @param range The range of values.
-     * @param sigmas The noise values.
+     * @param range     The range of values.
+     * @param sigmas    The noise values.
      * @return The interpolated values.
      */
     public static float[] interpolate(float[] timesteps, float[] range, float[] sigmas) {
         // Create an output array with the same shape as timesteps
-        var result = new float[timesteps.length+1];
+        var result = new float[timesteps.length + 1];
 
         // Loop over each element of timesteps
         for (int i = 0; i < timesteps.length; i++) {
@@ -71,7 +73,7 @@ public final class MathUtils {
                 result[i] = sigmas[0];
             } else if (index == -range.length - 1) {
                 // If timesteps[i] is greater than the last element in range, use the last value in sigmas
-                result[i] = sigmas[sigmas.length-1];
+                result[i] = sigmas[sigmas.length - 1];
             } else {
                 // Otherwise, interpolate linearly between two adjacent values in sigmas
                 index = ~index; // bitwise complement of j gives the insertion point of x[i]
@@ -85,9 +87,10 @@ public final class MathUtils {
 
     /**
      * Mirrors numpy linspace and NumSharp linspace. Returns values evenly spaced between start and end.
-     * @param start The start value.
-     * @param end The end value.
-     * @param numSteps The number of steps.
+     *
+     * @param start      The start value.
+     * @param end        The end value.
+     * @param numSteps   The number of steps.
      * @param includeEnd Should end be the last value?
      * @return An array of values evenly spaced between start and end.
      */
@@ -108,8 +111,9 @@ public final class MathUtils {
 
     /**
      * Mirrors numpy arange and NumSharp arange. Returns values stepped by {@code stepSize}.
-     * @param start The start value.
-     * @param end The end value.
+     *
+     * @param start    The start value.
+     * @param end      The end value.
      * @param stepSize The step size.
      * @return An array of values stepped between start and end.
      */
@@ -120,7 +124,7 @@ public final class MathUtils {
         if (stepSize <= 0.00001f) {
             throw new IllegalArgumentException("Invalid stepSize, must be positive.");
         }
-        int numSteps = Math.round((float)Math.ceil((end - start)/stepSize));
+        int numSteps = Math.round((float) Math.ceil((end - start) / stepSize));
         float[] output = new float[numSteps];
         for (int i = 0; i < numSteps; i++) {
             output[i] = start + (i * stepSize);
@@ -132,7 +136,8 @@ public final class MathUtils {
      * Linear probe for the specified value in the target array.
      * <p>
      * Used when the array order prevents {@link Arrays#binarySearch(int[], int)}.
-     * @param array The array to search.
+     *
+     * @param array  The array to search.
      * @param target The target value.
      * @return The index of the target, or -1 if not found.
      */

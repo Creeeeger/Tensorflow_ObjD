@@ -51,6 +51,7 @@ import java.util.Arrays;
  * Contains a buffer and a shape. Most of the mutation methods live on the subclasses
  * to allow them to use primitive types. This class is mutable and exposes the buffer for
  * mutation. Remember to rewind it whenever you operate on the buffer using the implicit position methods.
+ *
  * @param <B> The buffer type.
  */
 public sealed abstract class Tensor<B extends Buffer> permits FloatTensor, IntTensor, LongTensor {
@@ -75,16 +76,17 @@ public sealed abstract class Tensor<B extends Buffer> permits FloatTensor, IntTe
 
     /**
      * Creates a Tensor from the supplied buffer and shape.
+     *
      * @param buffer The buffer containing the data.
-     * @param shape The shape.
+     * @param shape  The shape.
      */
     public Tensor(B buffer, long[] shape) {
         this.buffer = buffer;
         this.shape = Arrays.copyOf(shape, shape.length);
         this.strides = new long[this.shape.length];
-        this.strides[strides.length-1] = 1;
-        for (int i = strides.length-1; i > 0; i--) {
-            this.strides[i-1] = strides[i] * this.shape[i];
+        this.strides[strides.length - 1] = 1;
+        for (int i = strides.length - 1; i > 0; i--) {
+            this.strides[i - 1] = strides[i] * this.shape[i];
         }
         this.numElements = computeNumElements(this.shape);
         if (this.buffer.capacity() != this.numElements) {
@@ -93,52 +95,10 @@ public sealed abstract class Tensor<B extends Buffer> permits FloatTensor, IntTe
     }
 
     /**
-     * Access the buffer directly.
-     * @return The buffer.
-     */
-    public B buffer() {
-        return buffer;
-    }
-
-    /**
-     * The shape.
-     * @return The shape.
-     */
-    public long[] shape() {
-        return shape;
-    }
-
-    /**
-     * Deep copy of this tensor.
-     * @return A copy of the tensor.
-     */
-    public abstract Tensor<B> copy();
-
-    /**
-     * Wraps this tensor into an {@code OnnxTensor} for passing into ORT.
-     * @param env The ORT environment.
-     * @return An OnnxTensor.
-     * @throws OrtException If the tensor could not be created.
-     */
-    public abstract OnnxTensor wrapForORT(OrtEnvironment env) throws OrtException;
-
-    /**
-     * Computes the linear index from the supplied index array.
-     * @param idxArr The index array.
-     * @return The linear index into the buffer.
-     */
-    protected int computeIdx(long[] idxArr) {
-        int idx = 0;
-        for (int i = 0; i < shape.length; i++) {
-            idx += idxArr[i] * strides[i];
-        }
-        return idx;
-    }
-
-    /**
      * Computes the number of elements.
      * <p>
      * If we overflow the int it returns -1, and the tensor is invalid.
+     *
      * @param shape The shape.
      * @return The number of elements.
      */
@@ -146,7 +106,7 @@ public sealed abstract class Tensor<B extends Buffer> permits FloatTensor, IntTe
         int total = 1;
         for (int i = 0; i < shape.length; i++) {
             long cur = shape[i];
-            if ((((int) cur) != cur) || (cur < 0)){
+            if ((((int) cur) != cur) || (cur < 0)) {
                 total = -1;
                 break;
             } else {
@@ -157,5 +117,53 @@ public sealed abstract class Tensor<B extends Buffer> permits FloatTensor, IntTe
             }
         }
         return total;
+    }
+
+    /**
+     * Access the buffer directly.
+     *
+     * @return The buffer.
+     */
+    public B buffer() {
+        return buffer;
+    }
+
+    /**
+     * The shape.
+     *
+     * @return The shape.
+     */
+    public long[] shape() {
+        return shape;
+    }
+
+    /**
+     * Deep copy of this tensor.
+     *
+     * @return A copy of the tensor.
+     */
+    public abstract Tensor<B> copy();
+
+    /**
+     * Wraps this tensor into an {@code OnnxTensor} for passing into ORT.
+     *
+     * @param env The ORT environment.
+     * @return An OnnxTensor.
+     * @throws OrtException If the tensor could not be created.
+     */
+    public abstract OnnxTensor wrapForORT(OrtEnvironment env) throws OrtException;
+
+    /**
+     * Computes the linear index from the supplied index array.
+     *
+     * @param idxArr The index array.
+     * @return The linear index into the buffer.
+     */
+    protected int computeIdx(long[] idxArr) {
+        int idx = 0;
+        for (int i = 0; i < shape.length; i++) {
+            idx += idxArr[i] * strides[i];
+        }
+        return idx;
     }
 }

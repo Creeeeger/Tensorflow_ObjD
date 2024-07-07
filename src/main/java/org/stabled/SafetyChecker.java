@@ -54,22 +54,12 @@ import java.util.logging.Logger;
  * The safety checker which tags images which are unsuitable for work.
  */
 public final class SafetyChecker implements AutoCloseable {
-    private static final Logger logger = Logger.getLogger(SafetyChecker.class.getName());
-
     /**
-     * Possible outputs from the Safety Checker
+     * This is the output of {@code com.oracle.labs.mlrg.sd4j.ResizeModelGenerator}, stored as a String for easier packaging.
      */
-    public enum CheckerOutput {
-        /**
-         * Image is predicted to be safe for work.
-         */
-        SFW,
-        /**
-         * Image is predicted to be not safe for work.
-         */
-        NSFW
-    }
-
+    public static final String resizerModel =
+            "CAgiHGNvbS5odWdnaW5nZmFjZS50cmFuc2Zvcm1lcnMoADIUQ0xJUCBJbWFnZSBQcm9jZXNzb3I6zQcKMgoFaW5wdXQKCWNvbnN0LXR3bxIPZGl2aWRlLTAtb3V0cHV0GghkaXZpZGUtMCIDRGl2CjcKD2RpdmlkZS0wLW91dHB1dAoKY29uc3QtaGFsZhIMYWRkLTAtb3V0cHV0GgVhZGQtMCIDQWRkCjQKDGFkZC0wLW91dHB1dAoKY29uc3QtemVybxIMbWF4LTAtb3V0cHV0GgVtYXgtMCIDTWF4CjMKDG1heC0wLW91dHB1dAoJY29uc3Qtb25lEgxtaW4tMC1vdXRwdXQaBW1pbi0wIgNNaW4KJwoFaW5wdXQSDnNoYXBlLTAtb3V0cHV0GgdzaGFwZS0wIgVTaGFwZQpGCg5zaGFwZS0wLW91dHB1dAoRY29uc3QtdGVuc29yLXplcm8SD2dhdGhlci0wLW91dHB1dBoIZ2F0aGVyLTAiBkdhdGhlcgpNCg9nYXRoZXItMC1vdXRwdXQKCmltYWdlLXNpemUSD2NvbmNhdC0wLW91dHB1dBoIY29uY2F0LTAiBkNvbmNhdCoLCgRheGlzGACgAQIKWQoMbWluLTAtb3V0cHV0CgAKAAoPY29uY2F0LTAtb3V0cHV0Eg9yZXNpemUtMC1vdXRwdXQaCHJlc2l6ZS0wIgZSZXNpemUqEQoEbW9kZSIGbGluZWFyoAEDCkQKD3Jlc2l6ZS0wLW91dHB1dAoNY2hhbm5lbC1tZWFucxIRc3VidHJhY3QtMC1vdXRwdXQaCnN1YnRyYWN0LTAiA1N1Ygo7ChFzdWJ0cmFjdC0wLW91dHB1dAoPY2hhbm5lbC1zdGRkZXZzEgZvdXRwdXQaCGRpdmlkZS0xIgNEaXYSEkNMSVBJbWFnZVByb2Nlc3NvcioXCAMQBzoFA+AB4AFCCmltYWdlLXNpemUqExABIgQAAABAQgljb25zdC10d28qFBABIgQAAAA/Qgpjb25zdC1oYWxmKhMQASIEAACAP0IJY29uc3Qtb25lKhQQASIEAAAAAEIKY29uc3QtemVybyoaCAEQBzoBAEIRY29uc3QtdGVuc29yLXplcm8qJwgBCAMIAQgBEAEiDDqB9j5eaOo+/wDRPkINY2hhbm5lbC1tZWFucyopCAEIAwgBCAEQASIM0ImJPnTJhT6oMo0+Qg9jaGFubmVsLXN0ZGRldnNaNAoFaW5wdXQSKwopCAESJQoMEgpiYXRjaF9zaXplCgIIAwoIEgZoZWlnaHQKBxIFd2lkdGhiLAoGb3V0cHV0EiIKIAgBEhwKDBIKYmF0Y2hfc2l6ZQoCCAMKAwjgAQoDCOABQgIQEg==";
+    private static final Logger logger = Logger.getLogger(SafetyChecker.class.getName());
     private final OrtEnvironment env;
 
     private final OrtSession.SessionOptions resizerOpts;
@@ -79,13 +69,8 @@ public final class SafetyChecker implements AutoCloseable {
     private final OrtSession checker;
 
     /**
-     * This is the output of {@code com.oracle.labs.mlrg.sd4j.ResizeModelGenerator}, stored as a String for easier packaging.
-     */
-    public static final String resizerModel =
-            "CAgiHGNvbS5odWdnaW5nZmFjZS50cmFuc2Zvcm1lcnMoADIUQ0xJUCBJbWFnZSBQcm9jZXNzb3I6zQcKMgoFaW5wdXQKCWNvbnN0LXR3bxIPZGl2aWRlLTAtb3V0cHV0GghkaXZpZGUtMCIDRGl2CjcKD2RpdmlkZS0wLW91dHB1dAoKY29uc3QtaGFsZhIMYWRkLTAtb3V0cHV0GgVhZGQtMCIDQWRkCjQKDGFkZC0wLW91dHB1dAoKY29uc3QtemVybxIMbWF4LTAtb3V0cHV0GgVtYXgtMCIDTWF4CjMKDG1heC0wLW91dHB1dAoJY29uc3Qtb25lEgxtaW4tMC1vdXRwdXQaBW1pbi0wIgNNaW4KJwoFaW5wdXQSDnNoYXBlLTAtb3V0cHV0GgdzaGFwZS0wIgVTaGFwZQpGCg5zaGFwZS0wLW91dHB1dAoRY29uc3QtdGVuc29yLXplcm8SD2dhdGhlci0wLW91dHB1dBoIZ2F0aGVyLTAiBkdhdGhlcgpNCg9nYXRoZXItMC1vdXRwdXQKCmltYWdlLXNpemUSD2NvbmNhdC0wLW91dHB1dBoIY29uY2F0LTAiBkNvbmNhdCoLCgRheGlzGACgAQIKWQoMbWluLTAtb3V0cHV0CgAKAAoPY29uY2F0LTAtb3V0cHV0Eg9yZXNpemUtMC1vdXRwdXQaCHJlc2l6ZS0wIgZSZXNpemUqEQoEbW9kZSIGbGluZWFyoAEDCkQKD3Jlc2l6ZS0wLW91dHB1dAoNY2hhbm5lbC1tZWFucxIRc3VidHJhY3QtMC1vdXRwdXQaCnN1YnRyYWN0LTAiA1N1Ygo7ChFzdWJ0cmFjdC0wLW91dHB1dAoPY2hhbm5lbC1zdGRkZXZzEgZvdXRwdXQaCGRpdmlkZS0xIgNEaXYSEkNMSVBJbWFnZVByb2Nlc3NvcioXCAMQBzoFA+AB4AFCCmltYWdlLXNpemUqExABIgQAAABAQgljb25zdC10d28qFBABIgQAAAA/Qgpjb25zdC1oYWxmKhMQASIEAACAP0IJY29uc3Qtb25lKhQQASIEAAAAAEIKY29uc3QtemVybyoaCAEQBzoBAEIRY29uc3QtdGVuc29yLXplcm8qJwgBCAMIAQgBEAEiDDqB9j5eaOo+/wDRPkINY2hhbm5lbC1tZWFucyopCAEIAwgBCAEQASIM0ImJPnTJhT6oMo0+Qg9jaGFubmVsLXN0ZGRldnNaNAoFaW5wdXQSKwopCAESJQoMEgpiYXRjaF9zaXplCgIIAwoIEgZoZWlnaHQKBxIFd2lkdGhiLAoGb3V0cHV0EiIKIAgBEhwKDBIKYmF0Y2hfc2l6ZQoCCAMKAwjgAQoDCOABQgIQEg==";
-
-    /**
      * Constructs a safety checker from the supplied model path.
+     *
      * @param checkerModelPath The model path.
      * @throws OrtException If the model failed to load.
      */
@@ -97,7 +82,7 @@ public final class SafetyChecker implements AutoCloseable {
      * Constructs a safety checker from the supplied model path, using the supplied options (e.g., to enable CUDA).
      *
      * @param checkerModelPath The model path.
-     * @param opts The session options.
+     * @param opts             The session options.
      * @throws OrtException If the model failed to load.
      */
     public SafetyChecker(Path checkerModelPath, OrtSession.SessionOptions opts) throws OrtException {
@@ -110,6 +95,7 @@ public final class SafetyChecker implements AutoCloseable {
 
     /**
      * Returns SFW/NSFW depending on the prediction of the safety classifier.
+     *
      * @param decodedImage The image as a float.
      * @return A list with enums one per image in the batch.
      * @throws OrtException If the model run failed.
@@ -144,5 +130,19 @@ public final class SafetyChecker implements AutoCloseable {
         resizerOpts.close();
         checker.close();
         checkerOpts.close();
+    }
+
+    /**
+     * Possible outputs from the Safety Checker
+     */
+    public enum CheckerOutput {
+        /**
+         * Image is predicted to be safe for work.
+         */
+        SFW,
+        /**
+         * Image is predicted to be not safe for work.
+         */
+        NSFW
     }
 }

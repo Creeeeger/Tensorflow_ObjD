@@ -75,10 +75,11 @@ public final class LMSDiscreteScheduler implements Scheduler {
 
     /**
      * Creates a linear multi-step scheduler with the specified parameters.
+     *
      * @param numTrainTimesteps The number of training time diffusion steps.
-     * @param betaStart The start value of the noise level.
-     * @param betaEnd The end value of the noise level.
-     * @param betaSchedule The noise schedule.
+     * @param betaStart         The start value of the noise level.
+     * @param betaEnd           The end value of the noise level.
+     * @param betaSchedule      The noise schedule.
      */
     public LMSDiscreteScheduler(int numTrainTimesteps, float betaStart, float betaEnd, ScheduleType betaSchedule) {
         this.numTrainTimesteps = numTrainTimesteps;
@@ -110,8 +111,8 @@ public final class LMSDiscreteScheduler implements Scheduler {
         float curMax = Float.NEGATIVE_INFINITY;
         this.initialVariance = new float[alphasCumulativeProducts.length];
         for (int i = 0; i < alphasCumulativeProducts.length; i++) {
-            float curVal = alphasCumulativeProducts[(alphasCumulativeProducts.length-1) - i];
-            float newVal = (float) Math.sqrt((1-curVal) / curVal);
+            float curVal = alphasCumulativeProducts[(alphasCumulativeProducts.length - 1) - i];
+            float newVal = (float) Math.sqrt((1 - curVal) / curVal);
             initialVariance[i] = newVal;
             if (newVal > curMax) {
                 curMax = newVal;
@@ -129,6 +130,7 @@ public final class LMSDiscreteScheduler implements Scheduler {
 
     /**
      * Reinitializes the scheduler with the specified number of inference steps.
+     *
      * @param numInferenceSteps The number of inference steps.
      * @return The new timesteps.
      */
@@ -141,7 +143,7 @@ public final class LMSDiscreteScheduler implements Scheduler {
 
         this.timesteps = new int[timesteps.length];
         for (int i = 0; i < timesteps.length; i++) {
-            this.timesteps[i] = (int) timesteps[(timesteps.length-1)-i];
+            this.timesteps[i] = (int) timesteps[(timesteps.length - 1) - i];
         }
 
         var range = MathUtils.arange(0, initialVariance.length, 1.0f);
@@ -152,18 +154,19 @@ public final class LMSDiscreteScheduler implements Scheduler {
     @Override
     public void scaleInPlace(FloatTensor sample, int timestep) {
         // Get step index of timestep from timesteps
-        int stepIndex = MathUtils.findIdx(this.timesteps,timestep);
+        int stepIndex = MathUtils.findIdx(this.timesteps, timestep);
         // Get sigma at stepIndex
         var sigma = this.sigmas[stepIndex];
-        sigma = (float)Math.sqrt((sigma*sigma) + 1);
+        sigma = (float) Math.sqrt((sigma * sigma) + 1);
 
-        sample.scale(1/sigma);
+        sample.scale(1 / sigma);
     }
 
     /**
      * Computes the LMS coefficient for the current position by integrating over the noise computation.
-     * @param order The order of the solver.
-     * @param t The timestep.
+     *
+     * @param order        The order of the solver.
+     * @param t            The timestep.
      * @param currentOrder The current order.
      * @return The LMS coefficient.
      */
@@ -181,7 +184,7 @@ public final class LMSDiscreteScheduler implements Scheduler {
             return prod;
         };
         // Inverted as the commons math integrator only goes one way.
-        double integratedCoeff = -integrator.integrate(50, lmsDerivative, this.sigmas[t+1], this.sigmas[t]);
+        double integratedCoeff = -integrator.integrate(50, lmsDerivative, this.sigmas[t + 1], this.sigmas[t]);
         //System.out.println("sigma[t] = "+this.sigmas[t]+", sigma[t+1] = "+this.sigmas[t+1]+", integratedCoeff = "+integratedCoeff);
 
         return integratedCoeff;
@@ -189,7 +192,7 @@ public final class LMSDiscreteScheduler implements Scheduler {
 
     @Override
     public FloatTensor step(FloatTensor modelOutput, int timestep, FloatTensor sample, int order) {
-        int stepIndex = MathUtils.findIdx(this.timesteps,timestep);
+        int stepIndex = MathUtils.findIdx(this.timesteps, timestep);
         var sigma = this.sigmas[stepIndex];
 
         // 1. compute predicted original sample (x_0) from sigma-scaled predicted noise
@@ -225,7 +228,7 @@ public final class LMSDiscreteScheduler implements Scheduler {
         // Create tensor for product of lmscoeffs and derivatives
         var lmsDerProduct = new FloatTensor(revDerivatives.get(0).shape);
 
-        for(int m = 0; m < revDerivatives.size(); m++) {
+        for (int m = 0; m < revDerivatives.size(); m++) {
             var curDeriv = revDerivatives.get(m);
             var curCoeff = lmsCoeffs.get(m);
             // Multiply to coeff by each derivative to create the new tensors
