@@ -2,7 +2,6 @@ package org.object_d;
 
 import ai.onnxruntime.OrtException;
 import org.stabled.CLIApp;
-import org.tensorAction.tensorTrainer;
 import org.tensorflow.SavedModelBundle;
 
 import javax.swing.*;
@@ -261,9 +260,8 @@ public class Trainer extends JFrame {
         public void actionPerformed(ActionEvent e) {
             image_folder_String = img_for_train.getPath(); //path for images
             System.out.println("Start Training Model");
-            tensorTrainer tensorTrainer = new tensorTrainer();
             try {
-                tensorTrainer.access(image_folder_String);
+                org.tensorAction.tensorTrainer.access(image_folder_String);
             } catch (IOException ex) {
                 throw new RuntimeException(ex);
             }

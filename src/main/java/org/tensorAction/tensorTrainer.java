@@ -8,12 +8,14 @@ import org.tensorflow.framework.optimizers.Optimizer;
 import org.tensorflow.ndarray.Shape;
 import org.tensorflow.ndarray.*;
 import org.tensorflow.ndarray.index.Indices;
-import org.tensorflow.op.Op;
 import org.tensorflow.op.Ops;
 import org.tensorflow.op.core.*;
 import org.tensorflow.op.math.Add;
 import org.tensorflow.op.math.Mean;
-import org.tensorflow.op.nn.*;
+import org.tensorflow.op.nn.Conv2d;
+import org.tensorflow.op.nn.MaxPool;
+import org.tensorflow.op.nn.Relu;
+import org.tensorflow.op.nn.SoftmaxCrossEntropyWithLogits;
 import org.tensorflow.op.random.TruncatedNormal;
 import org.tensorflow.types.TFloat32;
 import org.tensorflow.types.TUint8;
@@ -30,11 +32,9 @@ import java.util.Arrays;
 import java.util.List;
 
 public class tensorTrainer {
-    public static final String INPUT_NAME = "input";
-    public static final String OUTPUT_NAME = "output";
     private static final int PIXEL_DEPTH = 255;
     private static final int NUM_CHANNELS = 3;
-    private static final int IMAGE_SIZE = 224;
+    private static final int IMAGE_SIZE = 40;
     private static final int NUM_LABELS = 10;
     private static final long SEED = 123456789L;
     private static final String PADDING_TYPE = "SAME";
@@ -47,7 +47,7 @@ public class tensorTrainer {
         Ops tf = Ops.create(graph);
 
         // Inputs
-        Placeholder<TUint8> input = tf.withName(INPUT_NAME).placeholder(TUint8.class, Placeholder.shape(Shape.of(-1, IMAGE_SIZE, IMAGE_SIZE)));
+        Placeholder<TUint8> input = tf.withName("input").placeholder(TUint8.class, Placeholder.shape(Shape.of(-1, IMAGE_SIZE, IMAGE_SIZE)));
         Reshape<TUint8> input_reshaped = tf.reshape(input, tf.array(-1, IMAGE_SIZE, IMAGE_SIZE, NUM_CHANNELS));
         Placeholder<TUint8> labels = tf.withName("target").placeholder(TUint8.class);
 
@@ -89,45 +89,27 @@ public class tensorTrainer {
         Add<TFloat32> logits = tf.math.add(tf.linalg.matMul(relu3, fc2Weights), fc2Biases);
 
         // Predicted outputs
-        Softmax<TFloat32> prediction = tf.withName(OUTPUT_NAME).nn.softmax(logits);
+        tf.withName("output").nn.softmax(logits);
 
         // Loss function & regularization
         OneHot<TFloat32> oneHot = tf.oneHot(labels, tf.constant(10), tf.constant(1.0f), tf.constant(0.0f));
         SoftmaxCrossEntropyWithLogits<TFloat32> batchLoss = tf.nn.softmaxCrossEntropyWithLogits(logits, oneHot);
         Mean<TFloat32> labelLoss = tf.math.mean(batchLoss.loss(), tf.constant(0));
-        Add<TFloat32> regularizers = tf.math.add(tf.nn.l2Loss(fc1Weights), tf.math.add(tf.nn.l2Loss(fc1Biases), tf.math.add(tf.nn.l2Loss(fc2Weights), tf.nn.l2Loss(fc2Biases))));
-        Add<TFloat32> loss = tf.withName("training_loss").math.add(labelLoss, tf.math.mul(regularizers, tf.constant(5e-4f)));
+        Add<TFloat32> regularizes = tf.math.add(tf.nn.l2Loss(fc1Weights), tf.math.add(tf.nn.l2Loss(fc1Biases), tf.math.add(tf.nn.l2Loss(fc2Weights), tf.nn.l2Loss(fc2Biases))));
+        Add<TFloat32> loss = tf.withName("training_loss").math.add(labelLoss, tf.math.mul(regularizes, tf.constant(5e-4f)));
 
         // Optimizer
         Optimizer optimizer = new Adam(graph, 0.001f, 0.9f, 0.999f, 1e-8f);
 
         System.out.println("Optimizer = " + optimizer);
-        Op minimize = optimizer.minimize(loss, "train");
+        optimizer.minimize(loss, "train");
 
         return graph;
     }
 
     public static void main(String[] args) throws IOException {
         String dataDir = "/Users/gregor/Desktop/Tensorflow_ObjD/flower_photos";
-        nu.pattern.OpenCV.loadLocally();
-        imageTensors = new ArrayList<>();
-        labelTensors = new ArrayList<>();
-
-        // Load and preprocess the dataset
-        loadDataset(dataDir, imageTensors, labelTensors);
-        System.out.println("Dataset loaded. Number of photos: " + imageTensors.size());
-
-        // Convert imageTensors list to ByteNdArray
-        ByteNdArray imageNdArray = NdArrays.ofBytes(Shape.of(imageTensors.size(), 224, 224, 3));
-        for (int i = 0; i < imageTensors.size(); i++) {
-            imageNdArray.slice(Indices.at(i)).copyFrom(imageTensors.get(i).asRawTensor().data());
-        }
-        // Convert labelTensors list to FloatNdArray
-        ByteNdArray labelNdArray = NdArrays.ofBytes(Shape.of(imageTensors.size()));
-        for (int i = 0; i < labelTensors.size(); i++) {
-            labelNdArray.slice(Indices.at(i)).copyFrom(labelTensors.get(i).asRawTensor().data());
-        }
-        train(imageNdArray, labelNdArray);
+        access(dataDir);
     }
 
     public static void train(ByteNdArray imageNdArray, ByteNdArray labelNdArray) {
@@ -135,7 +117,7 @@ public class tensorTrainer {
             // Run the graph
             try (Session session = new Session(graph)) {
                 // Train the model
-                for (int i = 0; i < 10; i++) {
+                for (int i = 0; i < 1000; i++) {
                     try (TUint8 batchImages = TUint8.tensorOf(imageNdArray);
                          TUint8 batchLabels = TUint8.tensorOf(labelNdArray)) {
                         TFloat32 loss = (TFloat32) session.runner()
@@ -158,18 +140,18 @@ public class tensorTrainer {
         }
     }
 
-    public static void test(Session session, ByteNdArray byteNdArray, ByteNdArray labelarray) {
+    public static void test(Session session, ByteNdArray byteNdArray, ByteNdArray labeler) {
         int correctCount = 0;
         int[][] confusionMatrix = new int[10][10];
 
         for (int i = 0; i < 10; i++) {
             try (TUint8 transformedInput = TUint8.tensorOf(byteNdArray);
                  TFloat32 outputTensor = (TFloat32) session.runner()
-                         .feed(INPUT_NAME, transformedInput)
-                         .fetch(OUTPUT_NAME).run().get(0)) {
+                         .feed("input", transformedInput)
+                         .fetch("output").run().get(0)) {
 
-                for (int k = 0; k < labelarray.shape().size(0); k++) {
-                    byte trueLabel = labelarray.getByte(k);
+                for (int k = 0; k < labeler.shape().size(0); k++) {
+                    byte trueLabel = labeler.getByte(k);
                     int predLabel;
 
                     predLabel = argmax(outputTensor.slice(Indices.at(k), Indices.all()));
@@ -182,14 +164,9 @@ public class tensorTrainer {
             }
         }
 
-        System.out.println("Final accuracy = " + ((float) correctCount) / labelarray.shape().size(0));
-
+        System.out.println("Final accuracy = " + ((float) correctCount) / labeler.shape().size(0));
         StringBuilder sb = getStringBuilder(confusionMatrix);
-
         System.out.println(sb);
-
-        session.save("/Users/gregor/Desktop/modeltest");
-
     }
 
     private static StringBuilder getStringBuilder(int[][] confusionMatrix) {
@@ -267,8 +244,8 @@ public class tensorTrainer {
     }
 
     private static TFloat32 preprocessImage(BufferedImage img) {
-        int targetWidth = 224;
-        int targetHeight = 224;
+        int targetWidth = IMAGE_SIZE;
+        int targetHeight = IMAGE_SIZE;
 
         // Convert image to RGB format if it's not already in that format
         if (img.getType() != BufferedImage.TYPE_INT_RGB) {
@@ -300,7 +277,7 @@ public class tensorTrainer {
         System.out.println("Model saved to " + exportDir + "/model.pb");
     }
 
-    public void access(String folder) throws IOException {
+    public static void access(String folder) throws IOException {
         nu.pattern.OpenCV.loadLocally();
         imageTensors = new ArrayList<>();
         labelTensors = new ArrayList<>();
@@ -310,7 +287,7 @@ public class tensorTrainer {
         System.out.println("Dataset loaded. Number of photos: " + imageTensors.size());
 
         // Convert imageTensors list to ByteNdArray
-        ByteNdArray imageNdArray = NdArrays.ofBytes(Shape.of(imageTensors.size(), 224, 224, 3));
+        ByteNdArray imageNdArray = NdArrays.ofBytes(Shape.of(imageTensors.size(), IMAGE_SIZE, IMAGE_SIZE, NUM_CHANNELS));
         for (int i = 0; i < imageTensors.size(); i++) {
             imageNdArray.slice(Indices.at(i)).copyFrom(imageTensors.get(i).asRawTensor().data());
         }
