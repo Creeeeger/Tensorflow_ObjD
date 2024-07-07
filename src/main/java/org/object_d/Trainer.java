@@ -292,7 +292,7 @@ public class Trainer extends JFrame {
 
                     // Send a command to the shell
                     commandWriter.println("cd stable_diff_env");
-                    commandWriter.println("./webui.sh --skip-install");
+                    commandWriter.println("bash webui.sh --skip-install");
                     commandWriter.flush();
 
                     // Get the output of the command
