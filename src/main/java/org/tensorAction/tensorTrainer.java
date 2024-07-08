@@ -29,15 +29,12 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import java.util.*;
 
 public class tensorTrainer {
     private static final int PIXEL_DEPTH = 255;
     private static final int NUM_CHANNELS = 3;
-    private static final int IMAGE_SIZE = 40;
-    private static final int NUM_LABELS = 10;
+    private static final int IMAGE_SIZE = 32;
     private static final long SEED = 123456789L;
     private static final String PADDING_TYPE = "SAME";
     static File[] classDirs;
@@ -85,8 +82,8 @@ public class tensorTrainer {
         Relu<TFloat32> relu3 = tf.nn.relu(tf.math.add(tf.linalg.matMul(flatten, fc1Weights), fc1Biases));
 
         // Softmax layer
-        Variable<TFloat32> fc2Weights = tf.variable(tf.math.mul(tf.random.truncatedNormal(tf.array(512, NUM_LABELS), TFloat32.class, TruncatedNormal.seed(SEED)), tf.constant(0.1f)));
-        Variable<TFloat32> fc2Biases = tf.variable(tf.fill(tf.array(NUM_LABELS), tf.constant(0.1f)));
+        Variable<TFloat32> fc2Weights = tf.variable(tf.math.mul(tf.random.truncatedNormal(tf.array(512, classDirs.length), TFloat32.class, TruncatedNormal.seed(SEED)), tf.constant(0.1f)));
+        Variable<TFloat32> fc2Biases = tf.variable(tf.fill(tf.array(classDirs.length), tf.constant(0.1f)));
 
         Add<TFloat32> logits = tf.math.add(tf.linalg.matMul(relu3, fc2Weights), fc2Biases);
 
@@ -94,14 +91,14 @@ public class tensorTrainer {
         tf.withName("output").nn.softmax(logits);
 
         // Loss function & regularization
-        OneHot<TFloat32> oneHot = tf.oneHot(labels, tf.constant(10), tf.constant(1.0f), tf.constant(0.0f));
+        OneHot<TFloat32> oneHot = tf.oneHot(labels, tf.constant(classDirs.length), tf.constant(1.0f), tf.constant(0.0f));
         SoftmaxCrossEntropyWithLogits<TFloat32> batchLoss = tf.nn.softmaxCrossEntropyWithLogits(logits, oneHot);
         Mean<TFloat32> labelLoss = tf.math.mean(batchLoss.loss(), tf.constant(0));
         Add<TFloat32> regularizes = tf.math.add(tf.nn.l2Loss(fc1Weights), tf.math.add(tf.nn.l2Loss(fc1Biases), tf.math.add(tf.nn.l2Loss(fc2Weights), tf.nn.l2Loss(fc2Biases))));
         Add<TFloat32> loss = tf.withName("training_loss").math.add(labelLoss, tf.math.mul(regularizes, tf.constant(5e-4f)));
 
         // Optimizer
-        Optimizer optimizer = new Adam(graph, 0.0001f, 0.9f, 0.999f, 5e-4f);
+        Optimizer optimizer = new Adam(graph, 0.001f, 0.9f, 0.999f, 5e-4f);
 
         System.out.println("Optimizer = " + optimizer);
         optimizer.minimize(loss, "train");
@@ -115,7 +112,7 @@ public class tensorTrainer {
     }
 
     public static void train(List<TFloat32> imageTensors, List<TFloat32> labelTensors) {
-        int batchSize = 8;
+        int batchSize = 16;
         int numBatches = (int) Math.ceil(imageTensors.size() / (double) batchSize);
 
         try (Graph graph = build()) {
@@ -158,53 +155,44 @@ public class tensorTrainer {
         }
     }
 
-    public static void test(Session session, List<TFloat32> byteNdArray, List<TFloat32> labeler) {
+    public static void test(Session session, List<TFloat32> imageTensors, List<TFloat32> labelTensors) {
         int correctCount = 0;
-        int[][] confusionMatrix = new int[10][10];
+        int[][] confusionMatrix = new int[classDirs.length][classDirs.length];
 
         // Iterate over each test data sample
-        for (int i = 0; i < byteNdArray.size(); i++) {
-            TFloat32 tFloat32 = byteNdArray.get(i);
-            TFloat32 trueLabelTensor = labeler.get(i);
+        for (int i = 0; i < imageTensors.size(); i++) {
+            TFloat32 imageTensor = imageTensors.get(i);
+            TFloat32 trueLabelTensor = labelTensors.get(i);
 
-            try (TUint8 transformedInput = TUint8.tensorOf(tFloat32.shape())) {
-                // Assuming "input" is the placeholder name in your TensorFlow model
-                session.runner()
+            try (TUint8 transformedInput = TUint8.tensorOf(imageTensor.shape())) {
+                transformedInput.copyFrom(imageTensor.asRawTensor().data());
+
+                // Perform prediction
+                TFloat32 outputTensor = (TFloat32) session.runner()
                         .feed("input", transformedInput)
                         .fetch("output")
                         .run()
                         .get(0);
 
-                int trueLabel;
+                // Convert trueLabelTensor to an integer
+                int trueLabel = argmax(trueLabelTensor);
 
-                // Attempt to retrieve the true label, set to 0 if exception occurs
-                try {
-                    trueLabel = trueLabelTensor.asRawTensor().data().asInts().getInt(i) / 1000353216;
-                } catch (IndexOutOfBoundsException e) {
-                    continue;
+                // Get predicted label
+                int predLabel = argmax(outputTensor.slice(Indices.at(0), Indices.all()));
+
+                System.out.println(predLabel + " pred");
+
+                // Compare prediction with true label
+                if (predLabel == trueLabel) {
+                    correctCount++;
                 }
 
-                // Perform prediction and update confusion matrix
-                try (TFloat32 outputTensor = (TFloat32) session.runner()
-                        .feed("input", transformedInput)
-                        .fetch("output")
-                        .run()
-                        .get(0)) {
-
-                    // Perform prediction
-                    int predLabel = argmax(outputTensor.slice(Indices.at(0), Indices.all()));
-
-                    // Compare prediction with true label
-                    if (predLabel == trueLabel) {
-                        correctCount++;
-                    }
-
-                    // Update confusion matrix
-                    confusionMatrix[trueLabel][predLabel]++;
-                }
+                // Update confusion matrix
+                confusionMatrix[trueLabel][predLabel]++;
             }
         }
-        System.out.println("Final accuracy = " + (((float) correctCount) / byteNdArray.size()) * 100 + "%");
+
+        System.out.println("Final accuracy = " + (((float) correctCount) / imageTensors.size()) * 100 + "%");
 
         StringBuilder sb = getStringBuilder(confusionMatrix);
         System.out.println(sb);
@@ -244,9 +232,14 @@ public class tensorTrainer {
     public static void loadDataset(String dataDir, List<TFloat32> imageTensors, List<TFloat32> labelTensors) throws IOException {
         classDirs = new File(dataDir).listFiles(File::isDirectory);
         if (classDirs != null) {
+            Map<String, Integer> classLabelMap = new HashMap<>();
+            for (int i = 0; i < classDirs.length; i++) {
+                classLabelMap.put(classDirs[i].getName(), i);
+            }
+
             for (File classDir : classDirs) {
                 String className = classDir.getName();
-                int classLabel = getClassLabel(className);
+                int classLabel = classLabelMap.get(className);
                 File[] imageFiles = classDir.listFiles((dir, name) -> name.toLowerCase().endsWith(".jpg"));
                 if (imageFiles != null) {
                     for (File imageFile : imageFiles) {
@@ -273,44 +266,18 @@ public class tensorTrainer {
         return TFloat32.tensorOf(StdArrays.ndCopyOf(labelArray));
     }
 
-    private static int getClassLabel(String className) {
-        return switch (className) {
-            case "daisy" -> 0;
-            case "dandelion" -> 1;
-            case "roses" -> 2;
-            case "sunflowers" -> 3;
-            case "tulips" -> 4;
-            default -> throw new IllegalArgumentException("unknown class: " + className);
-        };
-    }
-
     private static TFloat32 preprocessImage(BufferedImage img) {
-        int targetWidth = IMAGE_SIZE;
-        int targetHeight = IMAGE_SIZE;
-
-        // Convert image to RGB format if it's not already in that format
-        if (img.getType() != BufferedImage.TYPE_INT_RGB) {
-            BufferedImage rgbImage = new BufferedImage(img.getWidth(), img.getHeight(), BufferedImage.TYPE_INT_RGB);
-            rgbImage.getGraphics().drawImage(img, 0, 0, null);
-            img = rgbImage;
+        float[] imgData = new float[IMAGE_SIZE * IMAGE_SIZE * NUM_CHANNELS];
+        int[] rgbArray = img.getRGB(0, 0, IMAGE_SIZE, IMAGE_SIZE, null, 0, IMAGE_SIZE);
+        for (int i = 0; i < rgbArray.length; i++) {
+            int pixel = rgbArray[i];
+            imgData[i * 3] = ((pixel >> 16) & 0xFF) / 255.0f;
+            imgData[i * 3 + 1] = ((pixel >> 8) & 0xFF) / 255.0f;
+            imgData[i * 3 + 2] = (pixel & 0xFF) / 255.0f;
         }
-
-        // Resize image to target dimensions
-        BufferedImage resizedImg = new BufferedImage(targetWidth, targetHeight, BufferedImage.TYPE_INT_RGB);
-        resizedImg.getGraphics().drawImage(img.getScaledInstance(targetWidth, targetHeight, BufferedImage.SCALE_SMOOTH), 0, 0, null);
-
-        // Prepare array for TensorFlow tensor
-        float[][][][] imgArray = new float[1][targetHeight][targetWidth][3];
-        for (int y = 0; y < targetHeight; y++) {
-            for (int x = 0; x < targetWidth; x++) {
-                int rgb = resizedImg.getRGB(x, y);
-                imgArray[0][y][x][0] = ((rgb >> 16) & 0xFF) / 255.0f; // Red channel
-                imgArray[0][y][x][1] = ((rgb >> 8) & 0xFF) / 255.0f;  // Green channel
-                imgArray[0][y][x][2] = (rgb & 0xFF) / 255.0f;         // Blue channel
-            }
-        }
-        return TFloat32.tensorOf(StdArrays.ndCopyOf(imgArray));
+        return TFloat32.tensorOf(StdArrays.ndCopyOf(new float[][][]{new float[][]{imgData}}));
     }
+
 
     private static void saveModel(Graph graph, Session session, String exportDir) throws IOException {
         session.save("/Users/gregor/Desktop/model");
@@ -330,4 +297,3 @@ public class tensorTrainer {
         train(imageTensors, labelTensors);
     }
 }
-//Fix training process!!!
