@@ -95,10 +95,10 @@ public class tensorTrainer {
         SoftmaxCrossEntropyWithLogits<TFloat32> batchLoss = tf.nn.softmaxCrossEntropyWithLogits(logits, oneHot);
         Mean<TFloat32> labelLoss = tf.math.mean(batchLoss.loss(), tf.constant(0));
         Add<TFloat32> regularizes = tf.math.add(tf.nn.l2Loss(fc1Weights), tf.math.add(tf.nn.l2Loss(fc1Biases), tf.math.add(tf.nn.l2Loss(fc2Weights), tf.nn.l2Loss(fc2Biases))));
-        Add<TFloat32> loss = tf.withName("training_loss").math.add(labelLoss, tf.math.mul(regularizes, tf.constant(5e-4f)));
+        Add<TFloat32> loss = tf.withName("training_loss").math.add(labelLoss, tf.math.mul(regularizes, tf.constant(8e-4f)));
 
         // Optimizer
-        Optimizer optimizer = new Adam(graph, 0.001f, 0.9f, 0.999f, 5e-4f);
+        Optimizer optimizer = new Adam(graph, 0.001f, 0.9f, 0.999f, 8e-4f);
 
         System.out.println("Optimizer = " + optimizer);
         optimizer.minimize(loss, "train");
@@ -112,7 +112,7 @@ public class tensorTrainer {
     }
 
     public static void train(List<TFloat32> imageTensors, List<TFloat32> labelTensors) {
-        int batchSize = 16;
+        int batchSize = 32;
         int numBatches = (int) Math.ceil(imageTensors.size() / (double) batchSize);
 
         try (Graph graph = build()) {
@@ -140,6 +140,7 @@ public class tensorTrainer {
                                     .fetch("training_loss")
                                     .run().get(0);
                             System.out.println("Epoch " + epoch + ", Batch " + batch + " Loss: " + loss.getFloat());
+                            test2(session, imageTensors, labelTensors);
                         }
                     }
                 }
@@ -161,11 +162,8 @@ public class tensorTrainer {
 
         // Iterate over each test data sample
         for (int i = 0; i < imageTensors.size(); i++) {
-            TFloat32 imageTensor = imageTensors.get(i);
-            TFloat32 trueLabelTensor = labelTensors.get(i);
-
-            try (TUint8 transformedInput = TUint8.tensorOf(imageTensor.shape())) {
-                transformedInput.copyFrom(imageTensor.asRawTensor().data());
+            try (TUint8 transformedInput = TUint8.tensorOf(imageTensors.get(i).asRawTensor().shape())) {
+                transformedInput.copyFrom(imageTensors.get(i).asRawTensor().data());
 
                 // Perform prediction
                 TFloat32 outputTensor = (TFloat32) session.runner()
@@ -175,27 +173,54 @@ public class tensorTrainer {
                         .get(0);
 
                 // Convert trueLabelTensor to an integer
-                int trueLabel = argmax(trueLabelTensor);
+                int trueLabel = argmax(labelTensors.get(i));
 
                 // Get predicted label
-                int predLabel = argmax(outputTensor.slice(Indices.at(0), Indices.all()));
+                int predLabel = argmax2(outputTensor.slice(Indices.at(0), Indices.all()));
 
-                System.out.println(predLabel + " pred");
+                // Compare prediction with true label
+                if (predLabel == trueLabel) {
+                    correctCount++;
+
+                    // Update confusion matrix
+                    confusionMatrix[trueLabel][predLabel]++;
+                }
+            }
+        }
+
+        System.out.println("Final accuracy = " + (((float) correctCount) / imageTensors.size()) * 100 + "%");
+        StringBuilder sb = getStringBuilder(confusionMatrix);
+        System.out.println(sb);
+    }
+    public static void test2(Session session, List<TFloat32> imageTensors, List<TFloat32> labelTensors) {
+        int correctCount = 0;
+
+        // Iterate over each test data sample
+        for (int i = 0; i < imageTensors.size(); i++) {
+            try (TUint8 transformedInput = TUint8.tensorOf(imageTensors.get(i).asRawTensor().shape())) {
+                transformedInput.copyFrom(imageTensors.get(i).asRawTensor().data());
+
+                // Perform prediction
+                TFloat32 outputTensor = (TFloat32) session.runner()
+                        .feed("input", transformedInput)
+                        .fetch("output")
+                        .run()
+                        .get(0);
+
+                // Convert trueLabelTensor to an integer
+                int trueLabel = argmax(labelTensors.get(i));
+
+                // Get predicted label
+                int predLabel = argmax2(outputTensor.slice(Indices.at(0), Indices.all()));
 
                 // Compare prediction with true label
                 if (predLabel == trueLabel) {
                     correctCount++;
                 }
-
-                // Update confusion matrix
-                confusionMatrix[trueLabel][predLabel]++;
             }
         }
 
-        System.out.println("Final accuracy = " + (((float) correctCount) / imageTensors.size()) * 100 + "%");
-
-        StringBuilder sb = getStringBuilder(confusionMatrix);
-        System.out.println(sb);
+        System.out.print("Final accuracy = " + (((float) correctCount) / imageTensors.size()) * 100 + "% - ");
     }
 
     private static StringBuilder getStringBuilder(int[][] confusionMatrix) {
@@ -222,6 +247,20 @@ public class tensorTrainer {
         for (int i = 0; i < probabilities.shape().get(0); i++) {
             float curVal = probabilities.getFloat(i);
             if (curVal > maxVal) {
+                maxVal = curVal;
+                idx = i;
+            }
+        }
+        return idx;
+    }
+
+    public static int argmax2(FloatNdArray probabilities) {
+        float maxVal = Float.NEGATIVE_INFINITY;
+        int idx = 0;
+        for (int i = 0; i < probabilities.shape().get(0); i++) {
+            float curVal = probabilities.getFloat(i);
+
+            if (curVal > maxVal && curVal < 1 && curVal > 0) {
                 maxVal = curVal;
                 idx = i;
             }
