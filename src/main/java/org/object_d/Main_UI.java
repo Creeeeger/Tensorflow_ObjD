@@ -1,6 +1,5 @@
 package org.object_d;
 
-import org.tensorAction.detector;
 import org.tensorflow.SavedModelBundle;
 
 import javax.swing.*;
@@ -22,7 +21,7 @@ public class Main_UI extends JFrame {
     public File tensor_file = new File("/");
     public File picture = new File("/");
     public JButton detect;
-    public boolean setting1, setting2, setting3, setting4;
+    public int resolution, epochs, batch, learning;
     SavedModelBundle savedModelBundle;
 
     public Main_UI() {
@@ -136,14 +135,14 @@ public class Main_UI extends JFrame {
         gui.setTitle("Object Detector UI");
     }
 
-    public void save_reload_config(boolean setting1, boolean setting2, boolean setting3, boolean setting4, String pic, String ten) {
+    public void save_reload_config(int res, int epo, int bat, int lea, String pic, String ten) {
         String[][] values = {
                 {"img_path", pic},
                 {"ts_path", ten},
-                {"setting1", String.valueOf(setting1)},
-                {"setting2", String.valueOf(setting2)},
-                {"setting3", String.valueOf(setting3)},
-                {"setting4", String.valueOf(setting4)}
+                {"resolution", String.valueOf(res)},
+                {"batch", String.valueOf(epo)},
+                {"epochs", String.valueOf(bat)},
+                {"learning", String.valueOf(lea)}
         };
         config_handler.save_config(values);
 
@@ -183,17 +182,17 @@ public class Main_UI extends JFrame {
                         ex.printStackTrace();
                     }
                     break;
-                case "setting1":
-                    setting1 = Boolean.parseBoolean(value[1]);
+                case "resolution":
+                    resolution = Integer.parseInt(value[1]);
                     break;
-                case "setting2":
-                    setting2 = Boolean.parseBoolean(value[1]);
+                case "batch":
+                    epochs = Integer.parseInt(value[1]);
                     break;
-                case "setting3":
-                    setting3 = Boolean.parseBoolean(value[1]);
+                case "epochs":
+                    batch = Integer.parseInt(value[1]);
                     break;
-                case "setting4":
-                    setting4 = Boolean.parseBoolean(value[1]);
+                case "learning":
+                    learning = Integer.parseInt(value[1]);
                     break;
                 default:
                     System.out.println("Unknown setting: " + value[0]);
@@ -258,10 +257,10 @@ public class Main_UI extends JFrame {
             String[][] values = {
                     {"img_path", picture.getPath()},
                     {"ts_path", tensor_file.getPath()},
-                    {"setting1", String.valueOf(setting1)},
-                    {"setting2", String.valueOf(setting2)},
-                    {"setting3", String.valueOf(setting3)},
-                    {"setting4", String.valueOf(setting4)}
+                    {"resolution", String.valueOf(resolution)},
+                    {"batch", String.valueOf(epochs)},
+                    {"epochs", String.valueOf(batch)},
+                    {"learning", String.valueOf(learning)}
             };
             config_handler.save_config(values);
             System.exit(0);
@@ -275,8 +274,7 @@ public class Main_UI extends JFrame {
             savedModelBundle = SavedModelBundle.load(tensor_file.getPath(), "serve");
             System.out.println("Model loaded");
             String[] result_array;
-            detector detector = new detector();
-            result_array = detector.classify(image_path.getText(), savedModelBundle);
+            result_array = org.tensorAction.detector.classify(image_path.getText(), savedModelBundle);
 
             File imagePath = new File(result_array[0]);
             ImageIcon icon = new ImageIcon(String.valueOf(imagePath));
