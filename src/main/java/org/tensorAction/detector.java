@@ -38,8 +38,7 @@ public class detector {
             "hair brush"
     };
 
-    public String[] classify(String imagePath, SavedModelBundle ModelBundle) {
-
+    public static String[] classify(String imagePath, SavedModelBundle ModelBundle) {
         //Base logic for returning image path and labels
         String[] returnArray = new String[2];
         returnArray[0] = imagePath;

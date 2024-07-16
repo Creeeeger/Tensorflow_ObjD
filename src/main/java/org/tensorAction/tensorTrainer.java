@@ -3,6 +3,9 @@ package org.tensorAction;
 import org.tensorflow.Graph;
 import org.tensorflow.Operand;
 import org.tensorflow.Session;
+import org.tensorflow.framework.GraphDef;
+import org.tensorflow.framework.MetaGraphDef;
+import org.tensorflow.framework.SavedModel;
 import org.tensorflow.framework.optimizers.Adam;
 import org.tensorflow.framework.optimizers.Optimizer;
 import org.tensorflow.ndarray.FloatNdArray;
@@ -106,18 +109,13 @@ public class tensorTrainer {
         return graph;
     }
 
-    public static void main(String[] args) throws IOException {
-        String dataDir = "/Users/gregor/Desktop/Tensorflow_ObjD/flower_photos";
-        access(dataDir);
-    }
-
     public static void train(List<TFloat32> imageTensors, List<TFloat32> labelTensors) {
         int batchSize = 32;
         int numBatches = (int) Math.ceil(imageTensors.size() / (double) batchSize);
 
         try (Graph graph = build()) {
             try (Session session = new Session(graph)) {
-                for (int epoch = 0; epoch < 100; epoch++) {
+                for (int epoch = 0; epoch < 2; epoch++) {
                     for (int batch = 0; batch < numBatches; batch++) {
                         long start = (long) batch * batchSize;
                         long end = Math.min(start + batchSize, imageTensors.size());
@@ -146,9 +144,10 @@ public class tensorTrainer {
                 }
 
                 test(session, imageTensors, labelTensors);
-
+                String currentDir = Paths.get("").toAbsolutePath().toString();
+                String parentDir = Paths.get(currentDir).getParent().toString();
                 try {
-                    saveModel(graph, session, "/Users/gregor/Desktop");
+                    saveModel(graph, session, parentDir);
                 } catch (IOException e) {
                     throw new RuntimeException(e);
                 }
@@ -192,6 +191,7 @@ public class tensorTrainer {
         StringBuilder sb = getStringBuilder(confusionMatrix);
         System.out.println(sb);
     }
+
     public static void test2(Session session, List<TFloat32> imageTensors, List<TFloat32> labelTensors) {
         int correctCount = 0;
 
@@ -319,10 +319,23 @@ public class tensorTrainer {
 
 
     private static void saveModel(Graph graph, Session session, String exportDir) throws IOException {
-        session.save("/Users/gregor/Desktop/model");
-        Files.write(Paths.get(exportDir, "model.pb"), graph.toGraphDef().toByteArray());
-        System.out.println("Model saved to " + exportDir + "/model.pb");
+        MetaGraphDef.Builder metaGraphDefBuilder = MetaGraphDef.newBuilder();
+        metaGraphDefBuilder.setGraphDef(GraphDef.parseFrom(graph.toGraphDef().toByteArray()));
+
+        // Create MetaInfoDef and add serve tag
+        MetaGraphDef.MetaInfoDef.Builder metaInfoDefBuilder = MetaGraphDef.MetaInfoDef.newBuilder();
+        metaInfoDefBuilder.addTags("serve");  // Use addTags method to add a tag to the list
+
+        metaGraphDefBuilder.setMetaInfoDef(metaInfoDefBuilder.build());  // Set the built MetaInfoDef
+
+        SavedModel.Builder builder = SavedModel.newBuilder();
+        builder.addMetaGraphs(metaGraphDefBuilder);
+
+        session.save(exportDir + "/saved_model");
+        Files.write(Paths.get(exportDir, "saved_model.pb"), builder.build().toByteArray());
+        System.out.println("Model saved to " + exportDir + "/saved_model.pb");
     }
+
 
     public static void access(String folder) throws IOException {
         nu.pattern.OpenCV.loadLocally();
