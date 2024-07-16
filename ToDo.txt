@@ -4,12 +4,6 @@ Config handler:
 Model param:
     //Use right settings which we actually need
 
-Tensor Trainer:
-    //Fix training process
-
-----------
-model creation (tensor Trainer file)
-
 ------------
 clean Up project
 General Code Polishing and bug fixes / Testing
