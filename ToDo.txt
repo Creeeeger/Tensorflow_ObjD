@@ -1,8 +1,5 @@
-Config handler:
-    //Add required config values which we actually need
-
-Model param:
-    //Use right settings which we actually need
+Tensor Trainer:
+    Integrate the values which we got from the config
 
 ------------
 clean Up project

@@ -96,8 +96,6 @@ public class config_handler {
     }
 
     public static void create_config() {
-        //Add required config values!!!
-
         try {
             DocumentBuilderFactory builderFactory = DocumentBuilderFactory.newInstance();
             DocumentBuilder builder = builderFactory.newDocumentBuilder();
@@ -113,21 +111,21 @@ public class config_handler {
             database_path.appendChild(doc.createTextNode("/"));
             root.appendChild(database_path);
 
-            Element setting1 = doc.createElement("setting1");
-            setting1.appendChild(doc.createTextNode("true"));
-            root.appendChild(setting1);
+            Element resolution = doc.createElement("resolution");
+            resolution.appendChild(doc.createTextNode("32"));
+            root.appendChild(resolution);
 
-            Element setting2 = doc.createElement("setting2");
-            setting2.appendChild(doc.createTextNode("true"));
-            root.appendChild(setting2);
+            Element batch = doc.createElement("batch");
+            batch.appendChild(doc.createTextNode("100"));
+            root.appendChild(batch);
 
-            Element setting3 = doc.createElement("setting3");
-            setting3.appendChild(doc.createTextNode("true"));
-            root.appendChild(setting3);
+            Element epochs = doc.createElement("epochs");
+            epochs.appendChild(doc.createTextNode("32"));
+            root.appendChild(epochs);
 
-            Element setting4 = doc.createElement("setting4");
-            setting4.appendChild(doc.createTextNode("true"));
-            root.appendChild(setting4);
+            Element learning = doc.createElement("learning");
+            learning.appendChild(doc.createTextNode("0.001"));
+            root.appendChild(learning);
 
             //Set new keys on demand here
             TransformerFactory transformerFactory = TransformerFactory.newInstance();
@@ -144,4 +142,3 @@ public class config_handler {
         }
     }
 }
-//Add required config values

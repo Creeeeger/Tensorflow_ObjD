@@ -6,12 +6,9 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 
 public class model_param extends JFrame {
-    private final JCheckBox setting1;
-    private final JCheckBox setting2;
-    private final JCheckBox setting3;
-    private final JCheckBox setting4;
-    private final String pic;  // Add instance variable for pic
-    private final String ten;  // Add instance variable for ten
+    JTextField resolution, epochs, batch, learning;
+    JLabel resolution_desc, epochs_desc, batch_desc, learning_desc, infos;
+    String pic, ten;
 
     public model_param(String pic, String ten) {
         setLayout(new BorderLayout(10, 10)); // Use BorderLayout with spacing
@@ -21,24 +18,41 @@ public class model_param extends JFrame {
 
         JPanel settingsPanel = new JPanel();
         settingsPanel.setLayout(new BoxLayout(settingsPanel, BoxLayout.Y_AXIS));
-        settingsPanel.setBorder(BorderFactory.createTitledBorder("Model Parameters")); // Add border with title
+        settingsPanel.setBorder(BorderFactory.createTitledBorder("Model Parameters for training models")); // Add border with title
 
-        JLabel infos = new JLabel("Select your settings and then press apply");
+        infos = new JLabel("Select your settings and then press apply");
         settingsPanel.add(infos);
         settingsPanel.add(Box.createRigidArea(new Dimension(0, 10))); // Add space between components
 
-        setting1 = new JCheckBox("Setting 1", false);
-        setting2 = new JCheckBox("Setting 2", false);
-        setting3 = new JCheckBox("Setting 3", false);
-        setting4 = new JCheckBox("Setting 4", false);
+        resolution_desc = new JLabel("Picture size - to x * x pixel the images will be downscaled first before processing (larger value more information but longer processing time)");
+        resolution = new JTextField("32", 4);
 
-        settingsPanel.add(setting1);
-        settingsPanel.add(Box.createRigidArea(new Dimension(0, 5))); // Add space between components
-        settingsPanel.add(setting2);
+        epochs_desc = new JLabel("Epochs - How many training rounds");
+        epochs = new JTextField("100", 4);
+
+        batch_desc = new JLabel("Batch size - how many images should be used for training at once");
+        batch = new JTextField("32", 4);
+
+        learning_desc = new JLabel("learning rate - how fast the model should learn (be careful with extreme values)");
+        learning = new JTextField("0.001", 10);
+
+        // Add space between components
+        settingsPanel.add(resolution_desc);
         settingsPanel.add(Box.createRigidArea(new Dimension(0, 5)));
-        settingsPanel.add(setting3);
+        settingsPanel.add(resolution);
         settingsPanel.add(Box.createRigidArea(new Dimension(0, 5)));
-        settingsPanel.add(setting4);
+        settingsPanel.add(epochs_desc);
+        settingsPanel.add(Box.createRigidArea(new Dimension(0, 5)));
+        settingsPanel.add(epochs);
+        settingsPanel.add(Box.createRigidArea(new Dimension(0, 5)));
+        settingsPanel.add(batch_desc);
+        settingsPanel.add(Box.createRigidArea(new Dimension(0, 5)));
+        settingsPanel.add(batch);
+        settingsPanel.add(Box.createRigidArea(new Dimension(0, 5)));
+        settingsPanel.add(learning_desc);
+        settingsPanel.add(Box.createRigidArea(new Dimension(0, 5)));
+        settingsPanel.add(learning);
+        settingsPanel.add(Box.createRigidArea(new Dimension(0, 5)));
 
         JButton apply = new JButton("Apply Settings");
         apply.setAlignmentX(Component.CENTER_ALIGNMENT); // Center the button
@@ -46,7 +60,6 @@ public class model_param extends JFrame {
         settingsPanel.add(apply);
 
         add(settingsPanel, BorderLayout.CENTER);
-
         apply.addActionListener(new apply_event());
     }
 
@@ -54,14 +67,19 @@ public class model_param extends JFrame {
 
         @Override
         public void actionPerformed(ActionEvent e) {
-            boolean isSetting1Selected = setting1.isSelected();
-            boolean isSetting2Selected = setting2.isSelected();
-            boolean isSetting3Selected = setting3.isSelected();
-            boolean isSetting4Selected = setting4.isSelected();
-            Main_UI mainUI = new Main_UI();
-            mainUI.save_reload_config(isSetting1Selected, isSetting2Selected, isSetting3Selected, isSetting4Selected, pic, ten);
-            setVisible(false);
+            try {
+                int res = Integer.parseInt(resolution.getText());
+                int epo = Integer.parseInt(epochs.getText());
+                int bat = Integer.parseInt(batch.getText());
+                int lea = Integer.parseInt(learning.getText());
+                Main_UI mainUI = new Main_UI();
+                mainUI.save_reload_config(res, epo, bat, lea, pic, ten);
+                setVisible(false);
+
+            } catch (Exception x) {
+                infos.setText("Wrong input in the text fields");
+                System.out.println("Wrong input in the text fields");
+            }
         }
     }
 }
-//Use right settings which we actually need!!!
