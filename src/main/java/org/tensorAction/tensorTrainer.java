@@ -1,5 +1,6 @@
 package org.tensorAction;
 
+import org.object_d.Main_UI;
 import org.tensorflow.Graph;
 import org.tensorflow.Operand;
 import org.tensorflow.Session;
@@ -37,7 +38,7 @@ import java.util.*;
 public class tensorTrainer {
     private static final int PIXEL_DEPTH = 255;
     private static final int NUM_CHANNELS = 3;
-    private static final int IMAGE_SIZE = 32;
+    private static final int IMAGE_SIZE = Main_UI.resolution;
     private static final long SEED = 123456789L;
     private static final String PADDING_TYPE = "SAME";
     static File[] classDirs;
@@ -101,7 +102,7 @@ public class tensorTrainer {
         Add<TFloat32> loss = tf.withName("training_loss").math.add(labelLoss, tf.math.mul(regularizes, tf.constant(8e-4f)));
 
         // Optimizer
-        Optimizer optimizer = new Adam(graph, 0.001f, 0.9f, 0.999f, 8e-4f);
+        Optimizer optimizer = new Adam(graph, Main_UI.learning, 0.9f, 0.999f, 8e-4f);
 
         System.out.println("Optimizer = " + optimizer);
         optimizer.minimize(loss, "train");
@@ -110,12 +111,12 @@ public class tensorTrainer {
     }
 
     public static void train(List<TFloat32> imageTensors, List<TFloat32> labelTensors) {
-        int batchSize = 32;
+        int batchSize = Main_UI.batch;
         int numBatches = (int) Math.ceil(imageTensors.size() / (double) batchSize);
 
         try (Graph graph = build()) {
             try (Session session = new Session(graph)) {
-                for (int epoch = 0; epoch < 2; epoch++) {
+                for (int epoch = 0; epoch < Main_UI.epochs; epoch++) {
                     for (int batch = 0; batch < numBatches; batch++) {
                         long start = (long) batch * batchSize;
                         long end = Math.min(start + batchSize, imageTensors.size());

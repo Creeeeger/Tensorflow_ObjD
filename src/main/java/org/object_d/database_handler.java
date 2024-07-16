@@ -145,8 +145,8 @@ public class database_handler {
             String name;
             int amount;
         }
-        Connection connection = null;
-        Statement statement = null;
+        Connection connection;
+        Statement statement;
         ArrayList<entries> data = new ArrayList<>();
         try {
             File dbfile = new File("results.db");
@@ -172,7 +172,7 @@ public class database_handler {
                 throw new Exception("File Not Found");
             }
         } catch (Exception e) {
-            System.out.println(e);
+            System.out.println(e.getMessage());
         }
         return null;
     }

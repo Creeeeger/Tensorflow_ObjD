@@ -11,18 +11,21 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import java.util.Objects;
 
+import static org.object_d.config_handler.load_config;
+
 public class Main_UI extends JFrame {
-    public JLabel label, img, image_path, model_path, result, output_img;
-    public JMenuBar menuBar;
-    public JMenu file, model, database, model_trainer;
-    public JMenuItem exit, load, load_database, reset_database, load_model, set_params, restore_last, train_model;
-    public JScrollPane scrollPane;
-    public JPanel leftPanel, rightPanel; // Panels for left and right boxes
-    public File tensor_file = new File("/");
-    public File picture = new File("/");
-    public JButton detect;
-    public int resolution, epochs, batch, learning;
-    SavedModelBundle savedModelBundle;
+    public static JLabel label, img, image_path, model_path, result, output_img;
+    public static JMenuBar menuBar;
+    public static JMenu file, model, database, model_trainer;
+    public static JMenuItem exit, load, load_database, reset_database, load_model, set_params, restore_last, train_model;
+    public static JScrollPane scrollPane;
+    public static JPanel leftPanel, rightPanel; // Panels for left and right boxes
+    public static File tensor_file = new File("/");
+    public static File picture = new File("/");
+    public static JButton detect;
+    public static int resolution, epochs, batch;
+    public static float learning;
+    static SavedModelBundle savedModelBundle;
 
     public Main_UI() {
         setLayout(new GridLayout(1, 2, 10, 10)); // Use horizontal grid layout with spacing
@@ -128,6 +131,10 @@ public class Main_UI extends JFrame {
             org.object_d.config_handler.create_config();
             System.out.println("Config Created");
         }
+
+        String[][] values_load = load_config();
+        setValues(values_load);
+
         Main_UI gui = new Main_UI();
         gui.setVisible(true);
         gui.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -135,22 +142,7 @@ public class Main_UI extends JFrame {
         gui.setTitle("Object Detector UI");
     }
 
-    public void save_reload_config(int res, int epo, int bat, int lea, String pic, String ten) {
-        String[][] values = {
-                {"img_path", pic},
-                {"ts_path", ten},
-                {"resolution", String.valueOf(res)},
-                {"batch", String.valueOf(epo)},
-                {"epochs", String.valueOf(bat)},
-                {"learning", String.valueOf(lea)}
-        };
-        config_handler.save_config(values);
-
-        String[][] values_load = config_handler.load_config();
-        setValues(values_load);
-    }
-
-    public void setValues(String[][] values_load) {
+    public static void setValues(String[][] values_load) {
         for (String[] value : Objects.requireNonNull(values_load)) {
             System.out.println(value[0] + " " + value[1]);
             switch (value[0]) {
@@ -172,14 +164,14 @@ public class Main_UI extends JFrame {
                     }
                     break;
                 case "ts_path":
-                    tensor_file = new File(value[1]);
-                    model_path.setText(tensor_file.getPath());
-                    detect.setEnabled(true);
                     try {
+                        tensor_file = new File(value[1]);
+                        model_path.setText(tensor_file.getPath());
+                        detect.setEnabled(true);
                         savedModelBundle = SavedModelBundle.load(tensor_file.getPath(), "serve");
                         System.out.println("Model loaded");
                     } catch (Exception ex) {
-                        ex.printStackTrace();
+                        System.out.println("could not load tensor");
                     }
                     break;
                 case "resolution":
@@ -192,13 +184,29 @@ public class Main_UI extends JFrame {
                     batch = Integer.parseInt(value[1]);
                     break;
                 case "learning":
-                    learning = Integer.parseInt(value[1]);
+                    learning = Float.parseFloat(value[1]);
                     break;
                 default:
                     System.out.println("Unknown setting: " + value[0]);
                     break;
             }
         }
+    }
+
+    public void save_reload_config(int res, int epo, int bat, float lea, String pic, String ten) {
+        System.out.println(res);
+        String[][] values = {
+                {"img_path", pic},
+                {"ts_path", ten},
+                {"resolution", String.valueOf(res)},
+                {"batch", String.valueOf(epo)},
+                {"epochs", String.valueOf(bat)},
+                {"learning", String.valueOf(lea)}
+        };
+        config_handler.save_config(values);
+
+        String[][] values_load = load_config();
+        setValues(values_load);
     }
 
     public static class event_train implements ActionListener {
@@ -214,46 +222,23 @@ public class Main_UI extends JFrame {
         }
     }
 
-    public class event_set_params implements ActionListener {
+    public static class event_set_params implements ActionListener {
 
         @Override
         public void actionPerformed(ActionEvent e) {
-            model_param gui = new model_param(picture.getPath(), tensor_file.getPath());
+            model_param gui = new model_param(picture.getPath(), tensor_file.getPath(), resolution, epochs, batch, learning);
             gui.setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE);
             gui.setVisible(true);
-            gui.setSize(550, 550);
+            gui.setSize(1100, 550);
             gui.setLocation(100, 100);
             gui.setTitle("Model Parameter Settings");
         }
     }
 
-    public class event_restore_last implements ActionListener {
-
+    public static class event_exit implements ActionListener {
         @Override
         public void actionPerformed(ActionEvent e) {
-            String[][] values = config_handler.load_config();
-            setValues(values);
-
-            // Create table model with data and column names
-            DefaultTableModel model = new DefaultTableModel(values, new String[]{"Name", "Value"});
-            JTable table1 = new JTable(model);
-
-            // Create scroll pane and add table to it
-            JScrollPane scrollPane = new JScrollPane(table1);
-
-            // Add scroll pane to the frame
-            rightPanel.add(scrollPane);
-
-            // Revalidate and repaint the frame
-            revalidate();
-            repaint();
-            detect.setEnabled(true);
-        }
-    }
-
-    public class event_exit implements ActionListener {
-        @Override
-        public void actionPerformed(ActionEvent e) {
+            System.out.println(resolution + " " + batch);
             String[][] values = {
                     {"img_path", picture.getPath()},
                     {"ts_path", tensor_file.getPath()},
@@ -267,7 +252,7 @@ public class Main_UI extends JFrame {
         }
     }
 
-    public class detect_ev implements ActionListener {
+    public static class detect_ev implements ActionListener {
 
         @Override
         public void actionPerformed(ActionEvent e) {
@@ -279,9 +264,7 @@ public class Main_UI extends JFrame {
             File imagePath = new File(result_array[0]);
             ImageIcon icon = new ImageIcon(String.valueOf(imagePath));
             Image originalImage = icon.getImage();
-            int desiredHeight = 300;
-            int desiredWidth = 400;
-            Image scaledImage = originalImage.getScaledInstance(desiredWidth, desiredHeight, Image.SCALE_SMOOTH);
+            Image scaledImage = originalImage.getScaledInstance(400, 300, Image.SCALE_SMOOTH);
             ImageIcon scaledIcon = new ImageIcon(scaledImage);
             output_img.setIcon(scaledIcon);
 
@@ -301,29 +284,7 @@ public class Main_UI extends JFrame {
         }
     }
 
-    public class event_load_database implements ActionListener {
-
-        @Override
-        public void actionPerformed(ActionEvent e) {
-            String[][] data = database_handler.readDatabase();
-
-            // Create table model with data and column names
-            DefaultTableModel model = new DefaultTableModel(data, new String[]{"Object", "Amount"});
-            JTable table = new JTable(model);
-
-            // Create scroll pane and add table to it
-            JScrollPane scrollPane = new JScrollPane(table);
-
-            // Add scroll pane to the frame
-            rightPanel.add(scrollPane);
-
-            // Revalidate and repaint the frame
-            revalidate();
-            repaint();
-        }
-    }
-
-    public class event_load_tensor implements ActionListener { // returns tensor_file as loaded tensor
+    public static class event_load_tensor implements ActionListener { // returns tensor_file as loaded tensor
 
         @Override
         public void actionPerformed(ActionEvent e) {
@@ -345,7 +306,7 @@ public class Main_UI extends JFrame {
         }
     }
 
-    public class event_reset_database implements ActionListener {
+    public static class event_reset_database implements ActionListener {
 
         @Override
         public void actionPerformed(ActionEvent e) {
@@ -355,7 +316,7 @@ public class Main_UI extends JFrame {
         }
     }
 
-    public class event_load implements ActionListener {//returns picture as the loaded image
+    public static class event_load implements ActionListener {//returns picture as the loaded image
         JLabel imageLabel;
 
         public event_load(JLabel imageLabel) {
@@ -382,6 +343,52 @@ public class Main_UI extends JFrame {
                     ex.printStackTrace();
                 }
             }
+        }
+    }
+
+    public class event_restore_last implements ActionListener {
+
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            String[][] values = load_config();
+            setValues(values);
+
+            // Create table model with data and column names
+            DefaultTableModel model = new DefaultTableModel(values, new String[]{"Name", "Value"});
+            JTable table1 = new JTable(model);
+
+            // Create scroll pane and add table to it
+            JScrollPane scrollPane = new JScrollPane(table1);
+
+            // Add scroll pane to the frame
+            rightPanel.add(scrollPane);
+
+            // Revalidate and repaint the frame
+            revalidate();
+            repaint();
+            detect.setEnabled(true);
+        }
+    }
+
+    public class event_load_database implements ActionListener {
+
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            String[][] data = database_handler.readDatabase();
+
+            // Create table model with data and column names
+            DefaultTableModel model = new DefaultTableModel(data, new String[]{"Object", "Amount"});
+            JTable table = new JTable(model);
+
+            // Create scroll pane and add table to it
+            JScrollPane scrollPane = new JScrollPane(table);
+
+            // Add scroll pane to the frame
+            rightPanel.add(scrollPane);
+
+            // Revalidate and repaint the frame
+            revalidate();
+            repaint();
         }
     }
 }
