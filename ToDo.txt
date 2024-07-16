@@ -1,6 +1,0 @@
-Tensor Trainer:
-    Integrate the values which we got from the config
-
-------------
-clean Up project
-General Code Polishing and bug fixes / Testing

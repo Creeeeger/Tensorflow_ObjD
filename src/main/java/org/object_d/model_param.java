@@ -6,15 +6,21 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 
 public class model_param extends JFrame {
+    int res, epo, bat;
+    float lea;
     JTextField resolution, epochs, batch, learning;
     JLabel resolution_desc, epochs_desc, batch_desc, learning_desc, infos;
     String pic, ten;
 
-    public model_param(String pic, String ten) {
+    public model_param(String pic, String ten, int res, int epo, int bat, float lea) {
         setLayout(new BorderLayout(10, 10)); // Use BorderLayout with spacing
 
         this.pic = pic;  // Initialize pic
         this.ten = ten;  // Initialize ten
+        this.res = res;  // and the rest
+        this.epo = epo;
+        this.bat = bat;
+        this.lea = lea;
 
         JPanel settingsPanel = new JPanel();
         settingsPanel.setLayout(new BoxLayout(settingsPanel, BoxLayout.Y_AXIS));
@@ -25,16 +31,16 @@ public class model_param extends JFrame {
         settingsPanel.add(Box.createRigidArea(new Dimension(0, 10))); // Add space between components
 
         resolution_desc = new JLabel("Picture size - to x * x pixel the images will be downscaled first before processing (larger value more information but longer processing time)");
-        resolution = new JTextField("32", 4);
+        resolution = new JTextField(String.valueOf(res), 4);
 
         epochs_desc = new JLabel("Epochs - How many training rounds");
-        epochs = new JTextField("100", 4);
+        epochs = new JTextField(String.valueOf(epo), 4);
 
         batch_desc = new JLabel("Batch size - how many images should be used for training at once");
-        batch = new JTextField("32", 4);
+        batch = new JTextField(String.valueOf(bat), 4);
 
         learning_desc = new JLabel("learning rate - how fast the model should learn (be careful with extreme values)");
-        learning = new JTextField("0.001", 10);
+        learning = new JTextField(String.valueOf(lea), 10);
 
         // Add space between components
         settingsPanel.add(resolution_desc);
@@ -71,7 +77,7 @@ public class model_param extends JFrame {
                 int res = Integer.parseInt(resolution.getText());
                 int epo = Integer.parseInt(epochs.getText());
                 int bat = Integer.parseInt(batch.getText());
-                int lea = Integer.parseInt(learning.getText());
+                float lea = Float.parseFloat(learning.getText());
                 Main_UI mainUI = new Main_UI();
                 mainUI.save_reload_config(res, epo, bat, lea, pic, ten);
                 setVisible(false);
