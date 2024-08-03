@@ -318,8 +318,11 @@ public class tensorTrainer {
         return TFloat32.tensorOf(StdArrays.ndCopyOf(new float[][][]{new float[][]{imgData}}));
     }
 
+    public static void saveModel(Graph graph, Session session, String exportDir) throws IOException {
+        // Create the directories if they don't exist
+        Files.createDirectories(Paths.get(exportDir, "model"));
+        Files.createDirectories(Paths.get(exportDir, "model", "variables"));
 
-    private static void saveModel(Graph graph, Session session, String exportDir) throws IOException {
         MetaGraphDef.Builder metaGraphDefBuilder = MetaGraphDef.newBuilder();
         metaGraphDefBuilder.setGraphDef(GraphDef.parseFrom(graph.toGraphDef().toByteArray()));
 
@@ -332,11 +335,13 @@ public class tensorTrainer {
         SavedModel.Builder builder = SavedModel.newBuilder();
         builder.addMetaGraphs(metaGraphDefBuilder);
 
-        session.save(exportDir + "/saved_model");
-        Files.write(Paths.get(exportDir, "saved_model.pb"), builder.build().toByteArray());
-        System.out.println("Model saved to " + exportDir + "/saved_model.pb");
-    }
+        // Save session variables to model/variables directory
+        session.save(exportDir + "/model/variables/variables");
 
+        // Write the MetaGraphDef to saved_model.pb in the model directory
+        Files.write(Paths.get(exportDir, "model", "saved_model.pb"), builder.build().toByteArray());
+        System.out.println("Model saved to " + exportDir + "/model/saved_model.pb");
+    }
 
     public static void access(String folder) throws IOException {
         nu.pattern.OpenCV.loadLocally();
