@@ -24,7 +24,7 @@ import java.util.stream.Stream;
 
 public class detector {
     private final static String[] cocoLabels = new String[]{
-            "bicycle", "person", "car", "motorcycle", "airplane", "bus", "train", "truck", "boat",
+            "person", "bicycle", "car", "motorcycle", "airplane", "bus", "train", "truck", "boat",
             "traffic light", "fire hydrant", "street sign", "stop sign", "parking meter", "bench",
             "bird", "cat", "dog", "horse", "sheep", "cow", "elephant", "bear", "zebra", "giraffe",
             "hat", "backpack", "umbrella", "shoe", "eye glasses", "handbag", "tie", "suitcase",
@@ -135,7 +135,13 @@ public class detector {
 
                                                 // Get the detected class index and map it to the corresponding label
                                                 float classIndex = classes.getFloat(0, i);
-                                                String detectedLabel = cocoLabels[(int) classIndex];
+                                                int number_class = ((int) classIndex) - 1;
+
+                                                if (number_class < 0){
+                                                    number_class = 0;
+                                                }
+
+                                                String detectedLabel = cocoLabels[number_class];
                                                 System.out.println("Detected: " + detectedLabel + " with score: " + String.format("%.2f", (score * 100)) + "%.");
                                                 returnArray[1] = returnArray[1] + detectedLabel + ": " + String.format("%.2f", (score * 100)) + "%\n";
 
@@ -264,7 +270,13 @@ public class detector {
 
                                                         // Get the detected class index and map it to the corresponding label
                                                         float classIndex = classes.getFloat(0, j);
-                                                        String detectedLabel = cocoLabels[(int) classIndex];
+                                                        int number_class = ((int) classIndex) - 1;
+
+                                                        if (number_class < 0){
+                                                            number_class = 0;
+                                                        }
+
+                                                        String detectedLabel = cocoLabels[number_class];
                                                         returnString.append("[").append(detectedLabel).append(",").append(yMin).append(",").append(yMax).append(",").append(xMin).append(",").append(xMax).append("]");
                                                     }
                                                 }
