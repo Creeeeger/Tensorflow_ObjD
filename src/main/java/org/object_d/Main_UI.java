@@ -126,10 +126,18 @@ public class Main_UI extends JFrame {
     }
 
     public static void main(String[] args) {
+        //Create config in case it doesn't exist
         File config = new File("config.xml");
         if (!config.exists()) {
             org.object_d.config_handler.create_config();
             System.out.println("Config Created");
+        }
+
+        //Create database in case it doesn't exist
+        File database = new File("results.db");
+        if(!database.exists()){
+            database_handler.CreateDatabase();
+            System.out.println("Database created");
         }
 
         String[][] values_load = load_config();

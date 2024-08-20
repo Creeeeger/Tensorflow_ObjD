@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <config>
-    <img_path>/</img_path>
-    <ts_path>/</ts_path>
+    <img_path>/Users/gregor/Desktop/images.jpeg</img_path>
+    <ts_path>/Users/gregor/Desktop/Tensorflow_ObjD/src/main/resources/model</ts_path>
     <resolution>32</resolution>
     <batch>10</batch>
     <epochs>32</epochs>
