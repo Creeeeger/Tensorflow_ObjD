@@ -54,6 +54,11 @@ public final class CLIApp {
     private CLIApp() {
     }
 
+    public static void main(String[] args) throws IOException, OrtException{
+        String[] arg = {};
+        gen(arg, 5, "a tree", 1, "/Users/gregor/Desktop");
+    }
+
     public static void gen(String[] args, int steps, String prompt, int B_size, String output_path) throws OrtException, IOException {
         Optional<SD4J.SD4JConfig> config = SD4J.SD4JConfig.parseArgs(args);
         if (config.isEmpty()) {

@@ -47,13 +47,12 @@ public class config_handler {
                     entryIndex++;
                 }
             }
-
             return values;
 
         } catch (Exception e) {
             e.printStackTrace();
             create_config();
-            return null; // Return null if an error occurs
+            return load_config();
         }
     }
 

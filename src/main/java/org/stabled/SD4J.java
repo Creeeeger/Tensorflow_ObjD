@@ -243,14 +243,14 @@ public final class SD4J implements AutoCloseable {
                         throw new IllegalStateException("Failed to create options.", e);
                     }
                 };
-                case CORE_ML -> () -> {
+                case CORE_ML, CPU -> () -> {
                     try {
                         var opts = new OrtSession.SessionOptions();
                         opts.setInterOpNumThreads(0);
                         opts.setIntraOpNumThreads(0);
-                        opts.addCoreML();
+                      //  opts.addCoreML();
                         return opts;
-                    } catch (OrtException e) {
+                    } catch (Exception e) {
                         throw new IllegalStateException("Failed to construct session options", e);
                     }
                 };
@@ -260,16 +260,6 @@ public final class SD4J implements AutoCloseable {
                         opts.setInterOpNumThreads(0);
                         opts.setIntraOpNumThreads(0);
                         opts.addDirectML(deviceId);
-                        return opts;
-                    } catch (OrtException e) {
-                        throw new IllegalStateException("Failed to construct session options", e);
-                    }
-                };
-                case CPU -> () -> {
-                    try {
-                        var opts = new OrtSession.SessionOptions();
-                        opts.setInterOpNumThreads(0);
-                        opts.setIntraOpNumThreads(0);
                         return opts;
                     } catch (OrtException e) {
                         throw new IllegalStateException("Failed to construct session options", e);
@@ -702,7 +692,7 @@ public final class SD4J implements AutoCloseable {
                     }
                 }
             }
-            return Optional.of(new SD4JConfig(modelPath, ExecutionProvider.lookup(ep), id, ModelType.lookup(modelType)));
+            return Optional.of(new SD4JConfig(modelPath, ExecutionProvider.lookup("core_ml"), id, ModelType.lookup(modelType)));
         }
 
         /**
