@@ -16,8 +16,8 @@ import static org.object_d.config_handler.load_config;
 public class Main_UI extends JFrame {
     public static JLabel label, img, image_path, model_path, result, output_img;
     public static JMenuBar menuBar;
-    public static JMenu file, model, database, model_trainer;
-    public static JMenuItem exit, load, load_database, reset_database, load_model, set_params, restore_last, train_model;
+    public static JMenu file, model, database, model_trainer, detector_menu;
+    public static JMenuItem exit, load, load_database, reset_database, load_model, set_params, restore_last, train_model, self_detector, save_manually;
     public static JScrollPane scrollPane;
     public static JPanel leftPanel, rightPanel; // Panels for left and right boxes
     public static File tensor_file = new File("/");
@@ -95,12 +95,17 @@ public class Main_UI extends JFrame {
         load_model.addActionListener(new event_load_tensor());
         restore_last = new JMenuItem("Restore last config");
         restore_last.addActionListener(new event_restore_last());
+        save_manually = new JMenuItem("Save config");
+        save_manually.addActionListener(new save_manu());
         exit = new JMenuItem("Save and Exit");
         exit.addActionListener(new event_exit());
+
         file.add(load);
         file.add(load_model);
         file.add(restore_last);
+        file.add(save_manually);
         file.add(exit);
+
         menuBar.add(file);
 
         model = new JMenu("Model");
@@ -123,6 +128,12 @@ public class Main_UI extends JFrame {
         train_model.addActionListener(new event_train());
         model_trainer.add(train_model);
         menuBar.add(model_trainer);
+
+        detector_menu = new JMenu("Object detection v2");
+        self_detector = new JMenuItem("detect objects with own models");
+        self_detector.addActionListener(new create_detector_window());
+        detector_menu.add(self_detector);
+        menuBar.add(detector_menu);
     }
 
     public static void main(String[] args) {
@@ -135,7 +146,7 @@ public class Main_UI extends JFrame {
 
         //Create database in case it doesn't exist
         File database = new File("results.db");
-        if(!database.exists()){
+        if (!database.exists()) {
             database_handler.CreateDatabase();
             System.out.println("Database created");
         }
@@ -148,6 +159,22 @@ public class Main_UI extends JFrame {
         gui.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         gui.setSize(1200, 1000);
         gui.setTitle("Object Detector UI");
+    }
+
+    public static class save_manu implements ActionListener {
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            String[][] values = {
+                    {"img_path", picture.getPath()},
+                    {"ts_path", tensor_file.getPath()},
+                    {"resolution", String.valueOf(resolution)},
+                    {"batch", String.valueOf(epochs)},
+                    {"epochs", String.valueOf(batch)},
+                    {"learning", String.valueOf(learning)}
+            };
+
+            config_handler.save_config(values);
+        }
     }
 
     public static void setValues(String[][] values_load) {
@@ -168,7 +195,11 @@ public class Main_UI extends JFrame {
                         picture = selectedFile;
                         image_path.setText(picture.getPath());
                     } catch (Exception ex) {
-                        ex.printStackTrace();
+                        if (ex.getClass() == NullPointerException.class) {
+                            continue;
+                        } else {
+                            ex.printStackTrace();
+                        }
                     }
                     break;
                 case "ts_path":
@@ -217,6 +248,19 @@ public class Main_UI extends JFrame {
         setValues(values_load);
     }
 
+    public static class create_detector_window implements ActionListener {
+
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            trained_detector gui = new trained_detector();
+            gui.setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE);
+            gui.setVisible(true);
+            gui.setTitle("Object detector for own models");
+            gui.setSize(600, 600);
+            gui.setLocation(100, 100);
+        }
+    }
+
     public static class event_train implements ActionListener {
 
         @Override
@@ -246,7 +290,6 @@ public class Main_UI extends JFrame {
     public static class event_exit implements ActionListener {
         @Override
         public void actionPerformed(ActionEvent e) {
-            System.out.println(resolution + " " + batch);
             String[][] values = {
                     {"img_path", picture.getPath()},
                     {"ts_path", tensor_file.getPath()},
@@ -255,7 +298,9 @@ public class Main_UI extends JFrame {
                     {"epochs", String.valueOf(batch)},
                     {"learning", String.valueOf(learning)}
             };
+
             config_handler.save_config(values);
+
             System.exit(0);
         }
     }

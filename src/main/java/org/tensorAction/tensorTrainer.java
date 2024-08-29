@@ -329,7 +329,6 @@ public class tensorTrainer {
         // Create MetaInfoDef and add serve tag
         MetaGraphDef.MetaInfoDef.Builder metaInfoDefBuilder = MetaGraphDef.MetaInfoDef.newBuilder();
         metaInfoDefBuilder.addTags("serve");  // Use addTags method to add a tag to the list
-
         metaGraphDefBuilder.setMetaInfoDef(metaInfoDefBuilder.build());  // Set the built MetaInfoDef
 
         SavedModel.Builder builder = SavedModel.newBuilder();

@@ -83,6 +83,7 @@ public class model_param extends JFrame {
                 setVisible(false);
 
             } catch (Exception x) {
+                infos.setForeground(Color.RED);
                 infos.setText("Wrong input in the text fields");
                 System.out.println("Wrong input in the text fields");
             }
