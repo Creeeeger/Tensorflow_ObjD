@@ -78,7 +78,7 @@
         <dependency>
             <groupId>com.microsoft.onnxruntime</groupId>
             <artifactId>onnxruntime</artifactId>
-            <version>1.14.0</version>
+            <version>1.19.0</version>
         </dependency>
         <dependency>
             <groupId>org.junit.jupiter</groupId>
@@ -91,6 +91,11 @@
             <artifactId>tribuo-util-onnx</artifactId>
             <scope>test</scope>
             <version>4.3.1</version>
+        </dependency>
+        <dependency>
+            <groupId>com.microsoft.onnxruntime</groupId>
+            <artifactId>onnxruntime-extensions</artifactId>
+            <version>0.11.0</version>
         </dependency>
     </dependencies>
 
@@ -156,7 +161,7 @@
                         <argument>--model-path</argument>
                         <argument>${modelPath}</argument>
                         <argument>--execution-provider</argument>
-                        <argument>CPU</argument>
+                        <argument>CORE_ML</argument>
                     </arguments>
                 </configuration>
             </plugin>

@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<config>
-    <img_path>/</img_path>
-    <ts_path>/</ts_path>
-    <resolution>32</resolution>
-    <batch>100</batch>
-    <epochs>32</epochs>
-    <learning>0.001</learning>
-</config>
