@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023 Oracle and/or its affiliates.
+ * Copyright (c) 2023, 2024 Oracle and/or its affiliates.
  *
  * The Universal Permissive License (UPL), Version 1.0
  *
@@ -38,7 +38,12 @@
 
 package org.stabled;
 
-import ai.onnxruntime.*;
+import ai.onnxruntime.OnnxTensor;
+import ai.onnxruntime.OrtEnvironment;
+import ai.onnxruntime.OrtException;
+import ai.onnxruntime.OrtSession;
+import ai.onnxruntime.TensorInfo;
+import ai.onnxruntime.extensions.OrtxPackage;
 
 import java.nio.IntBuffer;
 import java.nio.file.Path;
@@ -51,6 +56,8 @@ import java.util.regex.Pattern;
  * The text embedding model, usually a CLIP variant, loaded in via ONNX Runtime.
  */
 public final class TextEmbedder implements AutoCloseable {
+
+    private static final Logger logger = Logger.getLogger(TextEmbedder.class.getName());
 
     /**
      * Max length of the CLIP token output.
@@ -80,7 +87,7 @@ public final class TextEmbedder implements AutoCloseable {
      * Output dimensionality for Stable Diffusion XL's second text encoder.
      */
     public static final int SDXL_DIM_SIZE = 1280;
-    private static final Logger logger = Logger.getLogger(TextEmbedder.class.getName());
+
     /**
      * Pattern which matches linefeeds as they crash the tokenizer.
      */
@@ -103,10 +110,9 @@ public final class TextEmbedder implements AutoCloseable {
 
     /**
      * Constructs a TextEmbedder from the supplied model and tokenizer using the default session options.
-     *
      * @param tokenizerPath The path to the tokenizer model.
-     * @param embedderPath  The path to the text embedding model, usually a CLIP variant.
-     * @param defaultSize   The default size of the text embedding if it cannot be extracted from the model file.
+     * @param embedderPath The path to the text embedding model, usually a CLIP variant.
+     * @param defaultSize The default size of the text embedding if it cannot be extracted from the model file.
      * @throws OrtException If the model could not be loaded.
      */
     public TextEmbedder(Path tokenizerPath, Path embedderPath, int defaultSize) throws OrtException {
@@ -117,17 +123,16 @@ public final class TextEmbedder implements AutoCloseable {
      * Constructs a TextEmbedder from the supplied model and tokenizer.
      * <p>
      * The model is constructed using the supplied session options, the tokenizer uses the default options.
-     *
      * @param tokenizerPath The path to the tokenizer model.
-     * @param embedderPath  The path to the text embedding model, usually a CLIP variant.
-     * @param embedderOpts  The session options for the text embedding model.
-     * @param defaultSize   The default size of the text embedding if it cannot be extracted from the model file.
+     * @param embedderPath The path to the text embedding model, usually a CLIP variant.
+     * @param embedderOpts The session options for the text embedding model.
+     * @param defaultSize The default size of the text embedding if it cannot be extracted from the model file.
      * @throws OrtException If the model could not be loaded.
      */
     public TextEmbedder(Path tokenizerPath, Path embedderPath, OrtSession.SessionOptions embedderOpts, int defaultSize, boolean isXL) throws OrtException {
         this.env = OrtEnvironment.getEnvironment();
         this.tokenizerOpts = new OrtSession.SessionOptions();
-        this.tokenizerOpts.registerCustomOpLibrary("./" + System.mapLibraryName("ortextensions"));
+        this.tokenizerOpts.registerCustomOpLibrary(OrtxPackage.getLibraryPath());
         this.tokenizer = env.createSession(tokenizerPath.toString(), tokenizerOpts);
         this.textEmbedderOpts = embedderOpts;
         this.textEmbedder = env.createSession(embedderPath.toString(), textEmbedderOpts);
@@ -159,7 +164,6 @@ public final class TextEmbedder implements AutoCloseable {
 
     /**
      * Returns the dimension of the token embedding.
-     *
      * @return The token embedding dimension.
      */
     public int getDimSize() {
@@ -168,7 +172,6 @@ public final class TextEmbedder implements AutoCloseable {
 
     /**
      * Returns if this is the second embedding in an SDXL model.
-     *
      * @return True if it is the second embedding.
      */
     public boolean isXL() {
@@ -177,7 +180,6 @@ public final class TextEmbedder implements AutoCloseable {
 
     /**
      * Tokenizes the supplied text using the tokenization model.
-     *
      * @param text The text to tokenize.
      * @return An int buffer containing the token ids.
      * @throws OrtException If the tokenization model failed.
@@ -202,7 +204,7 @@ public final class TextEmbedder implements AutoCloseable {
             IntBuffer intBuffer = IntBuffer.allocate(MAX_LENGTH);
             int pos = 0;
             for (int i = 0; i < idBuffer.limit() && pos < intBuffer.capacity(); i++, pos++) {
-                intBuffer.put((int) idBuffer.get(i));
+                intBuffer.put((int)idBuffer.get(i));
             }
             for (; pos < intBuffer.capacity(); pos++) {
                 intBuffer.put(padToken);
@@ -215,7 +217,6 @@ public final class TextEmbedder implements AutoCloseable {
     /**
      * Generates an int buffer containing {@link #BOS_TOKEN}, {@link #PAD_TOKEN} then {@link #MAX_LENGTH} - 1 of the
      * correct pad token for the model (either {@link #PAD_TOKEN} or {@link #PAD_XL_TOKEN}).
-     *
      * @return The unconditional tokens.
      */
     private IntBuffer unconditionalTokens() {
@@ -231,7 +232,6 @@ public final class TextEmbedder implements AutoCloseable {
 
     /**
      * Embeds a batch of text tokens using the embedding model.
-     *
      * @param tokenIds The text tokens.
      * @return The embedding tensor.
      * @throws OrtException If the model call failed.
@@ -250,8 +250,7 @@ public final class TextEmbedder implements AutoCloseable {
 
     /**
      * Generates an embedding of the text.
-     *
-     * @param text      The text to embed.
+     * @param text The text to embed.
      * @param batchSize The batch size of images to generate.
      * @return A tensor of size [batchSize, 77, dimSize] and one of size [batchSize, dimSize].
      * @throws OrtException If the model call failed.
@@ -263,8 +262,7 @@ public final class TextEmbedder implements AutoCloseable {
 
     /**
      * Generates an embedding of both the text and the unconditional output (i.e. an empty sentence).
-     *
-     * @param text      The text to embed.
+     * @param text The text to embed.
      * @param batchSize The batch size of images to generate.
      * @return A tensor of size [batchSize*2, 77, dimSize] and one of size [batchSize*2, dimSize].
      * @throws OrtException If the model call failed.
@@ -277,9 +275,8 @@ public final class TextEmbedder implements AutoCloseable {
 
     /**
      * Generates an embedding of both the text and the negative text.
-     *
-     * @param text      The text to embed.
-     * @param negative  The negative text to embed.
+     * @param text The text to embed.
+     * @param negative The negative text to embed.
      * @param batchSize The batch size of images to generate.
      * @return A tensor of size [batchSize*2, 77, dimSize] and one of size [batchSize*2, dimSize].
      * @throws OrtException If the model call failed.
@@ -292,8 +289,7 @@ public final class TextEmbedder implements AutoCloseable {
 
     /**
      * Embeds the supplied tokens.
-     *
-     * @param batchSize      The batch size of images to generate.
+     * @param batchSize The batch size of images to generate.
      * @param positiveTokens The positive tokens.
      * @return A tensor of size [batch_size*2, 77, dimSize].
      * @throws OrtException If the model call failed.
@@ -310,15 +306,14 @@ public final class TextEmbedder implements AutoCloseable {
 
     /**
      * Embeds the supplied tokens.
-     *
-     * @param batchSize      The batch size of images to generate.
+     * @param batchSize The batch size of images to generate.
      * @param positiveTokens The positive tokens.
      * @param negativeTokens The negative tokens.
      * @return A tensor of size [batch_size*2, 77, dimSize].
      * @throws OrtException If the model call failed.
      */
     private EmbeddingOutput embedText(int batchSize, IntBuffer positiveTokens, IntBuffer negativeTokens) throws OrtException {
-        IntTensor idTensor = new IntTensor(new long[]{batchSize * 2L, MAX_LENGTH});
+        IntTensor idTensor = new IntTensor(new long[]{batchSize*2L, MAX_LENGTH});
         for (int i = 0; i < batchSize; i++) {
             idTensor.buffer.put(negativeTokens);
             negativeTokens.rewind();
@@ -342,10 +337,8 @@ public final class TextEmbedder implements AutoCloseable {
 
     /**
      * Tuple for the output of the text embedding.
-     *
-     * @param tokenEmbedding  The token level embedding of size [batchSize, tokenMaxLength, embeddingDim].
+     * @param tokenEmbedding The token level embedding of size [batchSize, tokenMaxLength, embeddingDim].
      * @param pooledEmbedding The pooled sentence embedding of size [batchSize, embeddingDim].
      */
-    public record EmbeddingOutput(FloatTensor tokenEmbedding, FloatTensor pooledEmbedding) {
-    }
+    public record EmbeddingOutput(FloatTensor tokenEmbedding, FloatTensor pooledEmbedding) {}
 }

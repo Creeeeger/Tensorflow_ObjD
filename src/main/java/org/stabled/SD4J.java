@@ -1,46 +1,9 @@
-/*
- * Copyright (c) 2023, 2024, Oracle and/or its affiliates.
- *
- * The Universal Permissive License (UPL), Version 1.0
- *
- * Subject to the condition set forth below, permission is hereby granted to any
- * person obtaining a copy of this software, associated documentation and/or data
- * (collectively the "Software"), free of charge and under any and all copyright
- * rights in the Software, and any and all patent rights owned or freely
- * licensable by each licensor hereunder covering either (i) the unmodified
- * Software as contributed to or provided by such licensor, or (ii) the Larger
- * Works (as defined below), to deal in both
- *
- * (a) the Software, and
- * (b) any piece of software and/or hardware listed in the lrgrwrks.txt file if
- * one is included with the Software (each a "Larger Work" to which the Software
- * is contributed by such licensors),
- *
- * without restriction, including without limitation the rights to copy, create
- * derivative works of, display, perform, and distribute the Software and make,
- * use, sell, offer for sale, import, export, have made, and have sold the
- * Software and the Larger Work(s), and to sublicense the foregoing rights on
- * either these or other terms.
- *
- * This license is subject to the following condition:
- * The above copyright notice and either this complete permission notice or at
- * a minimum a reference to the UPL must be included in all copies or
- * substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE.
- */
-
 package org.stabled;
 
 import ai.onnxruntime.OrtEnvironment;
 import ai.onnxruntime.OrtException;
 import ai.onnxruntime.OrtSession;
+import ai.onnxruntime.providers.CoreMLFlags;
 import ai.onnxruntime.providers.OrtCUDAProviderOptions;
 
 import javax.imageio.IIOImage;
@@ -54,7 +17,13 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.EnumSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Locale;
+import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.logging.Logger;
@@ -74,12 +43,11 @@ public final class SD4J implements AutoCloseable {
 
     /**
      * Constructs a stable diffusion pipeline from the supplied models.
-     *
      * @param modelName The model name.
-     * @param embedder  The text embedding model. Usually a CLIP variant.
-     * @param unet      The UNet model which performs the inverse diffusion.
-     * @param vae       The VAE model which translates from latent space to pixel space.
-     * @param safety    The safety checker model which checks that the generated image is SFW.
+     * @param embedder The text embedding model. Usually a CLIP variant.
+     * @param unet The UNet model which performs the inverse diffusion.
+     * @param vae The VAE model which translates from latent space to pixel space.
+     * @param safety The safety checker model which checks that the generated image is SFW.
      */
     public SD4J(String modelName, TextEmbedder embedder, UNet unet, VAEDecoder vae, SafetyChecker safety) {
         this(modelName, embedder, null, unet, vae, safety);
@@ -90,12 +58,12 @@ public final class SD4J implements AutoCloseable {
      *
      * <p>Set {@code embedderXL} to null to get a standard stable diffusion pipeline.
      *
-     * @param modelName  The model name.
-     * @param embedder   The text embedding model. Usually a CLIP variant.
+     * @param modelName The model name.
+     * @param embedder The text embedding model. Usually a CLIP variant.
      * @param embedderXL The second text embedding model. Usually a CLIP variant.
-     * @param unet       The UNet model which performs the inverse diffusion.
-     * @param vae        The VAE model which translates from latent space to pixel space.
-     * @param safety     The safety checker model which checks that the generated image is SFW.
+     * @param unet The UNet model which performs the inverse diffusion.
+     * @param vae The VAE model which translates from latent space to pixel space.
+     * @param safety The safety checker model which checks that the generated image is SFW.
      */
     public SD4J(String modelName, TextEmbedder embedder, TextEmbedder embedderXL, UNet unet, VAEDecoder vae, SafetyChecker safety) {
         this.modelName = modelName;
@@ -108,8 +76,7 @@ public final class SD4J implements AutoCloseable {
 
     /**
      * Saves the buffered image to the supplied path as a png.
-     *
-     * @param image    The image.
+     * @param image The image.
      * @param filename The filename to save to.
      * @throws IOException If the file save failed.
      */
@@ -120,9 +87,8 @@ public final class SD4J implements AutoCloseable {
 
     /**
      * Saves the buffered image to the supplied path as a png.
-     *
      * @param image The image.
-     * @param file  The file to save to.
+     * @param file The file to save to.
      * @throws IOException If the file save failed.
      */
     public static void save(SDImage image, File file) throws IOException {
@@ -158,183 +124,42 @@ public final class SD4J implements AutoCloseable {
     }
 
     /**
-     * Constructs a SD4J CPU pipeline from the supplied model path.
-     * <p>
-     * Expects the following directory structure:
-     * <ul>
-     *     <li>VAE - $initialPath/vae_decoder/model.onnx</li>
-     *     <li>Text Encoder - $initialPath/text_encoder/model.onnx</li>
-     *     <li>UNet - $initialPath/unet/model.onnx</li>
-     *     <li>Safety checker - $initialPath/safety_checker/model.onnx</li>
-     *     <li>Tokenizer - $pwd/text_tokenizer/custom_op_cliptok.onnx</li>
-     * </ul>
-     *
-     * @param initialPath The path to the set of models.
-     * @return The SD4J pipeline running on CPUs.
-     */
-    public static SD4J factory(String initialPath) {
-        return factory(initialPath, false);
-    }
-
-    /**
-     * Constructs a SD4J pipeline from the supplied model path, optionally on GPUs.
-     * <p>
-     * Expects the following directory structure:
-     * <ul>
-     *     <li>VAE - $initialPath/vae_decoder/model.onnx</li>
-     *     <li>Text Encoder - $initialPath/text_encoder/model.onnx</li>
-     *     <li>UNet - $initialPath/unet/model.onnx</li>
-     *     <li>Safety checker - $initialPath/safety_checker/model.onnx</li>
-     *     <li>Tokenizer - $pwd/text_tokenizer/custom_op_cliptok.onnx</li>
-     * </ul>
-     *
-     * @param initialPath The path to the set of models.
-     * @param useCUDA     Should the text encoder, unet, vae and safety checker be run on GPU?
-     * @return The SD4J pipeline.
-     */
-    public static SD4J factory(String initialPath, boolean useCUDA) {
-        return factory(new SD4JConfig(initialPath, useCUDA ? ExecutionProvider.CUDA : ExecutionProvider.CPU, 0, ModelType.SD1_5));
-    }
-
-    /**
-     * Constructs a SD4J pipeline from the supplied model path, optionally on GPUs.
-     * <p>
-     * Expects the following directory structure:
-     * <ul>
-     *     <li>VAE - $initialPath/vae_decoder/model.onnx</li>
-     *     <li>Text Encoder - $initialPath/text_encoder/model.onnx</li>
-     *     <li>Text Encoder XL - $initialPath/text_encoder_2/model.onnx</li>
-     *     <li>UNet - $initialPath/unet/model.onnx</li>
-     *     <li>Safety checker - $initialPath/safety_checker/model.onnx</li>
-     *     <li>Tokenizer - $pwd/text_tokenizer/custom_op_cliptok.onnx</li>
-     * </ul>
-     *
-     * @param config The SD4J configuration.
-     * @return The SD4J pipeline.
-     */
-    public static SD4J factory(SD4JConfig config) {
-        var rootPath = Path.of(config.modelPath());
-        var modelName = rootPath.getName(rootPath.getNameCount() - 1).toString();
-        var vaePath = rootPath.resolve("vae_decoder/model.onnx");
-        var encoderPath = rootPath.resolve("text_encoder/model.onnx");
-        var encoderXLPath = rootPath.resolve("text_encoder_2/model.onnx");
-        var unetPath = rootPath.resolve("unet/model.onnx");
-        var safetyPath = rootPath.resolve("safety_checker/model.onnx");
-        var tokenizerPath = Path.of("text_tokenizer/custom_op_cliptok.onnx");
-
-        try {
-            // Initialize the library
-            OrtEnvironment env = OrtEnvironment.getEnvironment();
-            env.setTelemetry(false);
-            final int deviceId = config.id();
-            Supplier<OrtSession.SessionOptions> optsSupplier = switch (config.provider) {
-                case CUDA -> () -> {
-                    try {
-                        var opts = new OrtSession.SessionOptions();
-                        var cudaOpts = new OrtCUDAProviderOptions(deviceId);
-                        cudaOpts.add("arena_extend_strategy", "kSameAsRequested");
-                        cudaOpts.add("cudnn_conv_algo_search", "DEFAULT");
-                        cudaOpts.add("do_copy_in_default_stream", "1");
-                        cudaOpts.add("cudnn_conv_use_max_workspace", "1");
-                        cudaOpts.add("cudnn_conv1d_pad_to_nc1d", "1");
-                        opts.addCUDA(cudaOpts);
-                        return opts;
-                    } catch (OrtException e) {
-                        throw new IllegalStateException("Failed to create options.", e);
-                    }
-                };
-                case CORE_ML, CPU -> () -> {
-                    try {
-                        var opts = new OrtSession.SessionOptions();
-                        opts.setInterOpNumThreads(0);
-                        opts.setIntraOpNumThreads(0);
-                      //  opts.addCoreML();
-                        return opts;
-                    } catch (Exception e) {
-                        throw new IllegalStateException("Failed to construct session options", e);
-                    }
-                };
-                case DIRECT_ML -> () -> {
-                    try {
-                        var opts = new OrtSession.SessionOptions();
-                        opts.setInterOpNumThreads(0);
-                        opts.setIntraOpNumThreads(0);
-                        opts.addDirectML(deviceId);
-                        return opts;
-                    } catch (OrtException e) {
-                        throw new IllegalStateException("Failed to construct session options", e);
-                    }
-                };
-            };
-            System.out.println(config.provider);
-
-            TextEmbedder embedder = new TextEmbedder(tokenizerPath, encoderPath, optsSupplier.get(), config.type.textDimSize, false);
-            logger.info("Loaded embedder from " + encoderPath);
-            TextEmbedder embedderXL = null;
-            if (config.type == ModelType.SDXL) {
-                embedderXL = new TextEmbedder(tokenizerPath, encoderXLPath, optsSupplier.get(), config.type.text2DimSize, true);
-                logger.info("Loaded second embedder from " + encoderXLPath);
-            }
-            UNet unet = new UNet(unetPath, optsSupplier.get());
-            logger.info("Loaded unet from " + unetPath);
-            VAEDecoder vae = new VAEDecoder(vaePath, optsSupplier.get());
-            logger.info("Loaded vae from " + vaePath);
-            SafetyChecker safety;
-            if (safetyPath.toFile().exists()) {
-                safety = new SafetyChecker(safetyPath, optsSupplier.get());
-                logger.info("Created safety");
-            } else {
-                safety = null;
-                logger.info("No safety found");
-            }
-            return new SD4J(modelName, embedder, embedderXL, unet, vae, safety);
-        } catch (OrtException e) {
-            throw new IllegalStateException("Failed to instantiate SD4J pipeline", e);
-        }
-    }
-
-    /**
      * Generates a batch of images from the supplied prompts and parameters.
      * <p>
      * Defaults to the LMS scheduler.
-     *
      * @param numInferenceSteps The number of diffusion inference steps to take (commonly 20-50 for LMS and Euler Ancestral).
-     * @param text              The text prompt.
-     * @param negativeText      The negative text prompt which the image should not contain.
-     * @param guidanceScale     The strength of the classifier-free guidance (i.e., how much should the image represent the text prompt).
-     * @param batchSize         The number of images to generate.
-     * @param size              The image size.
-     * @param seed              The RNG seed, fixing the seed should produce identical images.
+     * @param text The text prompt.
+     * @param negativeText The negative text prompt which the image should not contain.
+     * @param guidanceScale The strength of the classifier-free guidance (i.e., how much should the image represent the text prompt).
+     * @param batchSize The number of images to generate.
+     * @param size The image size.
+     * @param seed The RNG seed, fixing the seed should produce identical images.
      * @return A list of generated images.
      */
     public List<SDImage> generateImage(int numInferenceSteps, String text, String negativeText, float guidanceScale, int batchSize, ImageSize size, int seed) {
-        return generateImage(numInferenceSteps, text, negativeText, guidanceScale, batchSize, size, seed, Schedulers.LMS, (Integer a) -> {
-        });
+        return generateImage(numInferenceSteps, text, negativeText, guidanceScale, batchSize, size, seed, Schedulers.LMS, (Integer a) -> {});
     }
 
     /**
      * Generates a batch of images from the supplied generation request.
-     *
      * @param request The image generation request.
      * @return A list of generated images.
      */
     public List<SDImage> generateImage(Request request) {
-        return generateImage(request, (Integer a) -> {
-        });
+        return generateImage(request, (Integer a) -> {});
     }
 
     /**
      * Generates a batch of images from the supplied prompts and parameters.
-     *
      * @param numInferenceSteps The number of diffusion inference steps to take (commonly 20-50 for LMS and Euler Ancestral).
-     * @param text              The text prompt.
-     * @param negativeText      The negative text prompt which the image should not contain.
-     * @param guidanceScale     The strength of the classifier-free guidance (i.e., how much should the image represent the text prompt).
-     * @param batchSize         The number of images to generate.
-     * @param size              The image size.
-     * @param seed              The RNG seed, fixing the seed should produce identical images.
-     * @param scheduler         The diffusion scheduling algorithm.
-     * @param progressCallback  A supplier which can be used to update a GUI. It is called after each diffusion step with the current step count.
+     * @param text The text prompt.
+     * @param negativeText The negative text prompt which the image should not contain.
+     * @param guidanceScale The strength of the classifier-free guidance (i.e., how much should the image represent the text prompt).
+     * @param batchSize The number of images to generate.
+     * @param size The image size.
+     * @param seed The RNG seed, fixing the seed should produce identical images.
+     * @param scheduler The diffusion scheduling algorithm.
+     * @param progressCallback A supplier which can be used to update a GUI. It is called after each diffusion step with the current step count.
      * @return A list of generated images.
      */
     public List<SDImage> generateImage(int numInferenceSteps, String text, String negativeText, float guidanceScale, int batchSize, ImageSize size, int seed, Schedulers scheduler, Consumer<Integer> progressCallback) {
@@ -344,8 +169,7 @@ public final class SD4J implements AutoCloseable {
 
     /**
      * Generates a batch of images from the supplied generation request.
-     *
-     * @param request          The image generation request.
+     * @param request The image generation request.
      * @param progressCallback A supplier which can be used to update a GUI. It is called after each diffusion step with the current step count.
      * @return A list of generated images.
      */
@@ -418,8 +242,7 @@ public final class SD4J implements AutoCloseable {
 
     /**
      * Wraps the output from the image generation in an {@link SDImage} record.
-     *
-     * @param images  The generated images.
+     * @param images The generated images.
      * @param request The generation request.
      * @param isValid Is this a valid image?
      * @return A list of SDImages.
@@ -449,95 +272,157 @@ public final class SD4J implements AutoCloseable {
     }
 
     /**
-     * Supported execution providers.
+     * Constructs a SD4J CPU pipeline from the supplied model path.
+     * <p>
+     * Expects the following directory structure:
+     * <ul>
+     *     <li>VAE - $initialPath/vae_decoder/model.onnx</li>
+     *     <li>Text Encoder - $initialPath/text_encoder/model.onnx</li>
+     *     <li>UNet - $initialPath/unet/model.onnx</li>
+     *     <li>Safety checker - $initialPath/safety_checker/model.onnx</li>
+     *     <li>Tokenizer - $pwd/text_tokenizer/custom_op_cliptok.onnx</li>
+     * </ul>
+     * @param initialPath The path to the set of models.
+     * @return The SD4J pipeline running on CPUs.
      */
-    public enum ExecutionProvider {
-        /**
-         * CPU.
-         */
-        CPU,
-        /**
-         * Apple's Core ML.
-         */
-        CORE_ML,
-        /**
-         * Nvidia GPUs.
-         */
-        CUDA,
-        /**
-         * Windows DirectML devices.
-         */
-        DIRECT_ML;
-
-        /**
-         * Looks up an execution provider returning the enum or throwing {@link IllegalArgumentException} if it's unknown.
-         *
-         * @param name The ep to lookup.
-         * @return The enum value.
-         */
-        public static ExecutionProvider lookup(String name) {
-            String lower = name.toLowerCase(Locale.US);
-            return switch (lower) {
-                case "cpu", "" -> CPU;
-                case "coreml", "core_ml", "core-ml" -> CORE_ML;
-                case "cuda" -> CUDA;
-                case "directml", "direct_ml", "direct-ml" -> DIRECT_ML;
-                default -> {
-                    throw new IllegalArgumentException("Unknown execution provider '" + name + "'");
-                }
-            };
-        }
+    public static SD4J factory(String initialPath) {
+        return factory(initialPath, false);
     }
 
     /**
-     * The type of Stable Diffusion model.
+     * Constructs a SD4J pipeline from the supplied model path, optionally on GPUs.
+     * <p>
+     * Expects the following directory structure:
+     * <ul>
+     *     <li>VAE - $initialPath/vae_decoder/model.onnx</li>
+     *     <li>Text Encoder - $initialPath/text_encoder/model.onnx</li>
+     *     <li>UNet - $initialPath/unet/model.onnx</li>
+     *     <li>Safety checker - $initialPath/safety_checker/model.onnx</li>
+     *     <li>Tokenizer - $pwd/text_tokenizer/custom_op_cliptok.onnx</li>
+     * </ul>
+     * @param initialPath The path to the set of models.
+     * @param useCUDA Should the text encoder, unet, vae and safety checker be run on GPU?
+     * @return The SD4J pipeline.
      */
-    public enum ModelType {
-        SD1_5(TextEmbedder.SD_1_5_DIM_SIZE, -1),
-        SD2(TextEmbedder.SD_2_DIM_SIZE, -1),
-        SDXL(TextEmbedder.SD_1_5_DIM_SIZE, TextEmbedder.SDXL_DIM_SIZE);
+    public static SD4J factory(String initialPath, boolean useCUDA) {
+        return factory(new SD4JConfig(initialPath, useCUDA ? ExecutionProvider.CUDA : ExecutionProvider.CPU, 0, ModelType.SD1_5));
+    }
 
-        /**
-         * The text dimension size for the first encoder.
-         */
-        public final int textDimSize;
-        /**
-         * The text dimension size for the second encoder.
-         */
-        public final int text2DimSize;
+    /**
+     * Constructs a SD4J pipeline from the supplied model path, optionally on GPUs.
+     * <p>
+     * Expects the following directory structure:
+     * <ul>
+     *     <li>VAE - $initialPath/vae_decoder/model.onnx</li>
+     *     <li>Text Encoder - $initialPath/text_encoder/model.onnx</li>
+     *     <li>Text Encoder XL - $initialPath/text_encoder_2/model.onnx</li>
+     *     <li>UNet - $initialPath/unet/model.onnx</li>
+     *     <li>Safety checker - $initialPath/safety_checker/model.onnx</li>
+     *     <li>Tokenizer - $pwd/text_tokenizer/custom_op_cliptok.onnx</li>
+     * </ul>
+     * @param config The SD4J configuration.
+     * @return The SD4J pipeline.
+     */
+    public static SD4J factory(SD4JConfig config) {
+        var rootPath = Path.of(config.modelPath());
+        var modelName = rootPath.getName(rootPath.getNameCount()-1).toString();
+        var vaePath = rootPath.resolve("vae_decoder/model.onnx");
+        var encoderPath = rootPath.resolve("text_encoder/model.onnx");
+        var encoderXLPath = rootPath.resolve("text_encoder_2/model.onnx");
+        var unetPath = rootPath.resolve("unet/model.onnx");
+        var safetyPath = rootPath.resolve("safety_checker/model.onnx");
+        var tokenizerPath = Path.of("text_tokenizer/custom_op_cliptok.onnx");
 
-        ModelType(int textDimSize, int text2DimSize) {
-            this.textDimSize = textDimSize;
-            this.text2DimSize = text2DimSize;
-        }
-
-        /**
-         * Looks up the model type returning the enum or throwing {@link IllegalArgumentException} if it's unknown.
-         *
-         * @param name The model type to lookup.
-         * @return The enum value.
-         */
-        public static ModelType lookup(String name) {
-            String lower = name.toLowerCase(Locale.US);
-            return switch (lower) {
-                case "sdv1.5", "sd15", "sd1.5", "sd1_5", "sd1", "sdv1" -> SD1_5;
-                case "sdv2", "sdv21", "sdv2.1", "sd-turbo", "sd_turbo" -> SD2;
-                case "sdxl", "sdxl-turbo", "sdxl_turbo" -> SDXL;
-                default -> {
-                    throw new IllegalArgumentException("Unknown model type '" + name + "'");
+        try {
+            // Initialize the library
+            OrtEnvironment env = OrtEnvironment.getEnvironment();
+            env.setTelemetry(false);
+            final int deviceId = config.id();
+            Supplier<OrtSession.SessionOptions> cpuSupplier = () -> {
+                try {
+                    var opts = new OrtSession.SessionOptions();
+                    opts.setInterOpNumThreads(0);
+                    opts.setIntraOpNumThreads(0);
+                    System.out.println("STOCK");
+                    return opts;
+                } catch (OrtException e) {
+                    throw new IllegalStateException("Failed to construct session options", e);
                 }
             };
+            Supplier<OrtSession.SessionOptions> optsSupplier = switch (config.provider) {
+                case CUDA -> () -> {
+                    try {
+                        var opts = new OrtSession.SessionOptions();
+                        var cudaOpts = new OrtCUDAProviderOptions(deviceId);
+                        cudaOpts.add("arena_extend_strategy","kSameAsRequested");
+                        cudaOpts.add("cudnn_conv_algo_search","DEFAULT");
+                        cudaOpts.add("do_copy_in_default_stream","1");
+                        cudaOpts.add("cudnn_conv_use_max_workspace","1");
+                        cudaOpts.add("cudnn_conv1d_pad_to_nc1d","1");
+                        opts.addCUDA(cudaOpts);
+                        return opts;
+                    } catch (OrtException e) {
+                        throw new IllegalStateException("Failed to create options.", e);
+                    }
+                };
+                case CORE_ML -> () -> {
+                    try {
+                        var opts = new OrtSession.SessionOptions();
+                        opts.setInterOpNumThreads(0);
+                        opts.setIntraOpNumThreads(0);
+                        opts.addCoreML(EnumSet.of(CoreMLFlags.CREATE_MLPROGRAM));
+                        System.out.println("CORE_ML");
+                        return opts;
+                    } catch (OrtException e) {
+                        throw new IllegalStateException("Failed to construct session options", e);
+                    }
+                };
+                case DIRECT_ML -> () -> {
+                    try {
+                        var opts = new OrtSession.SessionOptions();
+                        opts.setInterOpNumThreads(0);
+                        opts.setIntraOpNumThreads(0);
+                        opts.addDirectML(deviceId);
+                        return opts;
+                    } catch (OrtException e) {
+                        throw new IllegalStateException("Failed to construct session options", e);
+                    }
+                };
+                case CPU -> cpuSupplier;
+            };
+            // Always run the embedders & safety checker on CPU to save accelerator memory.
+            TextEmbedder embedder = new TextEmbedder(tokenizerPath, encoderPath, cpuSupplier.get(), config.type.textDimSize, false);
+            logger.info("Loaded embedder from " + encoderPath);
+            TextEmbedder embedderXL = null;
+            if (config.type == ModelType.SDXL) {
+                embedderXL = new TextEmbedder(tokenizerPath, encoderXLPath, cpuSupplier.get(), config.type.text2DimSize, true);
+                logger.info("Loaded second embedder from " + encoderXLPath);
+            }
+            UNet unet = new UNet(unetPath, optsSupplier.get());
+            logger.info("Loaded unet from " + unetPath);
+            VAEDecoder vae = new VAEDecoder(vaePath, optsSupplier.get());
+            logger.info("Loaded vae from " + vaePath);
+            SafetyChecker safety;
+            if (safetyPath.toFile().exists()) {
+                safety = new SafetyChecker(safetyPath, cpuSupplier.get());
+                logger.info("Created safety");
+            } else {
+                safety = null;
+                logger.info("No safety found");
+            }
+            return new SD4J(modelName, embedder, embedderXL, unet, vae, safety);
+        } catch (OrtException e) {
+            throw new IllegalStateException("Failed to instantiate SD4J pipeline", e);
         }
     }
 
     /**
      * An image generated from Stable Diffusion, along with the input text and other inference properties.
-     *
-     * @param image     The image.
+     * @param image The image.
      * @param modelName The model name.
-     * @param request   The image generation request.
-     * @param batchId   The id number within the batch.
-     * @param isValid   Did the image pass the safety check?
+     * @param request The image generation request.
+     * @param batchId The id number within the batch.
+     * @param isValid Did the image pass the safety check?
      */
     public record SDImage(BufferedImage image, String modelName, Request request, int batchId, boolean isValid) {
         public String metadataDescription() {
@@ -578,14 +463,12 @@ public final class SD4J implements AutoCloseable {
 
     /**
      * Image size.
-     *
      * @param height Height in pixels.
-     * @param width  Width in pixels.
+     * @param width Width in pixels.
      */
     public record ImageSize(int height, int width) {
         /**
          * Creates a square image size.
-         *
          * @param size The height and width.
          */
         public ImageSize(int size) {
@@ -600,34 +483,106 @@ public final class SD4J implements AutoCloseable {
 
     /**
      * A image creation request.
-     *
-     * @param text      The image text.
-     * @param negText   The image negative text.
-     * @param steps     The number of diffusion steps.
-     * @param guidance  The strength of the classifier-free guidance.
-     * @param seed      The RNG seed used to initialize the image (and any ancestral sampling noise).
-     * @param size      The requested image size.
+     * @param text The image text.
+     * @param negText The image negative text.
+     * @param steps The number of diffusion steps.
+     * @param guidance The strength of the classifier-free guidance.
+     * @param seed The RNG seed used to initialize the image (and any ancestral sampling noise).
+     * @param size The requested image size.
      * @param scheduler The scheduling algorithm.
      * @param batchSize The batch size.
      */
-    public record Request(String text, String negText, int steps, float guidance, int seed, ImageSize size,
-                          Schedulers scheduler, int batchSize) {
+    public record Request(String text, String negText, int steps, float guidance, int seed, ImageSize size, Schedulers scheduler, int batchSize) {
         Request(String text, String negText, String stepsStr, String guidanceStr, String seedStr, ImageSize size, Schedulers scheduler, String batchSize) {
             this(text.strip(), negText.strip(), Integer.parseInt(stepsStr), Float.parseFloat(guidanceStr), Integer.parseInt(seedStr), size, scheduler, Integer.parseInt(batchSize));
         }
     }
 
     /**
+     * Supported execution providers.
+     */
+    public enum ExecutionProvider {
+        /**
+         * CPU.
+         */
+        CPU,
+        /**
+         * Apple's Core ML.
+         */
+        CORE_ML,
+        /**
+         * Nvidia GPUs.
+         */
+        CUDA,
+        /**
+         * Windows DirectML devices.
+         */
+        DIRECT_ML;
+
+        /**
+         * Looks up an execution provider returning the enum or throwing {@link IllegalArgumentException} if it's unknown.
+         * @param name The ep to lookup.
+         * @return The enum value.
+         */
+        public static ExecutionProvider lookup(String name) {
+            String lower = name.toLowerCase(Locale.US);
+            return switch (lower) {
+                case "cpu", "" -> CPU;
+                case "coreml", "core_ml", "core-ml" -> CORE_ML;
+                case "cuda" -> CUDA;
+                case "directml", "direct_ml", "direct-ml" -> DIRECT_ML;
+                default -> { throw new IllegalArgumentException("Unknown execution provider '" + name + "'"); }
+            };
+        }
+    }
+
+    /**
+     * The type of Stable Diffusion model.
+     */
+    public enum ModelType {
+        SD1_5(TextEmbedder.SD_1_5_DIM_SIZE,-1),
+        SD2(TextEmbedder.SD_2_DIM_SIZE,-1),
+        SDXL(TextEmbedder.SD_1_5_DIM_SIZE,TextEmbedder.SDXL_DIM_SIZE);
+
+        /**
+         * The text dimension size for the first encoder.
+         */
+        public final int textDimSize;
+        /**
+         * The text dimension size for the second encoder.
+         */
+        public final int text2DimSize;
+
+        private ModelType(int textDimSize, int text2DimSize) {
+            this.textDimSize = textDimSize;
+            this.text2DimSize = text2DimSize;
+        }
+
+        /**
+         * Looks up the model type returning the enum or throwing {@link IllegalArgumentException} if it's unknown.
+         * @param name The model type to lookup.
+         * @return The enum value.
+         */
+        public static ModelType lookup(String name) {
+            String lower = name.toLowerCase(Locale.US);
+            return switch (lower) {
+                case "sdv1.5", "sd15", "sd1.5", "sd1_5", "sd1", "sdv1" -> SD1_5;
+                case "sdv2", "sdv21", "sdv2.1", "sd-turbo", "sd_turbo" -> SD2;
+                case "sdxl", "sdxl-turbo", "sdxl_turbo" -> SDXL;
+                default -> { throw new IllegalArgumentException("Unknown model type '" + name + "'"); }
+            };
+        }
+    }
+
+    /**
      * Record for the SD4J configuration.
-     *
      * @param modelPath The path to the onnx models.
-     * @param provider  The execution provider to use.
-     * @param id        The device id.
+     * @param provider The execution provider to use.
+     * @param id The device id.
      */
     public record SD4JConfig(String modelPath, ExecutionProvider provider, int id, ModelType type) {
         /**
          * Parses the arguments into a config.
-         *
          * @param args The arguments.
          * @return A SD4J config.
          */
@@ -692,12 +647,12 @@ public final class SD4J implements AutoCloseable {
                     }
                 }
             }
-            return Optional.of(new SD4JConfig(modelPath, ExecutionProvider.lookup("core_ml"), id, ModelType.lookup(modelType)));
+            System.out.println(ep);
+            return Optional.of(new SD4JConfig(modelPath, ExecutionProvider.lookup(ep), id, ModelType.lookup(modelType)));
         }
 
         /**
          * Help string for the config arguments.
-         *
          * @return The help string.
          */
         public static String help() {
