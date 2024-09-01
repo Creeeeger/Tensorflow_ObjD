@@ -161,7 +161,7 @@
                         <argument>--model-path</argument>
                         <argument>${modelPath}</argument>
                         <argument>--execution-provider</argument>
-                        <argument>CORE_ML</argument>
+                        <argument>CPU</argument>
                     </arguments>
                 </configuration>
             </plugin>
