@@ -1,12 +1,15 @@
 package org.object_d;
 
-import org.tensorflow.*;
+import org.tensorflow.Graph;
+import org.tensorflow.Operand;
+import org.tensorflow.SavedModelBundle;
+import org.tensorflow.Session;
 import org.tensorflow.framework.optimizers.Adam;
 import org.tensorflow.framework.optimizers.Optimizer;
 import org.tensorflow.ndarray.Shape;
+import org.tensorflow.ndarray.StdArrays;
 import org.tensorflow.op.Ops;
 import org.tensorflow.op.core.*;
-import org.tensorflow.op.image.DecodeJpeg;
 import org.tensorflow.op.math.Add;
 import org.tensorflow.op.math.Mean;
 import org.tensorflow.op.nn.Conv2d;
@@ -17,23 +20,29 @@ import org.tensorflow.op.random.TruncatedNormal;
 import org.tensorflow.types.TFloat32;
 import org.tensorflow.types.TUint8;
 
+import javax.imageio.ImageIO;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.image.BufferedImage;
 import java.io.File;
+import java.io.IOException;
 import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Map;
 
 public class trained_detector extends JFrame {
 
+    private static final int PIXEL_DEPTH = 255;
+    private static final int NUM_CHANNELS = 3;
+    private static final int IMAGE_SIZE = 255;
+    private static final long SEED = 123456789L;
+    private static final String PADDING_TYPE = "SAME";
     //Initialise the elements
     public static File tensor_file = new File("/");
     static JLabel Tensor_name, image_name, output_name, img;
     static JButton image_select, tensor_select, predict;
     static SavedModelBundle savedModelBundle;
+    static File image_file;
 
     public trained_detector() {
         //Create the layout
@@ -98,6 +107,41 @@ public class trained_detector extends JFrame {
         gui.setSize(600, 600);
     }
 
+
+    public static void detect() throws IOException {
+        nu.pattern.OpenCV.loadLocally();
+
+        BufferedImage img = ImageIO.read(image_file);
+
+        float[] imgData = new float[IMAGE_SIZE * IMAGE_SIZE * NUM_CHANNELS];
+        int[] rgbArray = img.getRGB(0, 0, IMAGE_SIZE, IMAGE_SIZE, null, 0, IMAGE_SIZE);
+        for (int i = 0; i < rgbArray.length; i++) {
+            int pixel = rgbArray[i];
+            imgData[i * 3] = ((pixel >> 16) & 0xFF) / 255.0f;
+            imgData[i * 3 + 1] = ((pixel >> 8) & 0xFF) / 255.0f;
+            imgData[i * 3 + 2] = (pixel & 0xFF) / 255.0f;
+        }
+        TFloat32 imageTensor = TFloat32.tensorOf(StdArrays.ndCopyOf(new float[][][]{new float[][]{imgData}}));
+
+        //Setup graph and session and operation graph
+        try (Graph graph = new Graph()) {
+            try (Session session = new Session(graph)) {
+
+                try (TUint8 transformedInput = TUint8.tensorOf(imageTensor.asRawTensor().shape())) {
+                    transformedInput.copyFrom(imageTensor.asRawTensor().data());
+
+                    // Perform prediction
+                    TFloat32 outputTensor = (TFloat32) session.runner()
+                            .feed("input", transformedInput)
+                            .fetch("output")
+                            .run()
+                            .get(0);
+                    System.out.println(outputTensor.getFloat() + " prob");
+                }
+            }
+        }
+    }
+
     public static class event_select_image implements ActionListener {
         JLabel imageLabel;
 
@@ -120,6 +164,7 @@ public class trained_detector extends JFrame {
                     ImageIcon scaledIcon = new ImageIcon(scaledImage);
                     imageLabel.setIcon(scaledIcon);
                     image_name.setText(selectedFile.getPath());
+                    image_file = selectedFile;
                     predict.setEnabled(true);
 
                 } catch (Exception ex) {
@@ -155,44 +200,10 @@ public class trained_detector extends JFrame {
     public static class event_predict implements ActionListener {
         @Override
         public void actionPerformed(ActionEvent e) {
-            detect();
-        }
-    }
-
-    public static void detect() {
-        //Setup graph and session and operation graph
-        try (Graph graph = new Graph()) {
-            try (Session session = new Session(graph)) {
-                Ops operation = Ops.create(graph);
-
-                //Decode the jpeg and get the file
-                DecodeJpeg decodeJpeg = operation.image.decodeJpeg(operation.io.readFile(operation.constant(image_name.getText())).contents(), DecodeJpeg.channels(3L));
-
-                //Get the shape of the image
-                Shape imageShape = session.runner().fetch(decodeJpeg).run().get(0).shape();
-
-                //Now we got to reshape it as we saw over debugging that its in an unusable shape
-                Reshape<TUint8> reshape = operation.reshape(decodeJpeg, operation.array(1,
-                        imageShape.asArray()[0],
-                        imageShape.asArray()[1],
-                        imageShape.asArray()[2]
-                )); //shape is in form of 1|height|width|color channels
-
-                //Reshape operations now, we need to cast because we need integer format from the tensor
-                try (TUint8 reshape_Tensor = (TUint8) session.runner().fetch(reshape).run().get(0)) {
-                    //Create hashmap and add our image as input tensor to it
-                    Map<String, Tensor> tensorMap = new HashMap<>();
-                    tensorMap.put("input", reshape_Tensor);
-                    try (Result result = savedModelBundle.function("serving_default").call(tensorMap)) {
-                        try(TFloat32 amount = (TFloat32) result.get("output").get()) {
-                            float detections = amount.getFloat(0);
-                            System.out.println(detections);
-                        }
-
-                    } catch (Exception ex) {
-                        ex.printStackTrace();
-                    }
-                }
+            try {
+                detect();
+            } catch (IOException ex) {
+                throw new RuntimeException(ex);
             }
         }
     }

@@ -10,8 +10,12 @@
 
 - Train / Create your own models
 
+- Prepare images for CoreMl training
+
 - Generate images with stable diffusion
 
 - Generate images with SD4J
+
+- (in a later version use the interferences created for detecting images)
 
 - Based on tensorflow 2.x for unix systems (Tested on macOS 14 M1 Pro)
