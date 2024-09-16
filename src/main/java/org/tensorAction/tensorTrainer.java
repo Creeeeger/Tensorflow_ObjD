@@ -60,7 +60,10 @@ public class tensorTrainer {
         Operand<TFloat32> scaledInput = tf.math.div(tf.math.sub(tf.dtypes.cast(input_reshaped, TFloat32.class), centeringFactor), scalingFactor);
 
         // First conv layer
-        Variable<TFloat32> conv1Weights = tf.variable(tf.math.mul(tf.random.truncatedNormal(tf.array(5, 5, NUM_CHANNELS, 32), TFloat32.class, TruncatedNormal.seed(SEED)), tf.constant(0.1f)));
+        Variable<TFloat32> conv1Weights = tf.variable(tf.math.mul(tf.random
+                .truncatedNormal(tf.array(5, 5, NUM_CHANNELS, 32), TFloat32.class,
+                        TruncatedNormal.seed(SEED)), tf.constant(0.1f)));
+
         Conv2d<TFloat32> conv1 = tf.nn.conv2d(scaledInput, conv1Weights, Arrays.asList(1L, 1L, 1L, 1L), PADDING_TYPE);
         Variable<TFloat32> conv1Biases = tf.variable(tf.fill(tf.array(32), tf.constant(0.0f)));
         Relu<TFloat32> relu1 = tf.nn.relu(tf.nn.biasAdd(conv1, conv1Biases));
@@ -81,7 +84,9 @@ public class tensorTrainer {
         Reshape<TFloat32> flatten = tf.reshape(pool2, tf.concat(Arrays.asList(tf.slice(tf.shape(pool2), tf.array(0), tf.array(1)), tf.array(-1)), tf.constant(0)));
 
         // Fully connected layer
-        Variable<TFloat32> fc1Weights = tf.variable(tf.math.mul(tf.random.truncatedNormal(tf.array(IMAGE_SIZE * IMAGE_SIZE * 4, 512), TFloat32.class, TruncatedNormal.seed(SEED)), tf.constant(0.1f)));
+        Variable<TFloat32> fc1Weights = tf.variable(tf.math.mul(tf.random
+                .truncatedNormal(tf.array(IMAGE_SIZE * IMAGE_SIZE * 4, 512), TFloat32.class,
+                        TruncatedNormal.seed(SEED)), tf.constant(0.1f)));
         Variable<TFloat32> fc1Biases = tf.variable(tf.fill(tf.array(512), tf.constant(0.1f)));
         Relu<TFloat32> relu3 = tf.nn.relu(tf.math.add(tf.linalg.matMul(flatten, fc1Weights), fc1Biases));
 
@@ -96,23 +101,25 @@ public class tensorTrainer {
 
         // Loss function & regularization
         OneHot<TFloat32> oneHot = tf.oneHot(labels, tf.constant(classDirs.length), tf.constant(1.0f), tf.constant(0.0f));
+        System.out.println(oneHot.shape());
         SoftmaxCrossEntropyWithLogits<TFloat32> batchLoss = tf.nn.softmaxCrossEntropyWithLogits(logits, oneHot);
         Mean<TFloat32> labelLoss = tf.math.mean(batchLoss.loss(), tf.constant(0));
         Add<TFloat32> regularizes = tf.math.add(tf.nn.l2Loss(fc1Weights), tf.math.add(tf.nn.l2Loss(fc1Biases), tf.math.add(tf.nn.l2Loss(fc2Weights), tf.nn.l2Loss(fc2Biases))));
-        Add<TFloat32> loss = tf.withName("training_loss").math.add(labelLoss, tf.math.mul(regularizes, tf.constant(8e-4f)));
+        Add<TFloat32> loss = tf.withName("training_loss").math.add(labelLoss, tf.math.mul(regularizes, tf.constant(5e-4f)));
 
         // Optimizer
-        Optimizer optimizer = new Adam(graph, Main_UI.learning, 0.9f, 0.999f, 8e-4f);
-
-        System.out.println("Optimizer = " + optimizer);
+        Optimizer optimizer = new Adam(graph, Main_UI.learning, 0.9f, 0.999f, 1e-8f);
         optimizer.minimize(loss, "train");
 
         return graph;
     }
 
     public static void train(List<TFloat32> imageTensors, List<TFloat32> labelTensors) {
-        int batchSize = Main_UI.batch;
-        int numBatches = (int) Math.ceil(imageTensors.size() / (double) batchSize);
+        int batchSize = Main_UI.batch; //Define the batch size based on the settings from the Settings UI
+        int numBatches = (int) Math.ceil(imageTensors.size() / (double) batchSize); //Calculates the amount of batches
+        //imageTensors.size() -> amount of all images
+        //batchSize -> set batch size
+        //after division get the smallest batch size
 
         try (Graph graph = build()) {
             try (Session session = new Session(graph)) {

@@ -273,7 +273,6 @@ public class Trainer extends JFrame {
         @Override
         public void actionPerformed(ActionEvent e) {
             command_string = command.getText();
-            output_gen_string = op_path_gen_img.getPath();
             if (check_if_env_exists()) {
                 gen.setText("Starting generating images");
                 try {
@@ -292,7 +291,7 @@ public class Trainer extends JFrame {
 
                     // Send a command to the shell
                     commandWriter.println("cd stable_diff_env");
-                    commandWriter.println("bash webui.sh --skip-install");
+                    commandWriter.println("./webui.sh");
                     commandWriter.flush();
 
                     // Get the output of the command
