@@ -261,7 +261,7 @@ public class Trainer extends JFrame {
             image_folder_String = img_for_train.getPath(); //path for images
             System.out.println("Start Training Model");
             try {
-                org.tensorAction.tensorTrainer.access(image_folder_String);
+                org.tensorAction.tensorTrainerCNN.access(image_folder_String);
             } catch (IOException ex) {
                 throw new RuntimeException(ex);
             }
