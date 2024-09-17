@@ -146,10 +146,10 @@ public class detector {
                                                 returnArray[1] = returnArray[1] + detectedLabel + ": " + String.format("%.2f", (score * 100)) + "%\n";
 
                                                 // Draw the rectangle on the image
-                                                Imgproc.rectangle(image, new Point(xMin, yMin), new Point(xMax, yMax), new Scalar(0, 255, 0), 2);
+                                                Imgproc.rectangle(image, new Point(xMin, yMin), new Point(xMax, yMax), new Scalar(0, 0, 0), 1);
 
                                                 // Optionally, you can put the label text on the image
-                                                Imgproc.putText(image, detectedLabel, new Point(xMin, yMin - 10), Imgproc.FONT_HERSHEY_SIMPLEX, 0.5, new Scalar(0, 255, 0), 1);
+                                                Imgproc.putText(image, detectedLabel + String.format(" %.2f", (score * 100)) + "%", new Point(xMin, yMin - 10), Imgproc.FONT_HERSHEY_SIMPLEX, 0.7, new Scalar(0, 0, 0), 1);
                                             }
                                         }
 

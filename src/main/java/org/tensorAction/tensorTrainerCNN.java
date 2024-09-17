@@ -1,5 +1,6 @@
 package org.tensorAction;
 
+import org.object_d.Main_UI;
 import org.tensorflow.*;
 import org.tensorflow.framework.GraphDef;
 import org.tensorflow.framework.MetaGraphDef;
@@ -33,9 +34,10 @@ import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 
 public class tensorTrainerCNN {
-    //Main void
+    //Main void for testing purposes
     //Usage for loading the dataset and controlling the main process
     public static void main(String[] args) throws IOException {
         nu.pattern.OpenCV.loadLocally();
@@ -49,6 +51,24 @@ public class tensorTrainerCNN {
         TFloat32 images = datasetBatch[0];
         TFloat32 labels = datasetBatch[1];
         //debugLoad(images, labels);
+        trainModel(images, labels, numberClasses, epochs, imageSize);
+    }
+
+    //access void for accessing the program over the trainer
+    public static void access(String folder) throws IOException {
+        nu.pattern.OpenCV.loadLocally();
+        File folderDir = new File(folder);
+
+        int numberClasses = (int) Arrays.stream(Objects.requireNonNull(folderDir.listFiles()))
+                .filter(File::isDirectory)
+                .count();
+        int imageSize = Main_UI.resolution;
+        int epochs = Main_UI.epochs;
+        int batchSize = Main_UI.batch;
+
+        TFloat32[] datasetBatch = loadCocoDataset(folder, batchSize, imageSize, imageSize, 3, numberClasses);
+        TFloat32 images = datasetBatch[0];
+        TFloat32 labels = datasetBatch[1];
         trainModel(images, labels, numberClasses, epochs, imageSize);
     }
 
@@ -282,6 +302,8 @@ public class tensorTrainerCNN {
 
             TFloat32 boxTensor = generateSyntheticboxes((int) images.shape().size(0));
 
+            Result outputs = null;
+
             for (int epoch = 0; epoch < epochs; epoch++) {
                 // Run the session to compute the loss and optimize
                 Session.Runner runner = session.runner()
@@ -290,9 +312,8 @@ public class tensorTrainerCNN {
                         .feed("labels", labels)
                         .addTarget("train");
 
-
                 // Fetch the loss values for monitoring
-                Result outputs = runner
+                outputs = runner
                         .fetch("box_output")
                         .fetch("class_output")
                         .fetch("totalLoss")
@@ -303,7 +324,7 @@ public class tensorTrainerCNN {
                 TFloat32 lossTensor1 = (TFloat32) outputs.get(1);
                 TFloat32 lossTensor2 = (TFloat32) outputs.get(2);
 
-                System.out.println("Loss at epoch " + epoch + ": " + lossTensor.getFloat() + "  " + lossTensor1.getFloat() + "  " + lossTensor2.getFloat());
+                System.out.printf("Loss at epoch %d: %-10.6f %-10.6f %-10.6f%n", epoch, lossTensor.getFloat(), lossTensor1.getFloat(), lossTensor2.getFloat());
 
                 // Close output tensors
                 for (Map.Entry<String, Tensor> tensor : outputs) {
@@ -312,7 +333,7 @@ public class tensorTrainerCNN {
             }
 
             System.out.println("Training completed.");
-            validate(session, images, labels, numClasses);
+            validate(session, images, labels, numClasses, outputs);
 
             saveModel(graph, session, Paths.get(Paths.get("").toAbsolutePath().toString()).getParent().toString());
 
@@ -321,7 +342,7 @@ public class tensorTrainerCNN {
     }
 
     // Method to test the model and compute accuracy and confusion matrix
-    public static void validate(Session session, TFloat32 image, TFloat32 label, int numClasses) {
+    public static void validate(Session session, TFloat32 image, TFloat32 label, int numClasses, Result outputs) {
         int correctCount = 0;
         int[][] confusionMatrix = new int[numClasses][numClasses];
 
@@ -341,7 +362,7 @@ public class tensorTrainerCNN {
             int trueLabel = argmaxLabel(label, i);
 
             // Get predicted label
-            int predictedLabel = argmax(outputTensor);
+            int predictedLabel = 1;
 
             // Compare prediction with true label
             if (predictedLabel == trueLabel) {
@@ -351,6 +372,34 @@ public class tensorTrainerCNN {
             // Update confusion matrix
             confusionMatrix[trueLabel][predictedLabel]++;
 
+        }
+
+        // Assuming classPredictionTensor is the tensor that contains the predicted probabilities (softmax output)
+        TFloat32 classPredictionTensor = (TFloat32) outputs.get(1);  // Fetch the class predictions (softmax output)
+        // Get the shape of the tensor to iterate over the batch and number of classes
+        long batchSize = classPredictionTensor.shape().size(0);  // Number of images in the batch
+        long Classes = classPredictionTensor.shape().size(1);  // Number of classes
+
+        int[] predictedLabels = new int[(int) batchSize];  // Array to store predicted labels for each image
+
+        for (int i = 0; i < batchSize; i++) {
+            float maxProb = -1.0f;  // Track the maximum probability for each image
+            int labell = -1;  // Track the index (class) with the maximum probability
+
+            for (int j = 0; j < Classes; j++) {
+                float prob = classPredictionTensor.getFloat(i, j);  // Get the probability for class j of image i
+                if (prob > maxProb) {
+                    maxProb = prob;  // Update the maximum probability
+                    labell = j;  // Update the predicted label (class index)
+                }
+            }
+
+            predictedLabels[i] = labell;  // Store the predicted label for image i
+        }
+
+        // Now, predictedLabels contains the predicted class for each image in the batch
+        for (int i = 0; i < predictedLabels.length; i++) {
+            System.out.println("Predicted label for image " + i + ": " + predictedLabels[i] + " True label: " + argmaxLabel(label, i));
         }
 
         // Print accuracy and confusion matrix
@@ -376,24 +425,6 @@ public class tensorTrainerCNN {
             sb.append("\n");
         }
         return sb;
-    }
-
-    // Method to get the index of the maximum value in the tensor
-    public static int argmax(TFloat32 tensor) {
-        // Convert tensor to FloatNdArray
-        FloatNdArray probabilities = tensor.get();
-
-        // Find index of maximum value
-        float maxVal = Float.NEGATIVE_INFINITY;
-        int idx = 0;
-        for (int i = 0; i < probabilities.shape().size(0); i++) {
-            float curVal = probabilities.getFloat();
-            if (curVal > maxVal) {
-                maxVal = curVal;
-                idx = i;
-            }
-        }
-        return idx;
     }
 
     // Method to get the index of the maximum value in the tensor
