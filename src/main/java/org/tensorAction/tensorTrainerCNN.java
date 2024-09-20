@@ -26,26 +26,63 @@ import org.tensorflow.op.random.TruncatedNormal;
 import org.tensorflow.types.TFloat32;
 
 import javax.imageio.ImageIO;
+import javax.swing.*;
+import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Objects;
+import java.util.List;
+import java.util.*;
 
-public class tensorTrainerCNN {
-    //Main void for testing purposes
-    //Usage for loading the dataset and controlling the main process
+public class tensorTrainerCNN extends JFrame {
+    static int numberClasses, epochs;
+    //static float maxLoss = Main_UI.learning;
+    static float maxLoss = 1.0f;
+    static int[][] confusionMatrix;
+    static List<Float> boxLossValues = new ArrayList<>();  // Store the loss values
+    static List<Float> classLossValues = new ArrayList<>();  // Store the loss values
+    static List<Float> totalLossValues = new ArrayList<>();  // Store the loss values
+    JPanel box_loss_panel, class_loss_panel, total_loss_panel, confusion_matrix_panel;
+    JTextArea textArea;
+
+    public tensorTrainerCNN() {
+        setLayout(new GridLayout(4, 1, 10, 10));
+        box_loss_panel = new JPanel();
+        box_loss_panel.setBorder(BorderFactory.createTitledBorder("Box loss"));
+        box_loss_graph boxLossGraph = new box_loss_graph();
+        box_loss_panel.add(boxLossGraph);
+
+        class_loss_panel = new JPanel();
+        class_loss_panel.setBorder(BorderFactory.createTitledBorder("Class loss"));
+        class_loss_graph classLossGraph = new class_loss_graph();
+        class_loss_panel.add(classLossGraph);
+
+        total_loss_panel = new JPanel();
+        total_loss_panel.setBorder(BorderFactory.createTitledBorder("Total loss"));
+        total_loss_graph totalLossGraph = new total_loss_graph();
+        total_loss_panel.add(totalLossGraph);
+
+        confusion_matrix_panel = new JPanel();
+        confusion_matrix_panel.setBorder(BorderFactory.createTitledBorder("Confusion matrix"));
+
+        add(box_loss_panel);
+        add(class_loss_panel);
+        add(total_loss_panel);
+        add(confusion_matrix_panel);
+
+        textArea = new JTextArea(numberClasses + 2, numberClasses + 2);
+        confusion_matrix_panel.add(textArea);
+    }
     public static void main(String[] args) throws IOException {
         nu.pattern.OpenCV.loadLocally();
         String folder = "/Users/gregor/Downloads/flower_photos";
+
         int numberClasses = 5;
         int imageSize = 32;
         int epochs = 100;
-        int batchSize = 200;
+        int batchSize = 10;
 
         TFloat32[] datasetBatch = loadCocoDataset(folder, batchSize, imageSize, imageSize, 3, numberClasses);
         TFloat32 images = datasetBatch[0];
@@ -59,11 +96,11 @@ public class tensorTrainerCNN {
         nu.pattern.OpenCV.loadLocally();
         File folderDir = new File(folder);
 
-        int numberClasses = (int) Arrays.stream(Objects.requireNonNull(folderDir.listFiles()))
+        numberClasses = (int) Arrays.stream(Objects.requireNonNull(folderDir.listFiles()))
                 .filter(File::isDirectory)
                 .count();
         int imageSize = Main_UI.resolution;
-        int epochs = Main_UI.epochs;
+        epochs = Main_UI.epochs;
         int batchSize = Main_UI.batch;
 
         TFloat32[] datasetBatch = loadCocoDataset(folder, batchSize, imageSize, imageSize, 3, numberClasses);
@@ -293,7 +330,14 @@ public class tensorTrainerCNN {
     }
 
     public static void trainModel(TFloat32 images, TFloat32 labels, int numClasses, int epochs, int imageSize) throws IOException {
-        // Create the graph and initialize variables
+        // Create the graph and initialize variables as well as the live analysis training window
+        tensorTrainerCNN gui = new tensorTrainerCNN();
+        gui.setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE);
+        gui.setSize(1500, 1000);
+        gui.setTitle("Live training analysis");
+        gui.setVisible(true);
+        gui.setLocation(100, 10);
+
         try (Graph graph = CustomGraph(numClasses, imageSize);
              Session session = new Session(graph)) {
 
@@ -325,6 +369,7 @@ public class tensorTrainerCNN {
                 TFloat32 lossTensor2 = (TFloat32) outputs.get(2);
 
                 System.out.printf("Loss at epoch %d: %-10.6f %-10.6f %-10.6f%n", epoch, lossTensor.getFloat(), lossTensor1.getFloat(), lossTensor2.getFloat());
+                gui.updateLossValues(lossTensor.getFloat(), lossTensor1.getFloat(), lossTensor2.getFloat());
 
                 // Close output tensors
                 for (Map.Entry<String, Tensor> tensor : outputs) {
@@ -344,11 +389,11 @@ public class tensorTrainerCNN {
     // Method to test the model and compute accuracy and confusion matrix
     public static void validate(Session session, TFloat32 image, TFloat32 label, int numClasses, Result outputs) {
         int correctCount = 0;
-        int[][] confusionMatrix = new int[numClasses][numClasses];
+        confusionMatrix = new int[numClasses][numClasses];
 
         // Iterate over each test data sample
         for (int i = 0; i < image.shape().size(0); i++) {
-            FloatNdArray imageND = image.slice(Indices.slice(i, i+1));
+            FloatNdArray imageND = image.slice(Indices.slice(i, i + 1));
             TFloat32 imageSingle = TFloat32.tensorOf(NdArrays.ofFloats(imageND.shape()));
 
             // Perform prediction
@@ -357,21 +402,6 @@ public class tensorTrainerCNN {
                     .fetch("class_output")
                     .run()
                     .get(0);
-
-            // Convert trueLabelTensor to an integer
-            int trueLabel = argmaxLabel(label, i);
-
-            // Get predicted label
-            int predictedLabel = 1;
-
-            // Compare prediction with true label
-            if (predictedLabel == trueLabel) {
-                correctCount++;
-            }
-
-            // Update confusion matrix
-            confusionMatrix[trueLabel][predictedLabel]++;
-
         }
 
         // Assuming classPredictionTensor is the tensor that contains the predicted probabilities (softmax output)
@@ -400,10 +430,17 @@ public class tensorTrainerCNN {
         // Now, predictedLabels contains the predicted class for each image in the batch
         for (int i = 0; i < predictedLabels.length; i++) {
             System.out.println("Predicted label for image " + i + ": " + predictedLabels[i] + " True label: " + argmaxLabel(label, i));
+            // Compare prediction with true label
+            if (predictedLabels[i] == argmaxLabel(label, i)) {
+                correctCount++;
+            }
+
+            // Update confusion matrix
+            confusionMatrix[argmaxLabel(label, i)][predictedLabels[i]]++;
         }
 
         // Print accuracy and confusion matrix
-        float accuracy = (float) correctCount / image.shape().size(0);
+        float accuracy = (float) correctCount / classPredictionTensor.shape().size(0);
         System.out.println("Final accuracy: " + accuracy);
         System.out.println(getStringBuilder(confusionMatrix));
     }
@@ -464,5 +501,177 @@ public class tensorTrainerCNN {
         // Write the MetaGraphDef to saved_model.pb in the model directory
         Files.write(Paths.get(exportDir, "model", "saved_model.pb"), builder.build().toByteArray());
         System.out.println("Model saved to " + exportDir + "/model/saved_model.pb");
+    }
+
+    // Method to update the loss value and repaint the graph
+    public void updateLossValues(float box_l, float class_l, float total_l) {
+        boxLossValues.add(box_l);  // Add new loss value for the current epoch
+        classLossValues.add(class_l);
+        totalLossValues.add(total_l);
+        repaint();  // Repaint the graph with new data
+    }
+
+    // Custom JPanel class for drawing the graph
+    static class box_loss_graph extends JPanel {
+        @Override
+        protected void paintComponent(Graphics g) {
+            super.paintComponent(g);
+
+            // Cast to Graphics2D for better control (optional)
+            Graphics2D g2d = (Graphics2D) g;
+
+            // Set a better quality of rendering (optional)
+            g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+            // Get the panel width and height
+            int panelWidth = getWidth();
+            int panelHeight = getHeight();
+
+            // Define axis margins
+            int marginLeft = 30;
+            int marginBottom = 30;
+
+            // Set the origin point for the graph (bottom-left corner)
+            int originY = panelHeight - marginBottom;
+
+            // Draw x-axis (epochs)
+            g2d.drawLine(marginLeft, originY, panelWidth - marginLeft, originY);
+
+            // Draw y-axis (loss values)
+            g2d.drawLine(marginLeft, originY, marginLeft, marginBottom);
+
+            // Maximum number of epochs to display
+            int maxEpochs = boxLossValues.size();
+
+            // Draw the loss values as a line graph
+            for (int epoch = 1; epoch < maxEpochs; epoch++) {
+                // Get current and previous loss values
+                float lossPrev = boxLossValues.get(epoch - 1);
+                float lossCurrent = boxLossValues.get(epoch);
+
+                // Scale the loss and epoch values for graph drawing
+                int x1 = marginLeft + (epoch - 1) * 2; // 10 px per epoch (adjust scaling as needed)
+                int y1 = originY - (int) (lossPrev / maxLoss * (panelHeight - marginBottom - 30));  // Scaled Y
+                int x2 = marginLeft + epoch * 2;  // Next point for the next epoch
+                int y2 = originY - (int) (lossCurrent / maxLoss * (panelHeight - marginBottom - 30));  // Scaled Y
+
+                // Draw line between the two points
+                g2d.drawLine(x1, y1, x2, y2);
+            }
+        }
+
+        @Override
+        public Dimension getPreferredSize() {
+            return new Dimension(epochs * 2, 230); // Set size for the graph panel
+        }
+    }
+
+    // Custom JPanel class for drawing the graph
+    static class class_loss_graph extends JPanel {
+        @Override
+        protected void paintComponent(Graphics g) {
+            super.paintComponent(g);
+
+            // Cast to Graphics2D for better control (optional)
+            Graphics2D g2d = (Graphics2D) g;
+
+            // Set a better quality of rendering (optional)
+            g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+            // Get the panel width and height
+            int panelWidth = getWidth();
+            int panelHeight = getHeight();
+
+            // Define axis margins
+            int marginLeft = 30;
+            int marginBottom = 30;
+
+            // Set the origin point for the graph (bottom-left corner)
+            int originY = panelHeight - marginBottom;
+
+            // Draw x-axis (epochs)
+            g2d.drawLine(marginLeft, originY, panelWidth - marginLeft, originY);
+
+            // Draw y-axis (loss values)
+            g2d.drawLine(marginLeft, originY, marginLeft, marginBottom);
+
+            // Maximum number of epochs to display
+            int maxEpochs = classLossValues.size();
+
+            // Draw the loss values as a line graph
+            for (int epoch = 1; epoch < maxEpochs; epoch++) {
+                // Get current and previous loss values
+                float lossPrev = classLossValues.get(epoch - 1);
+                float lossCurrent = classLossValues.get(epoch);
+
+                // Scale the loss and epoch values for graph drawing
+                int x1 = marginLeft + (epoch - 1) * 2; // 10 px per epoch (adjust scaling as needed)
+                int y1 = originY - (int) (lossPrev / maxLoss * (panelHeight - marginBottom - 30));  // Scaled Y
+                int x2 = marginLeft + epoch * 2;  // Next point for the next epoch
+                int y2 = originY - (int) (lossCurrent / maxLoss * (panelHeight - marginBottom - 30));  // Scaled Y
+
+                // Draw line between the two points
+                g2d.drawLine(x1, y1, x2, y2);
+            }
+        }
+
+        @Override
+        public Dimension getPreferredSize() {
+            return new Dimension(epochs * 2, 230); // Set size for the graph panel
+        }
+    }
+
+    // Custom JPanel class for drawing the graph
+    static class total_loss_graph extends JPanel {
+        @Override
+        protected void paintComponent(Graphics g) {
+            super.paintComponent(g);
+
+            // Cast to Graphics2D for better control (optional)
+            Graphics2D g2d = (Graphics2D) g;
+            // Set a better quality of rendering (optional)
+            g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+            // Get the panel width and height
+            int panelWidth = getWidth();
+            int panelHeight = getHeight();
+
+            // Define axis margins
+            int marginLeft = 30;
+            int marginBottom = 30;
+
+            // Set the origin point for the graph (bottom-left corner)
+            int originY = panelHeight - marginBottom;
+
+            // Draw x-axis (epochs)
+            g2d.drawLine(marginLeft, originY, panelWidth - marginLeft, originY);
+
+            // Draw y-axis (loss values)
+            g2d.drawLine(marginLeft, originY, marginLeft, marginBottom);
+
+            // Maximum number of epochs to display
+            int maxEpochs = totalLossValues.size();
+
+            // Draw the loss values as a line graph
+            for (int epoch = 1; epoch < maxEpochs; epoch++) {
+                // Get current and previous loss values
+                float lossPrev = totalLossValues.get(epoch - 1);
+                float lossCurrent = totalLossValues.get(epoch);
+
+                // Scale the loss and epoch values for graph drawing
+                int x1 = marginLeft + (epoch - 1) * 2; // 10 px per epoch (adjust scaling as needed)
+                int y1 = originY - (int) (lossPrev / maxLoss * (panelHeight - marginBottom - 30));  // Scaled Y
+                int x2 = marginLeft + epoch * 2;  // Next point for the next epoch
+                int y2 = originY - (int) (lossCurrent / maxLoss * (panelHeight - marginBottom - 30));  // Scaled Y
+
+                // Draw line between the two points
+                g2d.drawLine(x1, y1, x2, y2);
+            }
+        }
+
+        @Override
+        public Dimension getPreferredSize() {
+            return new Dimension(epochs * 2, 230); // Set size for the graph panel
+        }
     }
 }
