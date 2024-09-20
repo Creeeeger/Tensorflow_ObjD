@@ -1,24 +1,10 @@
 package org.object_d;
 
-import org.tensorflow.Graph;
-import org.tensorflow.Operand;
 import org.tensorflow.SavedModelBundle;
-import org.tensorflow.Session;
-import org.tensorflow.framework.optimizers.Adam;
-import org.tensorflow.framework.optimizers.Optimizer;
+import org.tensorflow.ndarray.FloatNdArray;
+import org.tensorflow.ndarray.NdArrays;
 import org.tensorflow.ndarray.Shape;
-import org.tensorflow.ndarray.StdArrays;
-import org.tensorflow.op.Ops;
-import org.tensorflow.op.core.*;
-import org.tensorflow.op.math.Add;
-import org.tensorflow.op.math.Mean;
-import org.tensorflow.op.nn.Conv2d;
-import org.tensorflow.op.nn.MaxPool;
-import org.tensorflow.op.nn.Relu;
-import org.tensorflow.op.nn.SoftmaxCrossEntropyWithLogits;
-import org.tensorflow.op.random.TruncatedNormal;
 import org.tensorflow.types.TFloat32;
-import org.tensorflow.types.TUint8;
 
 import javax.imageio.ImageIO;
 import javax.swing.*;
@@ -28,20 +14,15 @@ import java.awt.event.ActionListener;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
-import java.util.Arrays;
 
 public class trained_detector extends JFrame {
 
-    private static final int PIXEL_DEPTH = 255;
     private static final int NUM_CHANNELS = 3;
     private static final int IMAGE_SIZE = 255;
-    private static final long SEED = 123456789L;
-    private static final String PADDING_TYPE = "SAME";
     //Initialise the elements
     public static File tensor_file = new File("/");
     static JLabel Tensor_name, image_name, output_name, img;
     static JButton image_select, tensor_select, predict;
-    static SavedModelBundle savedModelBundle;
     static File image_file;
 
     public trained_detector() {
@@ -110,36 +91,48 @@ public class trained_detector extends JFrame {
 
     public static void detect() throws IOException {
         nu.pattern.OpenCV.loadLocally();
+        int targetWidth = 200;
+        int targetHeight = 200;
+
 
         BufferedImage img = ImageIO.read(image_file);
 
-        float[] imgData = new float[IMAGE_SIZE * IMAGE_SIZE * NUM_CHANNELS];
-        int[] rgbArray = img.getRGB(0, 0, IMAGE_SIZE, IMAGE_SIZE, null, 0, IMAGE_SIZE);
-        for (int i = 0; i < rgbArray.length; i++) {
-            int pixel = rgbArray[i];
-            imgData[i * 3] = ((pixel >> 16) & 0xFF) / 255.0f;
-            imgData[i * 3 + 1] = ((pixel >> 8) & 0xFF) / 255.0f;
-            imgData[i * 3 + 2] = (pixel & 0xFF) / 255.0f;
+        BufferedImage resizedImage = new BufferedImage(targetWidth, targetHeight, BufferedImage.TYPE_INT_RGB);
+        resizedImage.getGraphics().drawImage(img, 0, 0, targetWidth, targetHeight, null);
+        FloatNdArray imageData = NdArrays.ofFloats(Shape.of(1, targetHeight, targetWidth, 3));
+
+
+        float[][][] imageArray = new float[targetHeight][targetWidth][3];  // Assuming 3 channels
+        for (int x = 0; x < targetHeight; x++) {
+            for (int y = 0; y < targetWidth; y++) {
+                int rgb = resizedImage.getRGB(x, y);
+                imageArray[x][y][0] = ((rgb >> 16) & 0xFF) / 255.0f;  // Red
+                imageArray[x][y][1] = ((rgb >> 8) & 0xFF) / 255.0f;   // Green
+                imageArray[x][y][2] = (rgb & 0xFF) / 255.0f;          // Blue
+            }
         }
-        TFloat32 imageTensor = TFloat32.tensorOf(StdArrays.ndCopyOf(new float[][][]{new float[][]{imgData}}));
 
-        //Setup graph and session and operation graph
-        try (Graph graph = new Graph()) {
-            try (Session session = new Session(graph)) {
 
-                try (TUint8 transformedInput = TUint8.tensorOf(imageTensor.asRawTensor().shape())) {
-                    transformedInput.copyFrom(imageTensor.asRawTensor().data());
-
-                    // Perform prediction
-                    TFloat32 outputTensor = (TFloat32) session.runner()
-                            .feed("input", transformedInput)
-                            .fetch("output")
-                            .run()
-                            .get(0);
-                    System.out.println(outputTensor.getFloat() + " prob");
+        // Fill the image tensor
+        for (int i = 0; i < targetHeight; i++) {
+            for (int j = 0; j < targetWidth; j++) {
+                for (int k = 0; k < 3; k++) {
+                    imageData.setFloat(imageArray[i][j][k], 0, i, j, k);
                 }
             }
         }
+
+        TFloat32 imageTensor = TFloat32.tensorOf(imageData);
+
+        TFloat32 classOutput;
+        TFloat32 boxOutput;
+        try (SavedModelBundle model = SavedModelBundle.load(tensor_file.getPath(), "serve")) {
+            // Fetch the outputs using the signature keys
+            classOutput = (TFloat32) model.session().runner().feed("input", imageTensor).fetch("class_output").run().get(0);
+            boxOutput = (TFloat32) model.session().runner().feed("input", imageTensor).fetch("box_output").run().get(0);
+        }
+        System.out.println(classOutput.getFloat() + " prob");
+        System.out.println(boxOutput.getFloat() + " prob");
     }
 
     public static class event_select_image implements ActionListener {
@@ -185,15 +178,8 @@ public class trained_detector extends JFrame {
                 tensor_file = fileChooser.getSelectedFile();
                 Tensor_name.setText(tensor_file.getPath());
             }
-
-            try {
-                savedModelBundle = SavedModelBundle.load(tensor_file.getPath(), "serve");
-                System.out.println("Model loaded");
-                image_select.setEnabled(true);
-
-            } catch (Exception ex) {
-                ex.printStackTrace();
-            }
+            System.out.println("Model loaded");
+            image_select.setEnabled(true);
         }
     }
 

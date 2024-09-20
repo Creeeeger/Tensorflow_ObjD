@@ -2,9 +2,7 @@ package org.tensorAction;
 
 import org.object_d.Main_UI;
 import org.tensorflow.*;
-import org.tensorflow.framework.GraphDef;
-import org.tensorflow.framework.MetaGraphDef;
-import org.tensorflow.framework.SavedModel;
+import org.tensorflow.framework.*;
 import org.tensorflow.framework.losses.Losses;
 import org.tensorflow.framework.optimizers.Adam;
 import org.tensorflow.framework.optimizers.Optimizer;
@@ -23,7 +21,9 @@ import org.tensorflow.op.nn.Conv2d;
 import org.tensorflow.op.nn.Softmax;
 import org.tensorflow.op.nn.SoftmaxCrossEntropyWithLogits;
 import org.tensorflow.op.random.TruncatedNormal;
+import org.tensorflow.op.train.Save;
 import org.tensorflow.types.TFloat32;
+import org.tensorflow.types.TString;
 
 import javax.imageio.ImageIO;
 import javax.swing.*;
@@ -32,6 +32,7 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
 import java.util.*;
@@ -43,9 +44,9 @@ public class tensorTrainerCNN extends JFrame {
     static List<Float> boxLossValues = new ArrayList<>();  // Store the loss values
     static List<Float> classLossValues = new ArrayList<>();  // Store the loss values
     static List<Float> totalLossValues = new ArrayList<>();  // Store the loss values
-    JPanel box_loss_panel, class_loss_panel, total_loss_panel, confusion_matrix_panel;
     static JTextArea textArea;
     static JLabel accy;
+    JPanel box_loss_panel, class_loss_panel, total_loss_panel, confusion_matrix_panel;
 
     public tensorTrainerCNN() {
         setLayout(new GridLayout(4, 1, 10, 10));
@@ -379,21 +380,9 @@ public class tensorTrainerCNN extends JFrame {
         int correctCount = 0;
         confusionMatrix = new int[numClasses][numClasses];
 
-        // Iterate over each test data sample
-        for (int i = 0; i < image.shape().size(0); i++) {
-            FloatNdArray imageND = image.slice(Indices.slice(i, i + 1));
-            TFloat32 imageSingle = TFloat32.tensorOf(NdArrays.ofFloats(imageND.shape()));
-
-            // Perform prediction
-            TFloat32 outputTensor = (TFloat32) session.runner()
-                    .feed("input", imageSingle)
-                    .fetch("class_output")
-                    .run()
-                    .get(0);
-        }
-
         // Assuming classPredictionTensor is the tensor that contains the predicted probabilities (softmax output)
         TFloat32 classPredictionTensor = (TFloat32) outputs.get(1);  // Fetch the class predictions (softmax output)
+
         // Get the shape of the tensor to iterate over the batch and number of classes
         long batchSize = classPredictionTensor.shape().size(0);  // Number of images in the batch
         long Classes = classPredictionTensor.shape().size(1);  // Number of classes
@@ -470,17 +459,53 @@ public class tensorTrainerCNN extends JFrame {
     }
 
     public static void saveModel(Graph graph, Session session, String exportDir) throws IOException {
-        // Create the directories if they don't exist
-        Files.createDirectories(Paths.get(exportDir, "model"));
-        Files.createDirectories(Paths.get(exportDir, "model", "variables"));
+        // Create directories if they don't exist
+        Path modelDir = Paths.get(exportDir, "model");
+        Files.createDirectories(modelDir);
+        Files.createDirectories(modelDir.resolve("variables"));
 
+        // Initialize MetaGraphDef to store graph and meta information
         MetaGraphDef.Builder metaGraphDefBuilder = MetaGraphDef.newBuilder();
         metaGraphDefBuilder.setGraphDef(GraphDef.parseFrom(graph.toGraphDef().toByteArray()));
 
-        // Create MetaInfoDef and add serve tag
+        // Add serve tag to MetaInfoDef (for serving the model)
         MetaGraphDef.MetaInfoDef.Builder metaInfoDefBuilder = MetaGraphDef.MetaInfoDef.newBuilder();
-        metaInfoDefBuilder.addTags("serve");  // Use addTags method to add a tag to the list
-        metaGraphDefBuilder.setMetaInfoDef(metaInfoDefBuilder.build());  // Set the built MetaInfoDef
+        metaInfoDefBuilder.addTags("serve");
+        metaGraphDefBuilder.setMetaInfoDef(metaInfoDefBuilder.build());
+
+        // Define signatures for input/output tensors
+        SignatureDef.Builder signatureDefBuilder = SignatureDef.newBuilder();
+
+            // Create input tensor signature
+            TensorInfo inputTensorInfo = TensorInfo.newBuilder()
+                    .setDtype(DataType.DT_FLOAT)
+                    .setTensorShape(TensorShapeProto.newBuilder()
+                            .addDim(TensorShapeProto.Dim.newBuilder().setSize(-1)) // Batch size
+                            .addDim(TensorShapeProto.Dim.newBuilder().setSize(-1)) // Height (placeholder)
+                            .addDim(TensorShapeProto.Dim.newBuilder().setSize(-1)) // Width (placeholder)
+                            .addDim(TensorShapeProto.Dim.newBuilder().setSize(-1)) // Channels (placeholder)
+                    )
+                    .setName("input")
+                    .build();
+            signatureDefBuilder.putInputs("input", inputTensorInfo);
+
+        // Create output tensor signatures
+        TensorInfo classOutputTensorInfo = TensorInfo.newBuilder()
+                .setDtype(DataType.DT_FLOAT)
+                .setTensorShape(TensorShapeProto.newBuilder().addDim(TensorShapeProto.Dim.newBuilder().setSize(-1)))
+                .setName("class_output")
+                .build();
+        signatureDefBuilder.putOutputs("class_output", classOutputTensorInfo);
+
+        TensorInfo boxOutputTensorInfo = TensorInfo.newBuilder()
+                .setDtype(DataType.DT_FLOAT)
+                .setTensorShape(TensorShapeProto.newBuilder().addDim(TensorShapeProto.Dim.newBuilder().setSize(-1)))
+                .setName("box_output")
+                .build();
+        signatureDefBuilder.putOutputs("box_output", boxOutputTensorInfo);
+
+        // Add the signature to MetaGraphDef
+        metaGraphDefBuilder.putSignatureDef("serving_default", signatureDefBuilder.build());
 
         SavedModel.Builder builder = SavedModel.newBuilder();
         builder.addMetaGraphs(metaGraphDefBuilder);
@@ -489,8 +514,9 @@ public class tensorTrainerCNN extends JFrame {
         session.save(exportDir + "/model/variables/variables");
 
         // Write the MetaGraphDef to saved_model.pb in the model directory
-        Files.write(Paths.get(exportDir, "model", "saved_model.pb"), builder.build().toByteArray());
-        System.out.println("Model saved to " + exportDir + "/model/saved_model.pb");
+        Files.write(modelDir.resolve("saved_model.pb"), builder.build().toByteArray());
+
+        System.out.println("Model saved to " + modelDir);
     }
 
     // Method to update the loss value and repaint the graph
