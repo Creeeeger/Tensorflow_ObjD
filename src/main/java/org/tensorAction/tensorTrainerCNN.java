@@ -38,14 +38,14 @@ import java.util.*;
 
 public class tensorTrainerCNN extends JFrame {
     static int numberClasses, epochs;
-    //static float maxLoss = Main_UI.learning;
-    static float maxLoss = 1.0f;
+    static float maxLoss = Main_UI.learning;
     static int[][] confusionMatrix;
     static List<Float> boxLossValues = new ArrayList<>();  // Store the loss values
     static List<Float> classLossValues = new ArrayList<>();  // Store the loss values
     static List<Float> totalLossValues = new ArrayList<>();  // Store the loss values
     JPanel box_loss_panel, class_loss_panel, total_loss_panel, confusion_matrix_panel;
-    JTextArea textArea;
+    static JTextArea textArea;
+    static JLabel accy;
 
     public tensorTrainerCNN() {
         setLayout(new GridLayout(4, 1, 10, 10));
@@ -73,22 +73,10 @@ public class tensorTrainerCNN extends JFrame {
         add(confusion_matrix_panel);
 
         textArea = new JTextArea(numberClasses + 2, numberClasses + 2);
+        accy = new JLabel("Final accuracy: ...");
+
+        confusion_matrix_panel.add(accy);
         confusion_matrix_panel.add(textArea);
-    }
-    public static void main(String[] args) throws IOException {
-        nu.pattern.OpenCV.loadLocally();
-        String folder = "/Users/gregor/Downloads/flower_photos";
-
-        int numberClasses = 5;
-        int imageSize = 32;
-        int epochs = 100;
-        int batchSize = 10;
-
-        TFloat32[] datasetBatch = loadCocoDataset(folder, batchSize, imageSize, imageSize, 3, numberClasses);
-        TFloat32 images = datasetBatch[0];
-        TFloat32 labels = datasetBatch[1];
-        //debugLoad(images, labels);
-        trainModel(images, labels, numberClasses, epochs, imageSize);
     }
 
     //access void for accessing the program over the trainer
@@ -333,10 +321,10 @@ public class tensorTrainerCNN extends JFrame {
         // Create the graph and initialize variables as well as the live analysis training window
         tensorTrainerCNN gui = new tensorTrainerCNN();
         gui.setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE);
-        gui.setSize(1500, 1000);
         gui.setTitle("Live training analysis");
         gui.setVisible(true);
         gui.setLocation(100, 10);
+        gui.pack();
 
         try (Graph graph = CustomGraph(numClasses, imageSize);
              Session session = new Session(graph)) {
@@ -443,6 +431,8 @@ public class tensorTrainerCNN extends JFrame {
         float accuracy = (float) correctCount / classPredictionTensor.shape().size(0);
         System.out.println("Final accuracy: " + accuracy);
         System.out.println(getStringBuilder(confusionMatrix));
+        textArea.setText(getStringBuilder(confusionMatrix).toString());
+        accy.setText("Final accuracy: " + accuracy);
     }
 
     // Method to build the confusion matrix as a string
