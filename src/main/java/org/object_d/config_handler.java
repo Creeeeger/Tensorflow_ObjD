@@ -123,7 +123,7 @@ public class config_handler {
             root.appendChild(epochs);
 
             Element learning = doc.createElement("learning");
-            learning.appendChild(doc.createTextNode("0.001"));
+            learning.appendChild(doc.createTextNode("1.0"));
             root.appendChild(learning);
 
             //Set new keys on demand here

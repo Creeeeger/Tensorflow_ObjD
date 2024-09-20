@@ -8,8 +8,8 @@ import java.awt.event.ActionListener;
 public class model_param extends JFrame {
     int res, epo, bat;
     float lea;
-    JTextField resolution, epochs, batch, learning;
-    JLabel resolution_desc, epochs_desc, batch_desc, learning_desc, infos;
+    JTextField resolution, epochs, batch, display_scale;
+    JLabel resolution_desc, epochs_desc, batch_desc, display_scale_desc, infos;
     String pic, ten;
 
     public model_param(String pic, String ten, int res, int epo, int bat, float lea) {
@@ -39,8 +39,8 @@ public class model_param extends JFrame {
         batch_desc = new JLabel("Batch size - how many images should be used for training at once");
         batch = new JTextField(String.valueOf(bat), 4);
 
-        learning_desc = new JLabel("learning rate - how fast the model should learn (be careful with extreme values)");
-        learning = new JTextField(String.valueOf(lea), 10);
+        display_scale_desc = new JLabel("Data visualisation scale for the displaying and analysis of training");
+        display_scale = new JTextField(String.valueOf(lea), 10);
 
         // Add space between components
         settingsPanel.add(resolution_desc);
@@ -55,9 +55,9 @@ public class model_param extends JFrame {
         settingsPanel.add(Box.createRigidArea(new Dimension(0, 5)));
         settingsPanel.add(batch);
         settingsPanel.add(Box.createRigidArea(new Dimension(0, 5)));
-        settingsPanel.add(learning_desc);
+        settingsPanel.add(display_scale_desc);
         settingsPanel.add(Box.createRigidArea(new Dimension(0, 5)));
-        settingsPanel.add(learning);
+        settingsPanel.add(display_scale);
         settingsPanel.add(Box.createRigidArea(new Dimension(0, 5)));
 
         JButton apply = new JButton("Apply Settings");
@@ -77,7 +77,7 @@ public class model_param extends JFrame {
                 int res = Integer.parseInt(resolution.getText());
                 int epo = Integer.parseInt(epochs.getText());
                 int bat = Integer.parseInt(batch.getText());
-                float lea = Float.parseFloat(learning.getText());
+                float lea = Float.parseFloat(display_scale.getText());
                 Main_UI mainUI = new Main_UI();
                 mainUI.save_reload_config(res, epo, bat, lea, pic, ten);
                 setVisible(false);
