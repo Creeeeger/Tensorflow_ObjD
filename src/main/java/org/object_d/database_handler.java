@@ -31,7 +31,7 @@ public class database_handler {
                 System.out.println("Database created successfully");
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            throw new RuntimeException(e);
         } finally {
             // Close resources
             try {
@@ -40,9 +40,8 @@ public class database_handler {
                 if (connection != null)
                     connection.close();
             } catch (SQLException e) {
-                e.printStackTrace();
+                System.out.println("error occurred: " + e);
             }
-
         }
     }
 
@@ -71,7 +70,7 @@ public class database_handler {
             System.out.println("Database reset successful.");
 
         } catch (SQLException e) {
-            e.printStackTrace();
+            throw new RuntimeException(e);
         } finally {
             // Close resources
             try {
@@ -80,7 +79,7 @@ public class database_handler {
                 if (connection != null)
                     connection.close();
             } catch (SQLException e) {
-                e.printStackTrace();
+                System.out.println("error occurred: " + e);
             }
         }
     }
@@ -126,7 +125,7 @@ public class database_handler {
             System.out.println("Data appended to the end of the database.");
 
         } catch (SQLException e) {
-            e.printStackTrace();
+            throw new RuntimeException(e);
         } finally {
             // Close resources
             try {
@@ -135,7 +134,7 @@ public class database_handler {
                 if (connection != null)
                     connection.close();
             } catch (SQLException e) {
-                e.printStackTrace();
+                System.out.println("error occurred: " + e);
             }
         }
     }
