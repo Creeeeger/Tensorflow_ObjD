@@ -16,6 +16,10 @@
 
 - Generate images with SD4J
 
-- (in a later version use the interferences created for detecting images)
+- Create checkpoints from training datasets
+
+- Training data analysis for loss function
+
+- (Later) Tensorflow development dependant -- hardware acceleration usage (npu) & detect images with checkpoints made
 
 - Based on tensorflow 2.x for unix systems (Tested on macOS 14 M1 Pro)
