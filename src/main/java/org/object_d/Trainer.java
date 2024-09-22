@@ -3,7 +3,6 @@ package org.object_d;
 import ai.onnxruntime.OrtException;
 import org.stabled.CLIApp;
 import org.tensorAction.coreML_converter;
-import org.tensorAction.tensorTrainerCNN;
 import org.tensorflow.SavedModelBundle;
 
 import javax.swing.*;
@@ -22,7 +21,8 @@ public class Trainer extends JFrame {
     JSlider steps, batch_size;
     JLabel images_path, gen, output_path, ML_inp, model_path;
     File op_path_gen_img, img_for_train, Ml_inp_file, tensor_file;
-    String command_string, output_gen_string, image_folder_String;
+    String command_string;
+    String image_folder_String;
     SavedModelBundle savedModelBundle;
 
     public Trainer() {
