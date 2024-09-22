@@ -1,9 +1,12 @@
 package org.object_d;
 
-import org.tensorflow.SavedModelBundle;
+import nu.pattern.OpenCV;
+import org.nd4j.enums.Mode;
+import org.tensorflow.*;
 import org.tensorflow.ndarray.FloatNdArray;
 import org.tensorflow.ndarray.NdArrays;
 import org.tensorflow.ndarray.Shape;
+import org.tensorflow.op.math.Mod;
 import org.tensorflow.types.TFloat32;
 
 import javax.imageio.ImageIO;
@@ -14,11 +17,14 @@ import java.awt.event.ActionListener;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.TreeMap;
+
+import static org.tensorAction.detector.cocoLabels;
 
 public class trained_detector extends JFrame {
 
-    private static final int NUM_CHANNELS = 3;
-    private static final int IMAGE_SIZE = 255;
     //Initialise the elements
     public static File tensor_file = new File("/");
     static JLabel Tensor_name, image_name, output_name, img;
@@ -88,19 +94,16 @@ public class trained_detector extends JFrame {
         gui.setSize(600, 600);
     }
 
+    public static TFloat32 image_preparation(File ImageFile) throws IOException {
+        OpenCV.loadLocally();
+        int targetWidth = 1024;
+        int targetHeight = 1024;
 
-    public static void detect() throws IOException {
-        nu.pattern.OpenCV.loadLocally();
-        int targetWidth = 200;
-        int targetHeight = 200;
-
-
-        BufferedImage img = ImageIO.read(image_file);
+        BufferedImage img = ImageIO.read(ImageFile);
 
         BufferedImage resizedImage = new BufferedImage(targetWidth, targetHeight, BufferedImage.TYPE_INT_RGB);
         resizedImage.getGraphics().drawImage(img, 0, 0, targetWidth, targetHeight, null);
         FloatNdArray imageData = NdArrays.ofFloats(Shape.of(1, targetHeight, targetWidth, 3));
-
 
         float[][][] imageArray = new float[targetHeight][targetWidth][3];  // Assuming 3 channels
         for (int x = 0; x < targetHeight; x++) {
@@ -112,7 +115,6 @@ public class trained_detector extends JFrame {
             }
         }
 
-
         // Fill the image tensor
         for (int i = 0; i < targetHeight; i++) {
             for (int j = 0; j < targetWidth; j++) {
@@ -121,18 +123,53 @@ public class trained_detector extends JFrame {
                 }
             }
         }
+        return (TFloat32.tensorOf(imageData));
+    }
 
-        TFloat32 imageTensor = TFloat32.tensorOf(imageData);
-
-        TFloat32 classOutput;
-        TFloat32 boxOutput;
+    public static void detect() throws IOException {
         try (SavedModelBundle model = SavedModelBundle.load(tensor_file.getPath(), "serve")) {
-            // Fetch the outputs using the signature keys
-            classOutput = (TFloat32) model.session().runner().feed("input", imageTensor).fetch("class_output").run().get(0);
-            boxOutput = (TFloat32) model.session().runner().feed("input", imageTensor).fetch("box_output").run().get(0);
+            Session session = model.session();
+            TFloat32 imageTensor = image_preparation(image_file);
+
+            session.runner().addTarget("init").run();
+
+            // Fetch the outputs
+            TFloat32 classOutput = (TFloat32) session.forceInitialize()
+                    .runner()
+                    .feed("input", imageTensor)
+                    .fetch("class_output")
+                    .run()
+                    .get(0);
+
+            System.out.println(classOutput.getFloat() + " class output probability");
         }
-        System.out.println(classOutput.getFloat() + " prob");
-        System.out.println(boxOutput.getFloat() + " prob");
+    }
+
+    public static void detect2() {
+        try (SavedModelBundle ModelBundle = SavedModelBundle.load(tensor_file.getPath(), "serve")) {
+                TFloat32 imageTensor = image_preparation(image_file);
+
+                Map<String, Tensor> tensorMap = new HashMap<>();
+                tensorMap.put("input", imageTensor) ;
+
+                System.out.println(ModelBundle.functions().get(0).toString());
+
+
+                //Set up the result operations
+                try (Result result = ModelBundle.function("serving_default").call(tensorMap)) {
+                    if (result.get("class_output").isPresent()){
+                        System.out.println("present");
+                    }
+
+                    //Set up the functions of the model we use
+                    try (TFloat32 scores = (TFloat32) result.get("class_output").get()) {
+                        System.out.println(scores.getFloat());
+                    }
+                }
+
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     public static class event_select_image implements ActionListener {
@@ -187,9 +224,13 @@ public class trained_detector extends JFrame {
         @Override
         public void actionPerformed(ActionEvent e) {
             try {
-                detect();
-            } catch (IOException ex) {
-                throw new RuntimeException(ex);
+                detect2();
+            } finally {
+                try {
+                    detect();
+                } catch (IOException ex2) {
+                    throw new RuntimeException(ex2);
+                }
             }
         }
     }
