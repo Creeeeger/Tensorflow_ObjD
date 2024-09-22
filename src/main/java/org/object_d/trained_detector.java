@@ -39,7 +39,7 @@ public class trained_detector extends JFrame {
         image_select = new JButton("Select image file");
         image_select.setEnabled(false);
 
-        output_name = new JLabel("Predicted class");
+        output_name = new JLabel("Predicted class -- Since we made the model in java and ts2x removed since 3 Years the init function this probably wont work and fail due to failed variable initialization");
 
         predict = new JButton("Predict");
         predict.setEnabled(false);

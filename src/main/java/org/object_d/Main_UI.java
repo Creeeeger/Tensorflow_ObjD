@@ -182,7 +182,7 @@ public class Main_UI extends JFrame {
                         if (ex.getClass() == NullPointerException.class) {
                             continue;
                         } else {
-                            ex.printStackTrace();
+                            throw new RuntimeException(ex);
                         }
                     }
                     break;
@@ -362,7 +362,7 @@ public class Main_UI extends JFrame {
                 savedModelBundle = SavedModelBundle.load(tensor_file.getPath(), "serve");
                 System.out.println("Model loaded");
             } catch (Exception ex) {
-                ex.printStackTrace();
+                throw new RuntimeException(ex);
             }
         }
     }
@@ -401,7 +401,7 @@ public class Main_UI extends JFrame {
                     picture = selectedFile;
                     image_path.setText(picture.getPath());
                 } catch (Exception ex) {
-                    ex.printStackTrace();
+                    throw new RuntimeException(ex);
                 }
             }
         }
