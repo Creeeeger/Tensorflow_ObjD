@@ -42,8 +42,8 @@ public class coreML_converter {
                             } else {
                                 Files.copy(source, destination, StandardCopyOption.REPLACE_EXISTING);
                             }
-                        } catch (IOException e) {
-                            e.printStackTrace();
+                        } catch (Exception e) {
+                            throw new RuntimeException(e);
                         }
                     });
 
@@ -54,8 +54,8 @@ public class coreML_converter {
                         try {
                             Path destination = targetDir.resolve(file.getFileName());
                             Files.move(file, destination, StandardCopyOption.REPLACE_EXISTING);
-                        } catch (IOException e) {
-                            e.printStackTrace();
+                        } catch (Exception e) {
+                            throw new RuntimeException(e);
                         }
                     });
 
@@ -65,11 +65,11 @@ public class coreML_converter {
                     .filter(Files::isDirectory)
                     .forEach(dir -> {
                         try {
-                            if (!Files.list(dir).findAny().isPresent()) {
+                            if (Files.list(dir).findAny().isEmpty()) {
                                 Files.delete(dir);
                             }
-                        } catch (IOException e) {
-                            e.printStackTrace();
+                        } catch (Exception e) {
+                            throw new RuntimeException(e);
                         }
                     });
 
@@ -80,8 +80,8 @@ public class coreML_converter {
                     .forEach(file -> {
                         try {
                             Files.delete(file);
-                        } catch (IOException e) {
-                            e.printStackTrace();
+                        } catch (Exception e) {
+                            throw new RuntimeException(e);
                         }
                     });
 
@@ -95,12 +95,12 @@ public class coreML_converter {
                             String fileExtension = getFileExtension(file.toString());
                             String newFileName = fileCounter.getAndIncrement() + fileExtension;
                             Files.move(file, targetDir.resolve(newFileName), StandardCopyOption.REPLACE_EXISTING);
-                        } catch (IOException e) {
-                            e.printStackTrace();
+                        } catch (Exception e) {
+                            throw new RuntimeException(e);
                         }
                     });
-        } catch (IOException e) {
-            e.printStackTrace();
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
     }
 
@@ -182,9 +182,10 @@ public class coreML_converter {
                 jsonArray.put(jsonObject);
 
             } catch (StringIndexOutOfBoundsException e) {
-                continue;
+                throw new RuntimeException(e);
             }
         }
+
         File file = new File("CoreML_out/Annotations.json");
         try {
             file.createNewFile();

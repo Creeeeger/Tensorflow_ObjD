@@ -50,7 +50,7 @@ public class config_handler {
             return values;
 
         } catch (Exception e) {
-            e.printStackTrace();
+            System.out.println("Error occurred: " + e.getMessage());
             create_config();
             return load_config();
         }
@@ -90,7 +90,7 @@ public class config_handler {
             System.out.println("Config file saved successfully!");
 
         } catch (Exception e) {
-            e.printStackTrace();
+            throw new RuntimeException(e);
         }
     }
 
@@ -137,7 +137,7 @@ public class config_handler {
 
             System.out.println("Config file created successfully!");
         } catch (Exception e) {
-            e.printStackTrace();
+            throw new RuntimeException(e);
         }
     }
 }

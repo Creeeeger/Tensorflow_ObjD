@@ -89,6 +89,10 @@ public class tensorTrainerCNN extends JFrame {
         epochs = Main_UI.epochs;
         int batchSize = Main_UI.batch;
 
+        if (numberClasses == 0) {
+            throw new RuntimeException("You cant use a folder without grouped images!");
+        }
+
         TFloat32[] datasetBatch = loadCocoDataset(folder, batchSize, imageSize, imageSize, 3, numberClasses);
         TFloat32 images = datasetBatch[0];
         TFloat32 labels = datasetBatch[1];
@@ -419,8 +423,8 @@ public class tensorTrainerCNN extends JFrame {
     public static int argmaxLabel(TFloat32 tensor, int iteration) {
         FloatNdArray label = tensor.slice(Indices.at(iteration));
 
-        // Find the class corresponding to the label (assuming one-hot encoding)
-        int classIndex = -1;
+        // Find the class corresponding to the label
+        int classIndex = 0;
         for (int i = 0; i < label.shape().get(0); i++) {
             if (label.getFloat(i) == 1.0f) {
                 classIndex = i;

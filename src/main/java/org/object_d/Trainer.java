@@ -146,7 +146,7 @@ public class Trainer extends JFrame {
                 does_exist = Files.list(path).findAny().isPresent();
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            throw new RuntimeException(e);
         }
         return does_exist;
     }
@@ -214,7 +214,7 @@ public class Trainer extends JFrame {
                 savedModelBundle = SavedModelBundle.load(tensor_file.getPath(), "serve");
                 System.out.println("Model loaded");
             } catch (Exception ex) {
-                ex.printStackTrace();
+                throw new RuntimeException(ex);
             }
         }
     }
@@ -304,7 +304,7 @@ public class Trainer extends JFrame {
                     }
 
                 } catch (Exception es) {
-                    es.printStackTrace();
+                    throw new RuntimeException(es);
                 }
             } else {
                 create_env();
