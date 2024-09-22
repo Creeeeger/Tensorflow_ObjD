@@ -21,9 +21,7 @@ import org.tensorflow.op.nn.Conv2d;
 import org.tensorflow.op.nn.Softmax;
 import org.tensorflow.op.nn.SoftmaxCrossEntropyWithLogits;
 import org.tensorflow.op.random.TruncatedNormal;
-import org.tensorflow.op.train.Save;
 import org.tensorflow.types.TFloat32;
-import org.tensorflow.types.TString;
 
 import javax.imageio.ImageIO;
 import javax.swing.*;
@@ -93,6 +91,23 @@ public class tensorTrainerCNN extends JFrame {
         int batchSize = Main_UI.batch;
 
         TFloat32[] datasetBatch = loadCocoDataset(folder, batchSize, imageSize, imageSize, 3, numberClasses);
+        TFloat32 images = datasetBatch[0];
+        TFloat32 labels = datasetBatch[1];
+        trainModel(images, labels, numberClasses, epochs, imageSize);
+    }
+
+    public static void main(String[] args) throws IOException {
+        nu.pattern.OpenCV.loadLocally();
+        File folderDir = new File("/Users/gregor/Desktop/Tensorflow_ObjD/flower_photos");
+
+        numberClasses = (int) Arrays.stream(Objects.requireNonNull(folderDir.listFiles()))
+                .filter(File::isDirectory)
+                .count();
+        int imageSize = 32;
+        epochs = 100;
+        int batchSize = 20;
+
+        TFloat32[] datasetBatch = loadCocoDataset("/Users/gregor/Desktop/Tensorflow_ObjD/flower_photos", batchSize, imageSize, imageSize, 3, numberClasses);
         TFloat32 images = datasetBatch[0];
         TFloat32 labels = datasetBatch[1];
         trainModel(images, labels, numberClasses, epochs, imageSize);
@@ -367,7 +382,7 @@ public class tensorTrainerCNN extends JFrame {
             }
 
             System.out.println("Training completed.");
-            validate(session, images, labels, numClasses, outputs);
+            validate(labels, numClasses, outputs);
 
             saveModel(graph, session, Paths.get(Paths.get("").toAbsolutePath().toString()).getParent().toString());
 
@@ -376,7 +391,7 @@ public class tensorTrainerCNN extends JFrame {
     }
 
     // Method to test the model and compute accuracy and confusion matrix
-    public static void validate(Session session, TFloat32 image, TFloat32 label, int numClasses, Result outputs) {
+    public static void validate(TFloat32 label, int numClasses, Result outputs) {
         int correctCount = 0;
         confusionMatrix = new int[numClasses][numClasses];
 

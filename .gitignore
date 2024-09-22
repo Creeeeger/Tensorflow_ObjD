@@ -47,3 +47,4 @@ text_encoder/
 text_tokenizer/
 Unet/
 vae_decoder/
+CoreML_out/

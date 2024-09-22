@@ -23,7 +23,7 @@ import java.util.*;
 import java.util.stream.Stream;
 
 public class detector {
-    private final static String[] cocoLabels = new String[]{
+    public final static String[] cocoLabels = new String[]{
             "person", "bicycle", "car", "motorcycle", "airplane", "bus", "train", "truck", "boat",
             "traffic light", "fire hydrant", "street sign", "stop sign", "parking meter", "bench",
             "bird", "cat", "dog", "horse", "sheep", "cow", "elephant", "bear", "zebra", "giraffe",

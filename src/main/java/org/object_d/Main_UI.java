@@ -161,22 +161,6 @@ public class Main_UI extends JFrame {
         gui.setTitle("Object Detector UI");
     }
 
-    public static class save_manu implements ActionListener {
-        @Override
-        public void actionPerformed(ActionEvent e) {
-            String[][] values = {
-                    {"img_path", picture.getPath()},
-                    {"ts_path", tensor_file.getPath()},
-                    {"resolution", String.valueOf(resolution)},
-                    {"batch", String.valueOf(epochs)},
-                    {"epochs", String.valueOf(batch)},
-                    {"learning", String.valueOf(learning)}
-            };
-
-            config_handler.save_config(values);
-        }
-    }
-
     public static void setValues(String[][] values_load) {
         for (String[] value : Objects.requireNonNull(values_load)) {
             System.out.println(value[0] + " " + value[1]);
@@ -246,6 +230,22 @@ public class Main_UI extends JFrame {
 
         String[][] values_load = load_config();
         setValues(values_load);
+    }
+
+    public static class save_manu implements ActionListener {
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            String[][] values = {
+                    {"img_path", picture.getPath()},
+                    {"ts_path", tensor_file.getPath()},
+                    {"resolution", String.valueOf(resolution)},
+                    {"batch", String.valueOf(epochs)},
+                    {"epochs", String.valueOf(batch)},
+                    {"learning", String.valueOf(learning)}
+            };
+
+            config_handler.save_config(values);
+        }
     }
 
     public static class create_detector_window implements ActionListener {
@@ -321,18 +321,26 @@ public class Main_UI extends JFrame {
             ImageIcon scaledIcon = new ImageIcon(scaledImage);
             output_img.setIcon(scaledIcon);
 
-            String[] data1D = result_array[1].split("\n");
-            for (int i = 0; i < data1D.length; i++) {
-                data1D[i] = data1D[i].toLowerCase().substring(0, data1D[i].indexOf(":"));
-            }
+            String[] data1D;
+            String[][] data2d;
 
-            String[][] data2d = new String[data1D.length][2];
-            for (int i = 0; i < data1D.length; i++) {
-                data2d[i][0] = data1D[i];
-                data2d[i][1] = String.valueOf(1);
-            }
+            try {
+                data1D = result_array[1].split("\n");
 
-            database_handler.addData(data2d);
+                for (int i = 0; i < data1D.length; i++) {
+                    data1D[i] = data1D[i].toLowerCase().substring(0, data1D[i].indexOf(":"));
+                }
+
+                data2d = new String[data1D.length][2];
+                for (int i = 0; i < data1D.length; i++) {
+                    data2d[i][0] = data1D[i];
+                    data2d[i][1] = String.valueOf(1);
+                }
+
+                database_handler.addData(data2d);
+            } catch (Exception exception) {
+                System.out.println("Nothing got detected");
+            }
             result.setText(result_array[1]);
         }
     }
