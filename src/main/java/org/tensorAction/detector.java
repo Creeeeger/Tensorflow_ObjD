@@ -137,7 +137,7 @@ public class detector {
                                                 float classIndex = classes.getFloat(0, i);
                                                 int number_class = ((int) classIndex) - 1;
 
-                                                if (number_class < 0){
+                                                if (number_class < 0) {
                                                     number_class = 0;
                                                 }
 
@@ -272,7 +272,7 @@ public class detector {
                                                         float classIndex = classes.getFloat(0, j);
                                                         int number_class = ((int) classIndex) - 1;
 
-                                                        if (number_class < 0){
+                                                        if (number_class < 0) {
                                                             number_class = 0;
                                                         }
 

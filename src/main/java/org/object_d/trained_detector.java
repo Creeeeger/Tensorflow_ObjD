@@ -1,12 +1,10 @@
 package org.object_d;
 
 import nu.pattern.OpenCV;
-import org.nd4j.enums.Mode;
-import org.tensorflow.*;
+import org.tensorflow.SavedModelBundle;
 import org.tensorflow.ndarray.FloatNdArray;
 import org.tensorflow.ndarray.NdArrays;
 import org.tensorflow.ndarray.Shape;
-import org.tensorflow.op.math.Mod;
 import org.tensorflow.types.TFloat32;
 
 import javax.imageio.ImageIO;
@@ -17,11 +15,6 @@ import java.awt.event.ActionListener;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.TreeMap;
-
-import static org.tensorAction.detector.cocoLabels;
 
 public class trained_detector extends JFrame {
 
@@ -86,14 +79,6 @@ public class trained_detector extends JFrame {
         add(detectorPanel, BorderLayout.CENTER);
     }
 
-    public static void main(String[] args) {
-        trained_detector gui = new trained_detector();
-        gui.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        gui.setVisible(true);
-        gui.setTitle("Object detector for own models");
-        gui.setSize(600, 600);
-    }
-
     public static TFloat32 image_preparation(File ImageFile) throws IOException {
         OpenCV.loadLocally();
         int targetWidth = 1024;
@@ -123,18 +108,16 @@ public class trained_detector extends JFrame {
                 }
             }
         }
+
         return (TFloat32.tensorOf(imageData));
     }
 
     public static void detect() throws IOException {
         try (SavedModelBundle model = SavedModelBundle.load(tensor_file.getPath(), "serve")) {
-            Session session = model.session();
             TFloat32 imageTensor = image_preparation(image_file);
 
-            session.runner().addTarget("init").run();
-
             // Fetch the outputs
-            TFloat32 classOutput = (TFloat32) session.forceInitialize()
+            TFloat32 classOutput = (TFloat32) model.session().forceInitialize()
                     .runner()
                     .feed("input", imageTensor)
                     .fetch("class_output")
@@ -142,33 +125,6 @@ public class trained_detector extends JFrame {
                     .get(0);
 
             System.out.println(classOutput.getFloat() + " class output probability");
-        }
-    }
-
-    public static void detect2() {
-        try (SavedModelBundle ModelBundle = SavedModelBundle.load(tensor_file.getPath(), "serve")) {
-                TFloat32 imageTensor = image_preparation(image_file);
-
-                Map<String, Tensor> tensorMap = new HashMap<>();
-                tensorMap.put("input", imageTensor) ;
-
-                System.out.println(ModelBundle.functions().get(0).toString());
-
-
-                //Set up the result operations
-                try (Result result = ModelBundle.function("serving_default").call(tensorMap)) {
-                    if (result.get("class_output").isPresent()){
-                        System.out.println("present");
-                    }
-
-                    //Set up the functions of the model we use
-                    try (TFloat32 scores = (TFloat32) result.get("class_output").get()) {
-                        System.out.println(scores.getFloat());
-                    }
-                }
-
-        } catch (IOException e) {
-            throw new RuntimeException(e);
         }
     }
 
@@ -198,7 +154,7 @@ public class trained_detector extends JFrame {
                     predict.setEnabled(true);
 
                 } catch (Exception ex) {
-                    ex.printStackTrace();
+                    throw new RuntimeException(ex);
                 }
             }
         }
@@ -224,13 +180,9 @@ public class trained_detector extends JFrame {
         @Override
         public void actionPerformed(ActionEvent e) {
             try {
-                detect2();
-            } finally {
-                try {
-                    detect();
-                } catch (IOException ex2) {
-                    throw new RuntimeException(ex2);
-                }
+                detect();
+            } catch (Exception ex) {
+                throw new RuntimeException(ex);
             }
         }
     }

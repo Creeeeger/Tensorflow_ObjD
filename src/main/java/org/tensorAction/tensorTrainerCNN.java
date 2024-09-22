@@ -18,7 +18,6 @@ import org.tensorflow.op.math.Add;
 import org.tensorflow.op.math.Mean;
 import org.tensorflow.op.nn.BiasAdd;
 import org.tensorflow.op.nn.Conv2d;
-import org.tensorflow.op.nn.Softmax;
 import org.tensorflow.op.nn.SoftmaxCrossEntropyWithLogits;
 import org.tensorflow.op.random.TruncatedNormal;
 import org.tensorflow.types.TFloat32;
@@ -43,7 +42,7 @@ public class tensorTrainerCNN extends JFrame {
     static List<Float> classLossValues = new ArrayList<>();  // Store the loss values
     static List<Float> totalLossValues = new ArrayList<>();  // Store the loss values
     static JTextArea textArea;
-    static JLabel accy;
+    static JLabel accuracy_label;
     JPanel box_loss_panel, class_loss_panel, total_loss_panel, confusion_matrix_panel;
 
     public tensorTrainerCNN() {
@@ -72,9 +71,9 @@ public class tensorTrainerCNN extends JFrame {
         add(confusion_matrix_panel);
 
         textArea = new JTextArea(numberClasses + 2, numberClasses + 2);
-        accy = new JLabel("Final accuracy: ...");
+        accuracy_label = new JLabel("Final accuracy: ...");
 
-        confusion_matrix_panel.add(accy);
+        confusion_matrix_panel.add(accuracy_label);
         confusion_matrix_panel.add(textArea);
     }
 
@@ -94,48 +93,6 @@ public class tensorTrainerCNN extends JFrame {
         TFloat32 images = datasetBatch[0];
         TFloat32 labels = datasetBatch[1];
         trainModel(images, labels, numberClasses, epochs, imageSize);
-    }
-
-    public static void main(String[] args) throws IOException {
-        nu.pattern.OpenCV.loadLocally();
-        File folderDir = new File("/Users/gregor/Desktop/Tensorflow_ObjD/flower_photos");
-
-        numberClasses = (int) Arrays.stream(Objects.requireNonNull(folderDir.listFiles()))
-                .filter(File::isDirectory)
-                .count();
-        int imageSize = 32;
-        epochs = 100;
-        int batchSize = 20;
-
-        TFloat32[] datasetBatch = loadCocoDataset("/Users/gregor/Desktop/Tensorflow_ObjD/flower_photos", batchSize, imageSize, imageSize, 3, numberClasses);
-        TFloat32 images = datasetBatch[0];
-        TFloat32 labels = datasetBatch[1];
-        trainModel(images, labels, numberClasses, epochs, imageSize);
-    }
-
-    //Debug section
-    //over here we can check size shape etc. of the images
-    public static void debugLoad(TFloat32 images, TFloat32 labels) {
-        // Load and preprocess the dataset
-        System.out.println("Dataset loaded. Number of photos: " + images.shape().size(0));
-        System.out.println(labels.shape());
-        System.out.println(images.shape());
-
-        // Iterate over the batch and print the label corresponding to each image
-        for (int i = 0; i < images.shape().size(0); i++) {
-            // Get the label at index i
-            FloatNdArray label = labels.slice(Indices.at(i));
-
-            // Find the class corresponding to the label (assuming one-hot encoding)
-            int classIndex = -1;
-            for (int j = 0; j < label.shape().size(0); j++) {
-                if (label.getFloat(j) == 1.0f) {
-                    classIndex = j;
-                    break;
-                }
-            }
-            System.out.println("Image index: " + i + ", Class label: " + classIndex);
-        }
     }
 
     public static TFloat32[] loadCocoDataset(String dataDir, int batchSize, int imageHeight, int imageWidth, int numChannels, int numClasses) throws IOException {
@@ -271,7 +228,7 @@ public class tensorTrainerCNN extends JFrame {
 
         // Classification Output (Softmax)
         Operand<TFloat32> logits = buildFullyConnectedLayer(tf, fc1, 512, numClasses);
-        Softmax<TFloat32> classPrediction = tf.withName("class_output").nn.softmax(logits);
+        tf.withName("class_output").nn.softmax(logits);
 
         // Bounding Box Output (Regression)
         Operand<TFloat32> boxWeights = tf.variable(tf.math.mul(tf.random.truncatedNormal(tf.array(512, 4), TFloat32.class, TruncatedNormal.seed(SEED)),
@@ -348,7 +305,7 @@ public class tensorTrainerCNN extends JFrame {
             // Setup Adam Optimizer
             new Adam(graph, 0.001f, 0.9f, 0.999f, 1e-8f);
 
-            TFloat32 boxTensor = generateSyntheticboxes((int) images.shape().size(0));
+            TFloat32 boxTensor = generateSyntheticboxes((int) images.shape().get(0));
 
             Result outputs = null;
 
@@ -382,7 +339,7 @@ public class tensorTrainerCNN extends JFrame {
             }
 
             System.out.println("Training completed.");
-            validate(labels, numClasses, outputs);
+            validate(labels, numClasses, Objects.requireNonNull(outputs));
 
             saveModel(graph, session, Paths.get(Paths.get("").toAbsolutePath().toString()).getParent().toString());
 
@@ -399,24 +356,24 @@ public class tensorTrainerCNN extends JFrame {
         TFloat32 classPredictionTensor = (TFloat32) outputs.get(1);  // Fetch the class predictions (softmax output)
 
         // Get the shape of the tensor to iterate over the batch and number of classes
-        long batchSize = classPredictionTensor.shape().size(0);  // Number of images in the batch
-        long Classes = classPredictionTensor.shape().size(1);  // Number of classes
+        long batchSize = classPredictionTensor.shape().get(0);  // Number of images in the batch
+        long Classes = classPredictionTensor.shape().get(1);  // Number of classes
 
         int[] predictedLabels = new int[(int) batchSize];  // Array to store predicted labels for each image
 
         for (int i = 0; i < batchSize; i++) {
             float maxProb = -1.0f;  // Track the maximum probability for each image
-            int labell = -1;  // Track the index (class) with the maximum probability
+            int softmax_label = -1;  // Track the index (class) with the maximum probability
 
             for (int j = 0; j < Classes; j++) {
                 float prob = classPredictionTensor.getFloat(i, j);  // Get the probability for class j of image i
                 if (prob > maxProb) {
                     maxProb = prob;  // Update the maximum probability
-                    labell = j;  // Update the predicted label (class index)
+                    softmax_label = j;  // Update the predicted label (class index)
                 }
             }
 
-            predictedLabels[i] = labell;  // Store the predicted label for image i
+            predictedLabels[i] = softmax_label;  // Store the predicted label for image i
         }
 
         // Now, predictedLabels contains the predicted class for each image in the batch
@@ -432,11 +389,11 @@ public class tensorTrainerCNN extends JFrame {
         }
 
         // Print accuracy and confusion matrix
-        float accuracy = (float) correctCount / classPredictionTensor.shape().size(0);
+        float accuracy = (float) correctCount / classPredictionTensor.shape().get(0);
         System.out.println("Final accuracy: " + accuracy);
         System.out.println(getStringBuilder(confusionMatrix));
         textArea.setText(getStringBuilder(confusionMatrix).toString());
-        accy.setText("Final accuracy: " + accuracy);
+        accuracy_label.setText("Final accuracy: " + accuracy);
     }
 
     // Method to build the confusion matrix as a string
@@ -464,7 +421,7 @@ public class tensorTrainerCNN extends JFrame {
 
         // Find the class corresponding to the label (assuming one-hot encoding)
         int classIndex = -1;
-        for (int i = 0; i < label.shape().size(0); i++) {
+        for (int i = 0; i < label.shape().get(0); i++) {
             if (label.getFloat(i) == 1.0f) {
                 classIndex = i;
                 break;
@@ -491,18 +448,18 @@ public class tensorTrainerCNN extends JFrame {
         // Define signatures for input/output tensors
         SignatureDef.Builder signatureDefBuilder = SignatureDef.newBuilder();
 
-            // Create input tensor signature
-            TensorInfo inputTensorInfo = TensorInfo.newBuilder()
-                    .setDtype(DataType.DT_FLOAT)
-                    .setTensorShape(TensorShapeProto.newBuilder()
-                            .addDim(TensorShapeProto.Dim.newBuilder().setSize(-1)) // Batch size
-                            .addDim(TensorShapeProto.Dim.newBuilder().setSize(-1)) // Height (placeholder)
-                            .addDim(TensorShapeProto.Dim.newBuilder().setSize(-1)) // Width (placeholder)
-                            .addDim(TensorShapeProto.Dim.newBuilder().setSize(-1)) // Channels (placeholder)
-                    )
-                    .setName("input")
-                    .build();
-            signatureDefBuilder.putInputs("input", inputTensorInfo);
+        // Create input tensor signature
+        TensorInfo inputTensorInfo = TensorInfo.newBuilder()
+                .setDtype(DataType.DT_FLOAT)
+                .setTensorShape(TensorShapeProto.newBuilder()
+                        .addDim(TensorShapeProto.Dim.newBuilder().setSize(-1)) // Batch size
+                        .addDim(TensorShapeProto.Dim.newBuilder().setSize(-1)) // Height (placeholder)
+                        .addDim(TensorShapeProto.Dim.newBuilder().setSize(-1)) // Width (placeholder)
+                        .addDim(TensorShapeProto.Dim.newBuilder().setSize(-1)) // Channels (placeholder)
+                )
+                .setName("input")
+                .build();
+        signatureDefBuilder.putInputs("input", inputTensorInfo);
 
         // Create output tensor signatures
         TensorInfo classOutputTensorInfo = TensorInfo.newBuilder()
