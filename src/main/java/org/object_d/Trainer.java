@@ -275,10 +275,10 @@ public class Trainer extends JFrame {
         @Override
         public void actionPerformed(ActionEvent e) {
             command_string = command.getText();
+            gen.setText("In case the download stops download the safTensor manually and put it into the model directory, in case the model gets stuck re run the sd web component");
             if (check_if_env_exists()) {
                 gen.setText("Starting generating images");
                 try {
-                    gen.setText("Wait some time it could take long :/");
                     // Create a new process builder
                     ProcessBuilder processBuilder = new ProcessBuilder();
 

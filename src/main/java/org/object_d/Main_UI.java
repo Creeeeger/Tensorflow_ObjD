@@ -330,7 +330,6 @@ public class Main_UI extends JFrame {
                 for (int i = 0; i < data1D.length; i++) {
                     data1D[i] = data1D[i].toLowerCase().substring(0, data1D[i].indexOf(":"));
                 }
-
                 data2d = new String[data1D.length][2];
                 for (int i = 0; i < data1D.length; i++) {
                     data2d[i][0] = data1D[i];
