@@ -17,7 +17,7 @@ public class Main_UI extends JFrame {
     public static JLabel label, img, image_path, model_path, result, output_img;
     public static JMenuBar menuBar;
     public static JMenu file, model, database, model_trainer, detector_menu;
-    public static JMenuItem exit, load, load_database, reset_database, load_model, set_params, restore_last, train_model, self_detector, save_manually;
+    public static JMenuItem exit, load, load_database, reset_database, db_utility, load_model, set_params, restore_last, train_model, self_detector, save_manually;
     public static JScrollPane scrollPane;
     public static JPanel leftPanel, rightPanel; // Panels for left and right boxes
     public static File tensor_file = new File("/");
@@ -119,8 +119,11 @@ public class Main_UI extends JFrame {
         load_database.addActionListener(new event_load_database());
         reset_database = new JMenuItem("Reset database");
         reset_database.addActionListener(new event_reset_database());
+        db_utility = new JMenuItem("Database utility");
+        db_utility.addActionListener(new event_database_utility());
         database.add(load_database);
         database.add(reset_database);
+        database.add(db_utility);
         menuBar.add(database);
 
         model_trainer = new JMenu("Model creator");
@@ -147,7 +150,7 @@ public class Main_UI extends JFrame {
         //Create database in case it doesn't exist
         File database = new File("results.db");
         if (!database.exists()) {
-            database_handler.CreateDatabase();
+            database_handler.reset_init_db();
             System.out.println("Database created");
         }
 
@@ -370,9 +373,12 @@ public class Main_UI extends JFrame {
 
         @Override
         public void actionPerformed(ActionEvent e) {
-            database_handler.resetDatabase();
-            database_handler.CreateDatabase();
-            label.setText("Database reset");
+            reset_confirmation gui = new reset_confirmation();
+            gui.setVisible(true);
+            gui.setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE);
+            gui.setLocation(100,100);
+            gui.setSize(500,300);
+            label.setText("wait for confirmation");
         }
     }
 
@@ -406,10 +412,26 @@ public class Main_UI extends JFrame {
         }
     }
 
-    public class event_restore_last implements ActionListener {
+    public static class event_database_utility implements ActionListener {
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            database_utility gui = new database_utility();
+            gui.setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE);
+            gui.setSize(1400, 500);
+            gui.setTitle("Database utility");
+            gui.setVisible(true);
+            gui.setLocation(100, 100);
+        }
+    }
+
+    public static class event_restore_last implements ActionListener {
 
         @Override
         public void actionPerformed(ActionEvent e) {
+            // Remove all components from the rightPanel (removing old tables)
+            rightPanel.removeAll();
+
+            // Load the data for the new table
             String[][] values = load_config();
             setValues(values);
 
@@ -420,35 +442,41 @@ public class Main_UI extends JFrame {
             // Create scroll pane and add table to it
             JScrollPane scrollPane = new JScrollPane(table1);
 
-            // Add scroll pane to the frame
+            // Add the scroll pane with the new table to the right panel
             rightPanel.add(scrollPane);
 
-            // Revalidate and repaint the frame
-            revalidate();
-            repaint();
+            // Revalidate and repaint the panel to reflect the changes
+            rightPanel.revalidate();
+            rightPanel.repaint();
+
+            // Enable the detect button after restoring the last state
             detect.setEnabled(true);
         }
     }
 
-    public class event_load_database implements ActionListener {
+    public static class event_load_database implements ActionListener {
 
         @Override
         public void actionPerformed(ActionEvent e) {
+            // First, remove any previously added components from the rightPanel
+            rightPanel.removeAll();
+
+            // Retrieve the data from the database
             String[][] data = database_handler.readDatabase();
 
-            // Create table model with data and column names
-            DefaultTableModel model = new DefaultTableModel(data, new String[]{"Object", "Amount"});
+            // Create a new table model with the retrieved data and column names
+            DefaultTableModel model = new DefaultTableModel(data, new String[]{"Name", "Date", "Amount"});
             JTable table = new JTable(model);
 
-            // Create scroll pane and add table to it
+            // Create a scroll pane and add the table to it
             JScrollPane scrollPane = new JScrollPane(table);
 
-            // Add scroll pane to the frame
+            // Add the scroll pane (containing the table) to the rightPanel
             rightPanel.add(scrollPane);
 
-            // Revalidate and repaint the frame
-            revalidate();
-            repaint();
+            // Revalidate and repaint the panel to reflect the changes
+            rightPanel.revalidate();
+            rightPanel.repaint();
         }
     }
 }
