@@ -19,6 +19,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.Instant;
 import java.util.*;
 import java.util.stream.Stream;
 
@@ -38,17 +39,17 @@ public class detector {
             "hair brush"
     };
 
-    public static String[] classify(String imagePath, SavedModelBundle ModelBundle) {
+    public static ArrayList<entry> classify(String imagePath, SavedModelBundle ModelBundle) {
         //Base logic for returning image path and labels
-        String[] returnArray = new String[2];
-        returnArray[0] = imagePath;
-        returnArray[1] = "";
+        ArrayList<entry> data = new ArrayList<>();
 
         //Create output directory
         File output_dir = new File("output_images");
         if (!output_dir.exists()) {
             output_dir.mkdir();
         }
+
+        //Load open CV library for box drawing
         nu.pattern.OpenCV.loadLocally();
 
         try (ModelBundle) {
@@ -122,6 +123,9 @@ public class detector {
 
                                             //Just take objects with 30% or higher chance
                                             if (score > 0.3f) {
+                                                //Create new entry
+                                                entry entry = new entry();
+
                                                 //get the boxes where the objects are
                                                 FloatNdArray boxFloat = boxes.get(0, i);
                                                 boxList.add(boxFloat);
@@ -131,7 +135,7 @@ public class detector {
                                                 float xMin = boxFloat.getFloat(1) * imageWidth;
                                                 float yMax = boxFloat.getFloat(2) * imageHeight;
                                                 float xMax = boxFloat.getFloat(3) * imageWidth;
-                                                System.out.println("Box coordinates: [yMin: " + yMin + ", xMin: " + xMin + ", yMax: " + yMax + ", xMax: " + xMax + "]");
+                                                System.out.println("Log: box coordinates: [yMin: " + yMin + ", xMin: " + xMin + ", yMax: " + yMax + ", xMax: " + xMax + "]");
 
                                                 // Get the detected class index and map it to the corresponding label
                                                 float classIndex = classes.getFloat(0, i);
@@ -143,13 +147,16 @@ public class detector {
 
                                                 String detectedLabel = cocoLabels[number_class];
                                                 System.out.println("Detected: " + detectedLabel + " with score: " + String.format("%.2f", (score * 100)) + "%.");
-                                                returnArray[1] = returnArray[1] + detectedLabel + ": " + String.format("%.2f", (score * 100)) + "%\n";
 
                                                 // Draw the rectangle on the image
-                                                Imgproc.rectangle(image, new Point(xMin, yMin), new Point(xMax, yMax), new Scalar(0, 0, 0), 1);
+                                                Imgproc.rectangle(image, new Point(xMin, yMin), new Point(xMax, yMax), new Scalar(0, 255, 0), 1);
 
                                                 // Optionally, you can put the label text on the image
                                                 Imgproc.putText(image, detectedLabel + String.format(" %.2f", (score * 100)) + "%", new Point(xMin, yMin - 10), Imgproc.FONT_HERSHEY_SIMPLEX, 0.7, new Scalar(0, 0, 0), 1);
+                                                entry.label = detectedLabel;
+                                                entry.date = Date.from(Instant.now());
+                                                entry.percentage = Float.parseFloat(String.format("%.2f", score * 100));
+                                                data.add(entry);
                                             }
                                         }
 
@@ -157,13 +164,16 @@ public class detector {
                                         String outputImagePath = "output_images/annotated_" + new File(imagePath).getName();
                                         Imgcodecs.imwrite(outputImagePath, image);
 
-                                        // Update the return array to include the path to the annotated image
-                                        returnArray[0] = outputImagePath;
+                                        // Update the list to include the path to the annotated image
+                                        entry entry = new entry();
+                                        entry.imagePath = outputImagePath;
+                                        data.add(entry);
 
                                     } else {
-                                        returnArray[0] = imagePath;
-                                        returnArray[1] = "Nothing detected";
-                                        return returnArray;
+                                        entry entry = new entry();
+                                        entry.imagePath = imagePath;
+                                        data.add(entry);
+                                        return data;
                                     }
                                 }
                             }
@@ -171,8 +181,10 @@ public class detector {
                     }
                 }
             }
-            return returnArray;
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
+        return data;
     }
 
     public String[] label(String imagePath, String TensorPath) {
@@ -294,6 +306,32 @@ public class detector {
             return returnArray;
         } catch (IOException e) {
             throw new RuntimeException(e);
+        }
+    }
+
+    //Create class for storing the image data
+    public static class entry {
+        String imagePath;
+        String label;
+        Date date;
+
+        float percentage;
+
+        // Getters and setters (optional)
+        public String getImagePath() {
+            return imagePath;
+        }
+
+        public String getLabel() {
+            return label;
+        }
+
+        public Date getDate() {
+            return date;
+        }
+
+        public float getPercentage() {
+            return percentage;
         }
     }
 }

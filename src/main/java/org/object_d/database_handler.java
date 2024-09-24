@@ -1,5 +1,7 @@
 package org.object_d;
 
+import org.tensorAction.detector;
+
 import java.io.File;
 import java.sql.*;
 import java.util.ArrayList;
@@ -167,7 +169,7 @@ public class database_handler {
         }
     }
 
-    public static void addData(String[][] Data) {   // {"item", "amount"}
+    public static void addData(ArrayList<detector.entry> data) {   // {"item", "amount"}
         Connection connection = null;
         PreparedStatement preparedStatement = null;
 
@@ -175,35 +177,7 @@ public class database_handler {
             // Establish connection to the database
             connection = DriverManager.getConnection("jdbc:sqlite:results.db");
 
-            // Append each row of sample data to the end of the table
-            for (String[] data : Data) {
-                // Check if the object already exists in the database
-                String selectSQL = "SELECT id, amount FROM results WHERE object = ?";
-                preparedStatement = connection.prepareStatement(selectSQL);
-                preparedStatement.setString(1, data[0]); // object
-                ResultSet resultSet = preparedStatement.executeQuery();
-
-                if (resultSet.next()) {
-                    // If the object exists, update its amount by adding the new amount
-                    int id = resultSet.getInt("id");
-                    int currentAmount = Integer.parseInt(resultSet.getString("amount"));
-                    int newAmount = Integer.parseInt(data[1]);
-                    int updatedAmount = currentAmount + newAmount;
-
-                    String updateSQL = "UPDATE results SET amount = ? WHERE id = ?";
-                    preparedStatement = connection.prepareStatement(updateSQL);
-                    preparedStatement.setString(1, String.valueOf(updatedAmount)); // updated amount
-                    preparedStatement.setInt(2, id); // id of the existing entry
-                    preparedStatement.executeUpdate();
-                } else {
-                    // If the object does not exist, insert it as a new entry
-                    String insertSQL = "INSERT INTO results (object, amount) VALUES (?, ?)";
-                    preparedStatement = connection.prepareStatement(insertSQL);
-                    preparedStatement.setString(1, data[0]); // object
-                    preparedStatement.setString(2, data[1]); // amount
-                    preparedStatement.executeUpdate();
-                }
-            }
+            //write statement for adding data
 
             System.out.println("Data added to the database");
 

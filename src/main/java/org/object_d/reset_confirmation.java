@@ -5,11 +5,11 @@ import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 
-public class reset_confirmation  extends JFrame {
+public class reset_confirmation extends JFrame {
     static JButton yes, no;
 
-    public reset_confirmation(){
-        setLayout(new GridLayout(1,1, 10, 10));
+    public reset_confirmation() {
+        setLayout(new GridLayout(1, 1, 10, 10));
         BorderFactory.createTitledBorder("Decide to reset the Database");
 
         //init buttons
@@ -25,19 +25,19 @@ public class reset_confirmation  extends JFrame {
         yes.addActionListener(new event_yes());
     }
 
-    public class event_yes implements ActionListener{
+    public class event_yes implements ActionListener {
         @Override
         public void actionPerformed(ActionEvent e) {
             database_handler.reset_init_db();
             setVisible(false);
+            System.out.println("Reset the database");
         }
     }
 
-    public class event_no implements ActionListener{
+    public class event_no implements ActionListener {
         @Override
         public void actionPerformed(ActionEvent e) {
             setVisible(false);
-
         }
     }
 }
