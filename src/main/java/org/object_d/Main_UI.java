@@ -1,5 +1,6 @@
 package org.object_d;
 
+import org.tensorAction.detector;
 import org.tensorflow.SavedModelBundle;
 
 import javax.swing.*;
@@ -9,6 +10,7 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.image.BufferedImage;
 import java.io.File;
+import java.util.ArrayList;
 import java.util.Objects;
 
 import static org.object_d.config_handler.load_config;
@@ -312,38 +314,40 @@ public class Main_UI extends JFrame {
 
         @Override
         public void actionPerformed(ActionEvent e) {
+            //Load up the model bundle
             savedModelBundle = SavedModelBundle.load(tensor_file.getPath(), "serve");
             System.out.println("Model loaded");
-            String[] result_array;
+
+            //get the return data
+            ArrayList<detector.entry> result_array;
             result_array = org.tensorAction.detector.classify(image_path.getText(), savedModelBundle);
 
-            File imagePath = new File(result_array[0]);
+            //place the image icon
+            File imagePath = new File(result_array.getLast().getImagePath());
             ImageIcon icon = new ImageIcon(String.valueOf(imagePath));
+
             Image originalImage = icon.getImage();
             Image scaledImage = originalImage.getScaledInstance(400, 300, Image.SCALE_SMOOTH);
             ImageIcon scaledIcon = new ImageIcon(scaledImage);
             output_img.setIcon(scaledIcon);
 
-            String[] data1D;
-            String[][] data2d;
+            StringBuilder dataString = new StringBuilder(); //init the empty data string builder
 
             try {
-                data1D = result_array[1].split("\n");
-
-                for (int i = 0; i < data1D.length; i++) {
-                    data1D[i] = data1D[i].toLowerCase().substring(0, data1D[i].indexOf(":"));
-                }
-                data2d = new String[data1D.length][2];
-                for (int i = 0; i < data1D.length; i++) {
-                    data2d[i][0] = data1D[i];
-                    data2d[i][1] = String.valueOf(1);
+                for (int i = 0; i < result_array.size() - 1; i++) { // loop until second last element
+                    detector.entry entry = result_array.get(i);
+                    dataString.append(entry.getLabel()).append(" ").append(entry.getPercentage()).append("%, ");
                 }
 
-                database_handler.addData(data2d);
-            } catch (Exception exception) {
+                result_array.removeLast(); // remove the last since it's just storing the image path
+
+                if (!result_array.isEmpty()) { //check that there is data to save since if we are empty we don't have data to save
+                    database_handler.addData(result_array);
+                }
+            } catch (Exception e1) {
                 System.out.println("Nothing got detected");
             }
-            result.setText(result_array[1]);
+            result.setText(dataString.toString());
         }
     }
 
@@ -376,8 +380,8 @@ public class Main_UI extends JFrame {
             reset_confirmation gui = new reset_confirmation();
             gui.setVisible(true);
             gui.setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE);
-            gui.setLocation(100,100);
-            gui.setSize(500,300);
+            gui.setLocation(100, 100);
+            gui.setSize(500, 300);
             label.setText("wait for confirmation");
         }
     }
