@@ -250,4 +250,103 @@ public class database_handler {
             throw new RuntimeException(e);
         }
     }
+
+    public static void delete_entry(String name, String date, String amount) {
+        System.out.println("Delete record");
+
+        Connection connection = null;
+        Statement statement = null;
+
+        try {
+            // Register the driver
+            Class.forName("org.sqlite.JDBC");
+
+            // Establish connection to the database
+            connection = DriverManager.getConnection("jdbc:sqlite:results.db");
+
+            // Create a statement
+            statement = connection.createStatement();
+
+            // Step 1: Get the specific obj_id for the given obj_name
+            String getObjIdQuery = "SELECT obj_id FROM d_object WHERE obj_name = '" + name + "'";
+
+            ResultSet resultSet = statement.executeQuery(getObjIdQuery);
+            int objId = -1;
+            if (resultSet.next()) {
+                objId = resultSet.getInt("obj_id");
+            }
+
+            // Check if a valid obj_id was found
+            if (objId == -1) {
+                System.out.println("No matching object found for name: " + name);
+                return;
+            }
+
+            // Step 2: Count how many records exist for this obj_id
+            String countQuery = "SELECT COUNT(*) FROM link_obj WHERE obj_id = " + objId;
+            ResultSet countResultSet = statement.executeQuery(countQuery);
+            int recordCount = 0;
+            if (countResultSet.next()) {
+                recordCount = countResultSet.getInt(1);
+            }
+
+            // Step 3: Delete based on the count of records for this obj_id
+            if (recordCount == 1) {
+                // If there's only one record, delete everything (d_object, link_obj, and obj_amt for that obj_id)
+
+                // Delete from d_object
+                String deleteDObject = "DELETE FROM d_object WHERE obj_id = " + objId;
+
+                // Delete from link_obj
+                String deleteLinkObj = "DELETE FROM link_obj WHERE obj_id = " + objId;
+
+                // Delete from obj_amt (use the date_id from link_obj)
+                String deleteObjAmt = "DELETE FROM obj_amt WHERE date_id IN ( " +
+                        "   SELECT date_id FROM link_obj WHERE obj_id = " + objId +
+                        "   AND date = '" + date + "' " +
+                        ")";
+
+                // Execute each query in order
+                statement.executeUpdate(deleteDObject);
+                statement.executeUpdate(deleteLinkObj);
+                statement.executeUpdate(deleteObjAmt);
+
+                System.out.println("All records related to the object '" + name + "' were deleted successfully");
+
+            } else if (recordCount > 1) {
+                // If there are multiple records for this obj_id, only delete the specific date and amount
+
+                // Delete from link_obj for the specific obj_id, date, and amount
+                String deleteLinkObj = "DELETE FROM link_obj WHERE obj_id = " + objId +
+                        " AND date = '" + date + "' " +
+                        " AND date_id IN ( " +
+                        "   SELECT date_id FROM obj_amt WHERE amount = " + Integer.parseInt(amount) +
+                        ")";
+
+                // Delete from obj_amt for the specific date_id and amount
+                String deleteObjAmt = "DELETE FROM obj_amt WHERE amount = " + Integer.parseInt(amount) +
+                        " AND date_id IN ( " +
+                        "   SELECT date_id FROM link_obj WHERE obj_id = " + objId +
+                        "   AND date = '" + date + "' " +
+                        ")";
+
+                // Execute the queries
+                statement.executeUpdate(deleteLinkObj);
+                statement.executeUpdate(deleteObjAmt);
+
+                System.out.println("Specific record for date '" + date + "' and amount '" + amount + "' deleted successfully.");
+            }
+
+        } catch (Exception e) {
+            throw new RuntimeException(e); // Exception handling
+        } finally {
+            // Clean up resources
+            try {
+                if (statement != null) statement.close();
+                if (connection != null) connection.close();
+            } catch (SQLException ex) {
+                throw new RuntimeException(ex);
+            }
+        }
+    }
 }

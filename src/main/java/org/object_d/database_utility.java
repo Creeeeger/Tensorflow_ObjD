@@ -21,10 +21,7 @@ public class database_utility extends JFrame {
 
     public database_utility() { //Create Design for Window
 
-        data = new Object[][]{
-                {"John Doe", "2024-09-24", 150.75},
-                {"Jane Smith", "2024-09-25", 200.50}
-        };
+        data = database_handler.readDatabase();
 
         //Set main layout
         setLayout(new GridLayout(1, 3, 10, 10));
@@ -150,7 +147,7 @@ public class database_utility extends JFrame {
     public static void main(String[] args) {
         database_utility gui = new database_utility();
         gui.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        gui.setSize(1400, 500);
+        gui.setSize(1400, 800);
         gui.setTitle("Database utility");
         gui.setVisible(true);
         gui.setLocation(100, 100);
@@ -186,18 +183,42 @@ public class database_utility extends JFrame {
                 // Set this concatenated string to the label or text field
                 selected_entry.setText(selectedRowContent);
 
-                System.out.println(selectedRowContent);
                 delete_entry_button.setEnabled(true);
             }
         }
     }
 
-    public static class event_delete_entry implements ActionListener {
+    public class event_delete_entry implements ActionListener {
 
         @Override
         public void actionPerformed(ActionEvent e) {
             System.out.println("Entry to delete: " + selected_entry.getText());
+            int selected_Row = result_table_right.getSelectedRow();
+            database_handler.delete_entry(
+                    result_table_right.getValueAt(selected_Row, 0).toString(),
+                    result_table_right.getValueAt(selected_Row, 1).toString(),
+                    result_table_right.getValueAt(selected_Row, 2).toString()
+            );
+            refresh();
         }
+    }
+    public void refresh() {
+        // Fetch the updated data from the database
+        data = database_handler.readDatabase();
+
+        // Update the table models with the new data
+        defaultTableModel.setDataVector(data, new Object[]{"Name", "Date", "Amount"});
+        nonEditableModel.setDataVector(data, new Object[]{"Name", "Date", "Amount"});
+
+        // Revalidate and repaint the result tables and left panel
+        result_table_left.revalidate();
+        result_table_left.repaint();
+        result_table_middle.revalidate();
+        result_table_middle.repaint();
+        result_table_right.revalidate();
+        result_table_right.repaint();
+        left_panel.revalidate();
+        left_panel.repaint();
     }
 
     public static class event_write_to_db implements ActionListener {
@@ -265,7 +286,6 @@ public class database_utility extends JFrame {
 
 /*
 Todo
-event_delete_entry
 event_write_to_db
 event_change_search
 event_change_date
