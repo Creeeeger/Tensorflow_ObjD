@@ -421,7 +421,7 @@ public class Main_UI extends JFrame {
         public void actionPerformed(ActionEvent e) {
             database_utility gui = new database_utility();
             gui.setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE);
-            gui.setSize(1400, 500);
+            gui.setSize(1400, 800);
             gui.setTitle("Database utility");
             gui.setVisible(true);
             gui.setLocation(100, 100);
