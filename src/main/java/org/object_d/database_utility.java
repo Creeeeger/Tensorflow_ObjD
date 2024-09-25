@@ -21,7 +21,7 @@ public class database_utility extends JFrame {
 
     public database_utility() { //Create Design for Window
 
-        data = database_handler.readDatabase();
+        data = database_handler.readDatabase(); //initial Database access for filling tables at construction
 
         //Set main layout
         setLayout(new GridLayout(1, 3, 10, 10));
@@ -103,12 +103,18 @@ public class database_utility extends JFrame {
         modify_hint = new JLabel("Modify the entries you want to and then press write to database");
         middle_panel.add(modify_hint);
         middle_panel.add(result_table_middle);
+
+        //Add modify saving hint
+        JLabel del_info = new JLabel("Save before using other tasks (data gets lost if not saved)");
+        middle_panel.add(del_info);
+
+        //Execute button
         write_to_db = new JButton("Write changes to database");
         middle_panel.add(write_to_db);
 
         //delete panel
         //add the status label to the delete section
-        delete_status = new JLabel("Here comes updates on delete states");
+        delete_status = new JLabel("Here appear updates on the delete status");
         delete_status.setForeground(Color.BLUE);
         right_panel.add(delete_status);
 
@@ -169,6 +175,8 @@ public class database_utility extends JFrame {
         result_table_left.repaint();
         result_table_middle.revalidate();
         result_table_middle.repaint();
+        result_table_right.revalidate();
+        result_table_right.repaint();
     }
 
     public void refresh() {
@@ -220,14 +228,6 @@ public class database_utility extends JFrame {
 
                 delete_entry_button.setEnabled(true);
             }
-        }
-    }
-
-    public static class event_write_to_db implements ActionListener {
-
-        @Override
-        public void actionPerformed(ActionEvent e) {
-            System.out.println("Write modified data to DB");
         }
     }
 
@@ -288,9 +288,9 @@ public class database_utility extends JFrame {
     public static class event_export_csv implements ActionListener {
         @Override
         public void actionPerformed(ActionEvent e) {
-            System.out.println("Export started");
+            System.out.println("Export started.");
             database_handler.exportToCSV("exported_data.csv");
-            System.out.println("export done");
+            System.out.println("Export done.");
         }
     }
 
@@ -305,12 +305,19 @@ public class database_utility extends JFrame {
                     result_table_right.getValueAt(selected_Row, 1).toString(),
                     result_table_right.getValueAt(selected_Row, 2).toString()
             );
-            refresh();
+
+            refresh(); //refresh the ui to update the tables with the new data
+        }
+    }
+
+    public class event_write_to_db implements ActionListener {
+
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            System.out.println("Write modified data to Database");
+            //Add database write logic
+
+            refresh(); //refresh the ui to update the tables with the new data
         }
     }
 }
-
-/*
-Todo
-event_write_to_db
-*/
