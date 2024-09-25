@@ -349,4 +349,73 @@ public class database_handler {
             }
         }
     }
+
+    public static String[][] searchData(String name, String date, String amount) { //method for searching data
+        //setup connection and statement
+        Statement statement;
+        Connection connection;
+
+        try {
+            //Create entity class
+            class entities {
+                String name_e;
+                String date_e;
+                int amount_e;
+            }
+
+            ArrayList<entities> data = new ArrayList<>();
+
+            //setup connection with driver
+            connection = DriverManager.getConnection("jdbc:sqlite:results.db");
+            statement = connection.createStatement();
+
+            StringBuilder sql = new StringBuilder();
+            sql.append("SELECT d_object.obj_name, link_obj.date, obj_amt.amount ")
+                    .append("FROM d_object, link_obj, obj_amt ")
+                    .append("WHERE d_object.obj_id = link_obj.obj_id ")
+                    .append("AND link_obj.date_id = obj_amt.date_id ");
+
+            // Add filters only if the variables are provided
+            if (name != null && !name.isEmpty()) {
+                sql.append("AND d_object.obj_name LIKE '%").append(name).append("%' "); // Wildcard before and after name
+            }
+
+            if (date != null && !date.isEmpty()) {
+                sql.append("AND link_obj.date LIKE '%").append(date).append("%' "); // Wildcard before and after date
+            }
+
+            if (amount != null && !amount.isEmpty()) {
+                sql.append("AND obj_amt.amount LIKE '%").append(amount).append("%' "); // Wildcard for amount if needed
+            }
+
+            // Finalize the query with sorting
+            sql.append("ORDER BY link_obj.date ASC, d_object.obj_name ASC;");
+
+            // Execute the query
+            ResultSet resultSet = statement.executeQuery(sql.toString());
+
+            while (resultSet.next()) {
+                entities entry = new entities();
+                entry.name_e = resultSet.getString("obj_name");
+                entry.date_e = resultSet.getString("date");
+                entry.amount_e = Integer.parseInt(resultSet.getString("amount"));
+                data.add(entry);
+            }
+
+            // Now the array should have 3 columns (name, date, and amount)
+            String[][] array_data = new String[data.size()][3];
+
+            for (int i = 0; i < data.size(); i++) { //convert the array list into an array
+                entities entry = data.get(i);
+                array_data[i][0] = entry.name_e;                   // Column 1: Name
+                array_data[i][1] = entry.date_e;                   // Column 2: Date
+                array_data[i][2] = String.valueOf(entry.amount_e); // Column 3: Amount
+            }
+
+            return array_data;
+
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
 }
