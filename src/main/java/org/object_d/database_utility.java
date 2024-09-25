@@ -1,19 +1,25 @@
 package org.object_d;
 
+import org.tensorAction.detector;
+
 import javax.swing.*;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
 import javax.swing.table.DefaultTableModel;
+import javax.swing.table.TableModel;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 
 public class database_utility extends JFrame {
-    static JLabel delete_status, search_Info_name, search_info_date, search_info_amount, delete_instruction, selected_entry, modify_hint;
+    static JLabel delete_status, search_Info_name, search_info_date, search_info_amount, delete_instruction, selected_entry, modify_hint, del_info;
     static JTable result_table_left, result_table_middle, result_table_right;
-    static DefaultTableModel defaultTableModel, nonEditableModel;
+    static DefaultTableModel defaultTableModel, middleTableModel, nonEditableModel;
     static Object[][] data; //Init the data for the tables as a placeholder
     static JPanel left_panel, middle_panel, right_panel; //Initialize all the panels for the different tasks
     static JButton reset_whole_db, delete_entry_button, write_to_db, csvExport;
@@ -47,8 +53,11 @@ public class database_utility extends JFrame {
         add(middle_panel);
         add(right_panel);
 
-        //initialise the result table for left and middle
+        //initialise the result table for left
         defaultTableModel = new DefaultTableModel(data, new Object[]{"Name", "Date", "Amount"});
+
+        //initialise the result table for left
+        middleTableModel = new DefaultTableModel(data, new Object[]{"Name", "Date", "Amount"});
 
         // Create a non-editable table model for the right panel
         nonEditableModel = new DefaultTableModel(data, new Object[]{"Name", "Date", "Amount"}) {
@@ -60,7 +69,7 @@ public class database_utility extends JFrame {
 
         //Create the new tables
         result_table_left = new JTable(defaultTableModel);
-        result_table_middle = new JTable(defaultTableModel);
+        result_table_middle = new JTable(middleTableModel);
         result_table_right = new JTable(nonEditableModel); //set to new model to disable editing
 
         //Since we don't want the user to be able to edit the right table we need to give it special permissions
@@ -105,7 +114,9 @@ public class database_utility extends JFrame {
         middle_panel.add(result_table_middle);
 
         //Add modify saving hint
-        JLabel del_info = new JLabel("Save before using other tasks (data gets lost if not saved)");
+        JLabel edit_hint = new JLabel("Un tick the field before saving");
+        del_info = new JLabel("Save before using other tasks (data gets lost if not saved)");
+        middle_panel.add(edit_hint);
         middle_panel.add(del_info);
 
         //Execute button
@@ -185,6 +196,7 @@ public class database_utility extends JFrame {
 
         // Update the table models with the new data
         defaultTableModel.setDataVector(data, new Object[]{"Name", "Date", "Amount"});
+        middleTableModel.setDataVector(data, new Object[]{"Name", "Date", "Amount"});
         nonEditableModel.setDataVector(data, new Object[]{"Name", "Date", "Amount"});
 
         // Revalidate and repaint the result tables and left panel
@@ -315,9 +327,60 @@ public class database_utility extends JFrame {
         @Override
         public void actionPerformed(ActionEvent e) {
             System.out.println("Write modified data to Database");
-            //Add database write logic
 
-            refresh(); //refresh the ui to update the tables with the new data
+            try {
+                // Define date format
+                SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
+
+                //Create array list for saving whole table to
+                TableModel model = result_table_middle.getModel();
+
+                // Create a list to hold the detector.entry data
+                ArrayList<detector.entry> tab_res = new ArrayList<>();
+
+                // Iterate over each row and extract data
+                for (int row = 0; row < model.getRowCount(); row++) {
+                    String label = (String) model.getValueAt(row, 0);  // Get label (Name) from first column
+                    String dateString = (String) model.getValueAt(row, 1);  // Get date string from second column
+                    int amount = Integer.parseInt(model.getValueAt(row, 2).toString());  // Get amount (number of entries) from third column
+
+                    java.sql.Date date;
+                    try {
+                        // Parse the date string and convert to java.sql.Date
+                        java.util.Date utilDate = dateFormat.parse(dateString);  // Parse as java.util.Date
+                        date = new java.sql.Date(utilDate.getTime());  // Convert to java.sql.Date
+
+                    } catch (ParseException exc) {
+                        throw new RuntimeException(exc);
+                    }
+
+                    // Add 'amount' number of entries to the list
+                    for (int i = 0; i < amount; i++) {
+                        detector.entry newEntry = new detector.entry();
+                        newEntry.setLabel(label);
+                        newEntry.setDate(date);
+                        tab_res.add(newEntry);  // Add to the list
+                    }
+                }
+
+                for (detector.entry tabRe : tab_res) {
+                    System.out.println(tabRe.getLabel() + " " + tabRe.getDate());
+                }
+
+                //Clear the database
+                database_handler.reset_init_db();
+
+                //Add the whole saved copy to it
+                database_handler.addData(tab_res);
+
+                //refresh the ui to update the tables with the new data
+                refresh();
+
+            } catch (Exception ee) {
+                del_info.setForeground(new Color(255, 0, 0));
+                del_info.setText(ee.getClass() + ee.getMessage());
+                throw new RuntimeException(ee);
+            }
         }
     }
 }
