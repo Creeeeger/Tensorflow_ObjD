@@ -16,7 +16,7 @@ public class database_utility extends JFrame {
     static DefaultTableModel defaultTableModel, nonEditableModel;
     static Object[][] data; //Init the data for the tables as a placeholder
     static JPanel left_panel, middle_panel, right_panel; //Initialize all the panels for the different tasks
-    static JButton reset_whole_db, delete_entry_button, write_to_db;
+    static JButton reset_whole_db, delete_entry_button, write_to_db, csvExport;
     static JTextField searchField_search, dateField_search, amountField_search;
 
     public database_utility() { //Create Design for Window
@@ -124,10 +124,12 @@ public class database_utility extends JFrame {
         selected_entry = new JLabel("Here will the entry appear you selected to delete");
         delete_entry_button = new JButton("Delete selected entry");
         delete_entry_button.setEnabled(false);
+        csvExport = new JButton("Export Database as CSV file");
 
         right_panel.add(delete_instruction);
         right_panel.add(selected_entry);
         right_panel.add(delete_entry_button);
+        right_panel.add(csvExport);
 
         //Actions section
         //left panel actions
@@ -142,6 +144,7 @@ public class database_utility extends JFrame {
         reset_whole_db.addActionListener(new event_reset_database_UI());
         result_table_right.getSelectionModel().addListSelectionListener(new event_delete_select_raw());
         delete_entry_button.addActionListener(new event_delete_entry());
+        csvExport.addActionListener(new event_export_csv());
     }
 
     public static void main(String[] args) {
@@ -279,6 +282,15 @@ public class database_utility extends JFrame {
         @Override
         public void changedUpdate(DocumentEvent e) {
 
+        }
+    }
+
+    public static class event_export_csv implements ActionListener {
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            System.out.println("Export started");
+            database_handler.exportToCSV("exported_data.csv");
+            System.out.println("export done");
         }
     }
 

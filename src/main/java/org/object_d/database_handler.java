@@ -3,6 +3,8 @@ package org.object_d;
 import org.tensorAction.detector;
 
 import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.UUID;
@@ -345,7 +347,7 @@ public class database_handler {
                 if (statement != null) statement.close();
                 if (connection != null) connection.close();
             } catch (SQLException ex) {
-                throw new RuntimeException(ex);
+                System.out.println("Error: " + ex);
             }
         }
     }
@@ -417,5 +419,74 @@ public class database_handler {
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    public static void exportToCSV(String filePath) { //method to export db to csv file
+        Connection connection = null;
+        Statement statement = null;
+        FileWriter csvWriter = null;
+
+        try {
+            // 1. Establish database connection
+            Class.forName("org.sqlite.JDBC");
+            connection = DriverManager.getConnection("jdbc:sqlite:results.db");
+            statement = connection.createStatement();
+
+            // 2. Execute query to retrieve data
+            String query = "SELECT d_object.obj_name, link_obj.date, obj_amt.amount " +
+                    "FROM d_object, link_obj, obj_amt " +
+                    "WHERE d_object.obj_id = link_obj.obj_id " +
+                    "AND link_obj.date_id = obj_amt.date_id";
+
+            ResultSet resultSet = statement.executeQuery(query);
+
+            // 3. Create CSV Writer
+            csvWriter = new FileWriter(filePath);
+
+            // 4. Write CSV Header (assuming 3 columns: Name, Date, Amount)
+            csvWriter.append("Name,Date,Amount\n");
+
+            // 5. Write Data from ResultSet to CSV
+            while (resultSet.next()) {
+                String name = resultSet.getString("obj_name");
+                String date = resultSet.getString("date");
+                String amount = resultSet.getString("amount");
+
+                // Escape the data for CSV formatting
+                csvWriter.append(escapeCSV(name)).append(",")
+                        .append(escapeCSV(date)).append(",")
+                        .append(escapeCSV(amount)).append("\n");
+            }
+
+            System.out.println("CSV file created successfully at: " + filePath);
+
+        } catch (Exception e) {
+            throw new RuntimeException(e); //Exception handling
+
+        } finally {
+            try {
+                // Close resources
+                if (csvWriter != null) csvWriter.flush();
+                if (csvWriter != null) csvWriter.close();
+                if (statement != null) statement.close();
+                if (connection != null) connection.close();
+            } catch (IOException | SQLException ex) {
+                System.out.println("Error: " + ex);
+            }
+        }
+    }
+
+    // Escape special characters for CSV (e.g., commas, quotes, newlines)
+    private static String escapeCSV(String data) {
+        if (data == null) {
+            return "";  // Handle null values
+        }
+        String escapedData = data;
+
+        // If data contains commas, quotes, or newlines, enclose it in double quotes
+        if (data.contains(",") || data.contains("\"") || data.contains("\n")) {
+            escapedData = "\"" + data.replace("\"", "\"\"") + "\"";
+        }
+        return escapedData;
     }
 }
