@@ -327,8 +327,16 @@ public class detector {
             return label;
         }
 
+        public void setLabel(String label) {
+            this.label = label;
+        }
+
         public java.sql.Date getDate() {
             return date;
+        }
+
+        public void setDate(java.sql.Date date) {
+            this.date = date;
         }
 
         public float getPercentage() {
