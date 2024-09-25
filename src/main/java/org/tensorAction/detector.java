@@ -154,7 +154,8 @@ public class detector {
                                                 // Optionally, you can put the label text on the image
                                                 Imgproc.putText(image, detectedLabel + String.format(" %.2f", (score * 100)) + "%", new Point(xMin, yMin - 10), Imgproc.FONT_HERSHEY_SIMPLEX, 0.7, new Scalar(0, 0, 0), 1);
                                                 entry.label = detectedLabel;
-                                                entry.date = Date.from(Instant.now());
+                                                entry.date = new java.sql.Date(Date.from(Instant.now()).getTime());
+                                                //entry.date = new java.sql.Date(Date.from(Instant.now().plus(1, ChronoUnit.DAYS)).getTime()); //set date to future for debug
                                                 entry.percentage = Float.parseFloat(String.format("%.2f", score * 100));
                                                 data.add(entry);
                                             }
@@ -313,7 +314,7 @@ public class detector {
     public static class entry {
         String imagePath;
         String label;
-        Date date;
+        java.sql.Date date;
 
         float percentage;
 
@@ -326,7 +327,7 @@ public class detector {
             return label;
         }
 
-        public Date getDate() {
+        public java.sql.Date getDate() {
             return date;
         }
 
