@@ -339,13 +339,13 @@ public class Main_UI extends JFrame {
                     dataString.append(entry.getLabel()).append(" ").append(entry.getPercentage()).append("%, ");
                 }
 
-                result_array.removeLast(); // remove the last since it's just storing the image path
+                result_array.removeLast(); //remove the last since it's just storing the image path
 
                 if (!result_array.isEmpty()) { //check that there is data to save since if we are empty we don't have data to save
                     database_handler.addData(result_array);
                 }
             } catch (Exception e1) {
-                System.out.println("Nothing got detected");
+                throw new RuntimeException(e1);
             }
             result.setText(dataString.toString());
         }
@@ -439,12 +439,23 @@ public class Main_UI extends JFrame {
             String[][] values = load_config();
             setValues(values);
 
-            // Create table model with data and column names
-            DefaultTableModel model = new DefaultTableModel(values, new String[]{"Name", "Value"});
-            JTable table1 = new JTable(model);
+            // Create non-editable table model with data and column names
+            DefaultTableModel nonEditableModel = new DefaultTableModel(values, new Object[]{"Name", "Value"}) {
+                @Override
+                public boolean isCellEditable(int row, int column) {
+                    return false;  // Disable editing for all cells
+                }
+            };
+
+            JTable table = new JTable(nonEditableModel);
+
+            //Since we don't want the user to be able to edit the table we need to give it special permissions
+            table.setEnabled(true);  // Allow row selection
+            table.setRowSelectionAllowed(true); // Allow rows to be selected
+            table.setColumnSelectionAllowed(false); // Disable column selection
 
             // Create scroll pane and add table to it
-            JScrollPane scrollPane = new JScrollPane(table1);
+            JScrollPane scrollPane = new JScrollPane(table);
 
             // Add the scroll pane with the new table to the right panel
             rightPanel.add(scrollPane);
@@ -468,9 +479,20 @@ public class Main_UI extends JFrame {
             // Retrieve the data from the database
             String[][] data = database_handler.readDatabase();
 
-            // Create a new table model with the retrieved data and column names
-            DefaultTableModel model = new DefaultTableModel(data, new String[]{"Name", "Date", "Amount"});
-            JTable table = new JTable(model);
+            // Create a non-editable table model
+            DefaultTableModel nonEditableModel = new DefaultTableModel(data, new Object[]{"Name", "date", "amount"}) {
+                @Override
+                public boolean isCellEditable(int row, int column) {
+                    return false;  // Disable editing for all cells
+                }
+            };
+
+            JTable table = new JTable(nonEditableModel);
+
+            //Since we don't want the user to be able to edit the table we need to give it special permissions
+            table.setEnabled(true);  // Allow row selection
+            table.setRowSelectionAllowed(true); // Allow rows to be selected
+            table.setColumnSelectionAllowed(false); // Disable column selection
 
             // Create a scroll pane and add the table to it
             JScrollPane scrollPane = new JScrollPane(table);

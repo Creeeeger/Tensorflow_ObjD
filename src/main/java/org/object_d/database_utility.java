@@ -51,10 +51,10 @@ public class database_utility extends JFrame {
         add(right_panel);
 
         //initialise the result table for left and middle
-        defaultTableModel = new DefaultTableModel(data, new Object[]{"Name", "date", "amount"});
+        defaultTableModel = new DefaultTableModel(data, new Object[]{"Name", "Date", "Amount"});
 
         // Create a non-editable table model for the right panel
-        nonEditableModel = new DefaultTableModel(data, new Object[]{"Name", "date", "amount"}) {
+        nonEditableModel = new DefaultTableModel(data, new Object[]{"Name", "Date", "Amount"}) {
             @Override
             public boolean isCellEditable(int row, int column) {
                 return false;  // Disable editing for all cells
@@ -163,8 +163,8 @@ public class database_utility extends JFrame {
             reset_confirmation gui = new reset_confirmation();
             gui.setVisible(true);
             gui.setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE);
-            gui.setLocation(100,100);
-            gui.setSize(500,300);
+            gui.setLocation(100, 100);
+            gui.setSize(500, 300);
         }
     }
 
