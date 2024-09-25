@@ -2,7 +2,13 @@
 
 ## Tensorflow object detection software in java 
 
-- SQL backend for saving amount of detected objects
+- SQL backend for saving amount, times and names of detected objects
+
+- SQL utility for managing the whole database (search, filter, edit, delete)
+
+- CSV exporter - export the database in form of a CSV file
+
+- Use of 3NF database
 
 - XML backend for faster restoring the old configuration 
 
