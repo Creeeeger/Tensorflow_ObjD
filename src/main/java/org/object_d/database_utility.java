@@ -153,6 +153,38 @@ public class database_utility extends JFrame {
         gui.setLocation(100, 100);
     }
 
+    public static void searchOP(String name, String date, String amount) { //method for getting data
+        // Fetch the updated data from the database
+        data = database_handler.searchData(name, date, amount);
+
+        // Update the table models with the new data
+        defaultTableModel.setDataVector(data, new Object[]{"Name", "Date", "Amount"});
+        nonEditableModel.setDataVector(data, new Object[]{"Name", "Date", "Amount"});
+
+        // Revalidate and repaint the result tables and left panel
+        result_table_left.revalidate();
+        result_table_left.repaint();
+        result_table_middle.revalidate();
+        result_table_middle.repaint();
+    }
+
+    public void refresh() {
+        // Fetch the updated data from the database
+        data = database_handler.readDatabase();
+
+        // Update the table models with the new data
+        defaultTableModel.setDataVector(data, new Object[]{"Name", "Date", "Amount"});
+        nonEditableModel.setDataVector(data, new Object[]{"Name", "Date", "Amount"});
+
+        // Revalidate and repaint the result tables and left panel
+        result_table_left.revalidate();
+        result_table_left.repaint();
+        result_table_middle.revalidate();
+        result_table_middle.repaint();
+        result_table_right.revalidate();
+        result_table_right.repaint();
+    }
+
     public static class event_reset_database_UI implements ActionListener {
         @Override
         public void actionPerformed(ActionEvent e) {
@@ -188,6 +220,68 @@ public class database_utility extends JFrame {
         }
     }
 
+    public static class event_write_to_db implements ActionListener {
+
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            System.out.println("Write modified data to DB");
+        }
+    }
+
+    public static class event_change_search implements DocumentListener {
+
+        @Override
+        public void insertUpdate(DocumentEvent e) {
+            searchOP(searchField_search.getText(), dateField_search.getText(), amountField_search.getText());
+        }
+
+        @Override
+        public void removeUpdate(DocumentEvent e) {
+            searchOP(searchField_search.getText(), dateField_search.getText(), amountField_search.getText());
+        }
+
+        @Override
+        public void changedUpdate(DocumentEvent e) {
+
+        }
+    }
+
+    public static class event_change_date implements DocumentListener {
+
+        @Override
+        public void insertUpdate(DocumentEvent e) {
+            searchOP(searchField_search.getText(), dateField_search.getText(), amountField_search.getText());
+        }
+
+        @Override
+        public void removeUpdate(DocumentEvent e) {
+            searchOP(searchField_search.getText(), dateField_search.getText(), amountField_search.getText());
+        }
+
+        @Override
+        public void changedUpdate(DocumentEvent e) {
+
+        }
+    }
+
+    public static class event_change_amount implements DocumentListener {
+
+        @Override
+        public void insertUpdate(DocumentEvent e) {
+            searchOP(searchField_search.getText(), dateField_search.getText(), amountField_search.getText());
+        }
+
+        @Override
+        public void removeUpdate(DocumentEvent e) {
+            searchOP(searchField_search.getText(), dateField_search.getText(), amountField_search.getText());
+        }
+
+        @Override
+        public void changedUpdate(DocumentEvent e) {
+
+        }
+    }
+
     public class event_delete_entry implements ActionListener {
 
         @Override
@@ -202,92 +296,9 @@ public class database_utility extends JFrame {
             refresh();
         }
     }
-    public void refresh() {
-        // Fetch the updated data from the database
-        data = database_handler.readDatabase();
-
-        // Update the table models with the new data
-        defaultTableModel.setDataVector(data, new Object[]{"Name", "Date", "Amount"});
-        nonEditableModel.setDataVector(data, new Object[]{"Name", "Date", "Amount"});
-
-        // Revalidate and repaint the result tables and left panel
-        result_table_left.revalidate();
-        result_table_left.repaint();
-        result_table_middle.revalidate();
-        result_table_middle.repaint();
-        result_table_right.revalidate();
-        result_table_right.repaint();
-        left_panel.revalidate();
-        left_panel.repaint();
-    }
-
-    public static class event_write_to_db implements ActionListener {
-
-        @Override
-        public void actionPerformed(ActionEvent e) {
-            System.out.println("Write modified data to DB");
-        }
-    }
-
-    public static class event_change_search implements DocumentListener {
-
-        @Override
-        public void insertUpdate(DocumentEvent e) {
-
-        }
-
-        @Override
-        public void removeUpdate(DocumentEvent e) {
-
-        }
-
-        @Override
-        public void changedUpdate(DocumentEvent e) {
-
-        }
-    }
-
-    public static class event_change_date implements DocumentListener {
-
-        @Override
-        public void insertUpdate(DocumentEvent e) {
-
-        }
-
-        @Override
-        public void removeUpdate(DocumentEvent e) {
-
-        }
-
-        @Override
-        public void changedUpdate(DocumentEvent e) {
-
-        }
-    }
-
-    public static class event_change_amount implements DocumentListener {
-
-        @Override
-        public void insertUpdate(DocumentEvent e) {
-
-        }
-
-        @Override
-        public void removeUpdate(DocumentEvent e) {
-
-        }
-
-        @Override
-        public void changedUpdate(DocumentEvent e) {
-
-        }
-    }
 }
 
 /*
 Todo
 event_write_to_db
-event_change_search
-event_change_date
-event_change_amount
 */
