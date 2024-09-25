@@ -164,15 +164,6 @@ public class database_utility extends JFrame {
         csvExport.addActionListener(new event_export_csv());
     }
 
-    public static void main(String[] args) {
-        database_utility gui = new database_utility();
-        gui.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        gui.setSize(1400, 800);
-        gui.setTitle("Database utility");
-        gui.setVisible(true);
-        gui.setLocation(100, 100);
-    }
-
     public static void searchOP(String name, String date, String amount) { //method for getting data
         // Fetch the updated data from the database
         data = database_handler.searchData(name, date, amount);
