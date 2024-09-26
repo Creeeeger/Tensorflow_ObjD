@@ -31,6 +31,7 @@ public class reset_confirmation extends JFrame {
             database_handler.reset_init_db();
             setVisible(false);
             System.out.println("Reset the database");
+            database_utility.refresh();
         }
     }
 
