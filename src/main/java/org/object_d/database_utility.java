@@ -181,7 +181,7 @@ public class database_utility extends JFrame {
         result_table_right.repaint();
     }
 
-    public void refresh() {
+    public static void refresh() {
         // Fetch the updated data from the database
         data = database_handler.readDatabase();
 
@@ -297,7 +297,7 @@ public class database_utility extends JFrame {
         }
     }
 
-    public class event_delete_entry implements ActionListener {
+    public static class event_delete_entry implements ActionListener {
 
         @Override
         public void actionPerformed(ActionEvent e) {
@@ -313,7 +313,7 @@ public class database_utility extends JFrame {
         }
     }
 
-    public class event_write_to_db implements ActionListener {
+    public static class event_write_to_db implements ActionListener {
 
         @Override
         public void actionPerformed(ActionEvent e) {
