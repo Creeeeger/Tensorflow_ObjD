@@ -11,6 +11,108 @@ import java.util.UUID;
 
 public class database_handler {
 
+    public static void reset_init_db() { //new initialization method and reset method (2 in 1)
+        Connection connection = null;
+        Statement statement = null;
+
+        try {
+            //register the driver
+            Class.forName("org.sqlite.JDBC");
+
+            // Establish connection to the database
+            connection = DriverManager.getConnection("jdbc:sqlite:results.db");
+
+            // Create a statement
+            statement = connection.createStatement();
+
+            File dbFile = new File("results.db"); //check for db file
+
+            if (!dbFile.exists()) { //if not existing create new db and init it
+                System.out.println("Database doesn't exist - Create and initialise database");
+
+                // Create the `d_object` table with a proper primary key and data types
+                String sql = "CREATE TABLE IF NOT EXISTS d_object (" +
+                        "obj_id INTEGER PRIMARY KEY AUTOINCREMENT, " +   // Primary key with AUTOINCREMENT
+                        "obj_name TEXT NOT NULL UNIQUE)";                // Unique object name
+
+                // Create the `link_obj` table with a composite primary key and foreign key constraints
+                String sql1 = "CREATE TABLE IF NOT EXISTS link_obj (" +
+                        "obj_id INTEGER NOT NULL, " +
+                        "date_id INTEGER NOT NULL UNIQUE, " +
+                        "PRIMARY KEY (obj_id, date_id), " +            // Composite primary key
+                        "FOREIGN KEY (obj_id) REFERENCES d_object (obj_id))"; // Foreign key constraint
+
+                // Create the `obj_amt` table with a foreign key constraint to `link_obj`
+                String sql2 = "CREATE TABLE IF NOT EXISTS obj_amt (" +
+                        "date_id INTEGER NOT NULL UNIQUE, " +
+                        "amount INTEGER NOT NULL, " +
+                        "date DATE NOT NULL, " +                        // Move `date` here from `link_obj`
+                        "PRIMARY KEY (date_id), " +                     // Primary key on date_id
+                        "FOREIGN KEY (date_id) REFERENCES link_obj (date_id))"; // Foreign key constraint
+
+                // Execute the SQL statements
+                statement.executeUpdate(sql);
+                statement.executeUpdate(sql1);
+                statement.executeUpdate(sql2);
+
+            } else { //in case the file exists drop tables and re init them
+                System.out.println("Database exists - reset database");
+
+                // Drop the tables if they exists
+                String dropTableSQL1 = "DROP TABLE IF EXISTS d_object";
+                String dropTableSQL2 = "DROP TABLE IF EXISTS link_obj";
+                String dropTableSQL3 = "DROP TABLE IF EXISTS obj_amt";
+
+                // Execute each drop statement individually
+                statement.executeUpdate(dropTableSQL1);
+                statement.executeUpdate(dropTableSQL2);
+                statement.executeUpdate(dropTableSQL3);
+
+                System.out.println("Create and initialise database");
+
+                // Create the `d_object` table with a proper primary key and data types
+                String sql = "CREATE TABLE IF NOT EXISTS d_object (" +
+                        "obj_id INTEGER PRIMARY KEY AUTOINCREMENT, " +   // Primary key with AUTOINCREMENT
+                        "obj_name TEXT NOT NULL UNIQUE)";                // Unique object name
+
+                // Create the `link_obj` table with a composite primary key and foreign key constraints
+                String sql1 = "CREATE TABLE IF NOT EXISTS link_obj (" +
+                        "obj_id INTEGER NOT NULL, " +
+                        "date_id INTEGER NOT NULL UNIQUE, " +
+                        "PRIMARY KEY (obj_id, date_id), " +            // Composite primary key
+                        "FOREIGN KEY (obj_id) REFERENCES d_object (obj_id))"; // Foreign key constraint
+
+                // Create the `obj_amt` table with a foreign key constraint to `link_obj`
+                String sql2 = "CREATE TABLE IF NOT EXISTS obj_amt (" +
+                        "date_id INTEGER NOT NULL UNIQUE, " +
+                        "amount INTEGER NOT NULL, " +
+                        "date DATE NOT NULL, " +                        // Move `date` here from `link_obj`
+                        "PRIMARY KEY (date_id), " +                     // Primary key on date_id
+                        "FOREIGN KEY (date_id) REFERENCES link_obj (date_id))"; // Foreign key constraint
+
+                // Execute the SQL statements
+                statement.executeUpdate(sql);
+                statement.executeUpdate(sql1);
+                statement.executeUpdate(sql2);
+            }
+
+        } catch (Exception e) {
+            throw new RuntimeException(e); //for random goofy exceptions we throw a RtE
+
+        } finally {
+            // Close resources
+            try {
+                if (statement != null)
+                    statement.close();
+                if (connection != null)
+                    connection.close();
+
+            } catch (SQLException e) {
+                System.out.println("Error occurred: " + e);
+            }
+        }
+    }
+
     public static void addData(ArrayList<detector.entry> data) {
         Connection connection = null;
         Statement statement = null;
@@ -20,7 +122,7 @@ public class database_handler {
             connection = DriverManager.getConnection("jdbc:sqlite:results.db");
 
             for (int i = 0; i < data.size(); i++) {
-                String objName = data.get(i).getLabel();
+                String objName = data.get(i).getLabel().replace(" ", "");
                 Date date = data.get(i).getDate();
                 int dateId = UUID.randomUUID().hashCode();  // Generate a random unique ID for each date entry
 
@@ -50,18 +152,22 @@ public class database_handler {
                 }
 
                 // Now check if this obj_id and date already exist in the link_obj table
-                String doesDateExist = "SELECT date_id FROM link_obj WHERE obj_id = " + objId +
-                        " AND date = '" + new java.sql.Date(date.getTime()) + "'";
+                String doesDateExist = "SELECT link_obj.date_id " +
+                        "FROM link_obj, obj_amt " + // Added space at the end of the line
+                        "WHERE link_obj.obj_id = " + objId + " " + // Added spaces around 'objId' and after the clause
+                        "AND link_obj.date_id = obj_amt.date_id " + // Added spaces around 'link_obj.date_id'
+                        "AND obj_amt.date = '" + date + "'"; // Added space before AND
                 ResultSet dateExist = statement.executeQuery(doesDateExist);
 
                 if (!dateExist.next()) {
                     // If the same object but different date, insert a new entry into link_obj table
-                    String insertLinkObjSQL = "INSERT INTO link_obj (obj_id, date_id, date) " +
-                            "VALUES (" + objId + ", " + dateId + ", '" + new java.sql.Date(date.getTime()) + "')";
+                    String insertLinkObjSQL = "INSERT INTO link_obj (obj_id, date_id) " +
+                            "VALUES (" + objId + ", " + dateId + ")";
                     statement.executeUpdate(insertLinkObjSQL);
 
                     // Set the amount to 1 for the new date entry in obj_amt table
-                    String insertAmtSQL = "INSERT INTO obj_amt (date_id, amount) VALUES (" + dateId + ", 1)";
+                    String insertAmtSQL = "INSERT INTO obj_amt (date_id, amount, date) " +
+                            "VALUES (" + dateId + ", 1, '" + date + "')";
                     statement.executeUpdate(insertAmtSQL);
 
                 } else {
@@ -84,112 +190,6 @@ public class database_handler {
                     statement.close();  // Close Statement
                 if (connection != null)
                     connection.close();  // Close Connection
-            } catch (SQLException e) {
-                System.out.println("Error occurred: " + e);
-            }
-        }
-    }
-
-    public static void reset_init_db() { //new initialization method and reset method (2 in 1)
-        Connection connection = null;
-        Statement statement = null;
-
-        try {
-            //register the driver
-            Class.forName("org.sqlite.JDBC");
-
-            // Establish connection to the database
-            connection = DriverManager.getConnection("jdbc:sqlite:results.db");
-
-            // Create a statement
-            statement = connection.createStatement();
-
-            File dbFile = new File("results.db"); //check for db file
-
-            if (!dbFile.exists()) { //if not existing create new db and init it
-                System.out.println("Database doesn't exist - Create and initialise database");
-
-                // Create the `d_object` table with a proper primary key and data types
-                String sql = "CREATE TABLE IF NOT EXISTS d_object (" +
-                        "obj_id INTEGER PRIMARY KEY AUTOINCREMENT, " +   // Primary key with AUTOINCREMENT
-                        "obj_name TEXT NOT NULL UNIQUE)";                // Unique object name
-
-
-                // Create the `link_obj` table with a composite primary key and foreign key constraints
-                String sql1 = "CREATE TABLE IF NOT EXISTS link_obj (" +
-                        "obj_id INTEGER NOT NULL, " +
-                        "date_id INTEGER NOT NULL, " +
-                        "date DATE NOT NULL, " +
-                        "PRIMARY KEY (obj_id, date_id), " +            // Composite primary key
-                        "FOREIGN KEY (obj_id) REFERENCES d_object (obj_id))"; // Foreign key constraint
-
-
-                // Create the `obj_amt` table with a foreign key constraint to `link_obj`
-                String sql2 = "CREATE TABLE IF NOT EXISTS obj_amt (" +
-                        "date_id INTEGER NOT NULL, " +
-                        "amount INTEGER NOT NULL, " +
-                        "PRIMARY KEY (date_id), " +                     // Primary key on date_id
-                        "FOREIGN KEY (date_id) REFERENCES link_obj (date_id))"; // Foreign key constraint
-
-                // Execute the SQL statements
-                statement.executeUpdate(sql);
-                statement.executeUpdate(sql1);
-                statement.executeUpdate(sql2);
-
-            } else { //in case the file exists drop tables and re init them
-                System.out.println("Database exists - reset database");
-
-                // Drop the tables if they exists
-                String dropTableSQL1 = "DROP TABLE IF EXISTS d_object";
-                String dropTableSQL2 = "DROP TABLE IF EXISTS link_obj";
-                String dropTableSQL3 = "DROP TABLE IF EXISTS obj_amt";
-
-                // Execute each drop statement individually
-                statement.executeUpdate(dropTableSQL1);
-                statement.executeUpdate(dropTableSQL2);
-                statement.executeUpdate(dropTableSQL3);
-
-                System.out.println("Create and initialise database");
-
-                // Create the `d_object` table with a proper primary key and data types
-                String sql = "CREATE TABLE IF NOT EXISTS d_object (" +
-                        "obj_id INTEGER PRIMARY KEY AUTOINCREMENT, " +   // Primary key with AUTOINCREMENT
-                        "obj_name TEXT NOT NULL UNIQUE)";                // Unique object name
-
-
-                // Create the `link_obj` table with a composite primary key and foreign key constraints
-                String sql1 = "CREATE TABLE IF NOT EXISTS link_obj (" +
-                        "obj_id INTEGER NOT NULL, " +
-                        "date_id INTEGER NOT NULL, " +
-                        "date DATE NOT NULL, " +
-                        "PRIMARY KEY (obj_id, date_id), " +            // Composite primary key
-                        "FOREIGN KEY (obj_id) REFERENCES d_object (obj_id))"; // Foreign key constraint
-
-
-                // Create the `obj_amt` table with a foreign key constraint to `link_obj`
-                String sql2 = "CREATE TABLE IF NOT EXISTS obj_amt (" +
-                        "date_id INTEGER NOT NULL, " +
-                        "amount INTEGER NOT NULL, " +
-                        "PRIMARY KEY (date_id), " +                     // Primary key on date_id
-                        "FOREIGN KEY (date_id) REFERENCES link_obj (date_id))"; // Foreign key constraint
-
-                // Execute the SQL statements
-                statement.executeUpdate(sql);
-                statement.executeUpdate(sql1);
-                statement.executeUpdate(sql2);
-            }
-
-        } catch (Exception e) {
-            throw new RuntimeException(e); //for random goofy exceptions we throw a RtE
-
-        } finally {
-            // Close resources
-            try {
-                if (statement != null)
-                    statement.close();
-                if (connection != null)
-                    connection.close();
-
             } catch (SQLException e) {
                 System.out.println("Error occurred: " + e);
             }
@@ -220,11 +220,11 @@ public class database_handler {
             connection = DriverManager.getConnection("jdbc:sqlite:results.db");
             statement = connection.createStatement();
 
-            String sql = "SELECT d_object.obj_name, link_obj.date, obj_amt.amount " +
+            String sql = "SELECT d_object.obj_name, obj_amt.date, obj_amt.amount " +
                     "FROM d_object, link_obj, obj_amt " +
                     "WHERE d_object.obj_id = link_obj.obj_id " +
                     "AND link_obj.date_id = obj_amt.date_id " +
-                    "ORDER BY link_obj.date ASC, d_object.obj_name ASC;";
+                    "ORDER BY obj_amt.date ASC, d_object.obj_name ASC;";
 
             ResultSet resultSet = statement.executeQuery(sql);
 
@@ -296,47 +296,45 @@ public class database_handler {
             if (recordCount == 1) {
                 // If there's only one record, delete everything (d_object, link_obj, and obj_amt for that obj_id)
 
-                // Delete from d_object
-                String deleteDObject = "DELETE FROM d_object WHERE obj_id = " + objId;
+                // Delete from obj_amt (use the date_id from link_obj)
+                String deleteObjAmt = "DELETE FROM obj_amt WHERE date_id IN (" +
+                        "   SELECT date_id FROM link_obj WHERE obj_id = " + objId + ")";
 
                 // Delete from link_obj
                 String deleteLinkObj = "DELETE FROM link_obj WHERE obj_id = " + objId;
 
-                // Delete from obj_amt (use the date_id from link_obj)
-                String deleteObjAmt = "DELETE FROM obj_amt WHERE date_id IN ( " +
-                        "   SELECT date_id FROM link_obj WHERE obj_id = " + objId +
-                        "   AND date = '" + date + "' " +
-                        ")";
+                // Delete from d_object
+                String deleteDObject = "DELETE FROM d_object WHERE obj_id = " + objId;
 
-                // Execute each query in order
-                statement.executeUpdate(deleteDObject);
-                statement.executeUpdate(deleteLinkObj);
+                // Execute each query in the appropriate order (to avoid foreign key constraint errors)
                 statement.executeUpdate(deleteObjAmt);
+                statement.executeUpdate(deleteLinkObj);
+                statement.executeUpdate(deleteDObject);
 
                 System.out.println("All records related to the object '" + name + "' were deleted successfully");
 
             } else if (recordCount > 1) {
                 // If there are multiple records for this obj_id, only delete the specific date and amount
 
-                // Delete from link_obj for the specific obj_id, date, and amount
-                String deleteLinkObj = "DELETE FROM link_obj WHERE obj_id = " + objId +
-                        " AND date = '" + date + "' " +
-                        " AND date_id IN ( " +
-                        "   SELECT date_id FROM obj_amt WHERE amount = " + Integer.parseInt(amount) +
-                        ")";
+                // Get the date_id associated with this obj_id and date
+                String selectDateId = "SELECT link_obj.date_id FROM link_obj " +
+                        "JOIN obj_amt ON link_obj.date_id = obj_amt.date_id " +
+                        "WHERE link_obj.obj_id = " + objId + " AND obj_amt.date = '" + date + "'";
+                ResultSet dateIdResultSet = statement.executeQuery(selectDateId);
 
-                // Delete from obj_amt for the specific date_id and amount
-                String deleteObjAmt = "DELETE FROM obj_amt WHERE amount = " + Integer.parseInt(amount) +
-                        " AND date_id IN ( " +
-                        "   SELECT date_id FROM link_obj WHERE obj_id = " + objId +
-                        "   AND date = '" + date + "' " +
-                        ")";
+                if (dateIdResultSet.next()) {
+                    int dateId = dateIdResultSet.getInt("date_id");
 
-                // Execute the queries
-                statement.executeUpdate(deleteLinkObj);
-                statement.executeUpdate(deleteObjAmt);
+                    // Delete from obj_amt for the specific date_id
+                    String deleteObjAmt = "DELETE FROM obj_amt WHERE date_id = " + dateId + " AND amount = " + Integer.parseInt(amount);
+                    statement.executeUpdate(deleteObjAmt);
 
-                System.out.println("Specific record for date '" + date + "' and amount '" + amount + "' deleted successfully.");
+                    // Delete from link_obj for the specific date_id
+                    String deleteLinkObj = "DELETE FROM link_obj WHERE obj_id = " + objId + " AND date_id = " + dateId;
+                    statement.executeUpdate(deleteLinkObj);
+
+                    System.out.println("Specific record for date '" + date + "' and amount '" + amount + "' deleted successfully.");
+                }
             }
 
         } catch (Exception e) {
@@ -352,7 +350,8 @@ public class database_handler {
         }
     }
 
-    public static String[][] searchData(String name, String date, String amount) { //method for searching data
+    public static String[][] searchData(String name, String date, String amount) {
+        //method for searching data
         //setup connection and statement
         Statement statement;
         Connection connection;
@@ -372,7 +371,7 @@ public class database_handler {
             statement = connection.createStatement();
 
             StringBuilder sql = new StringBuilder();
-            sql.append("SELECT d_object.obj_name, link_obj.date, obj_amt.amount ")
+            sql.append("SELECT d_object.obj_name, obj_amt.date, obj_amt.amount ")
                     .append("FROM d_object, link_obj, obj_amt ")
                     .append("WHERE d_object.obj_id = link_obj.obj_id ")
                     .append("AND link_obj.date_id = obj_amt.date_id ");
@@ -383,7 +382,7 @@ public class database_handler {
             }
 
             if (date != null && !date.isEmpty()) {
-                sql.append("AND link_obj.date LIKE '%").append(date).append("%' "); // Wildcard before and after date
+                sql.append("AND obj_amt.date LIKE '%").append(date).append("%' "); // Wildcard before and after date
             }
 
             if (amount != null && !amount.isEmpty()) {
@@ -391,7 +390,7 @@ public class database_handler {
             }
 
             // Finalize the query with sorting
-            sql.append("ORDER BY link_obj.date ASC, d_object.obj_name ASC;");
+            sql.append("ORDER BY obj_amt.date ASC, d_object.obj_name ASC;");
 
             // Execute the query
             ResultSet resultSet = statement.executeQuery(sql.toString());
@@ -421,7 +420,8 @@ public class database_handler {
         }
     }
 
-    public static void exportToCSV(String filePath) { //method to export db to csv file
+    public static void exportToCSV(String filePath) {
+        //method to export db to csv file
         Connection connection = null;
         Statement statement = null;
         FileWriter csvWriter = null;
@@ -433,7 +433,7 @@ public class database_handler {
             statement = connection.createStatement();
 
             // 2. Execute query to retrieve data
-            String query = "SELECT d_object.obj_name, link_obj.date, obj_amt.amount " +
+            String query = "SELECT d_object.obj_name, obj_amt.date, obj_amt.amount " +
                     "FROM d_object, link_obj, obj_amt " +
                     "WHERE d_object.obj_id = link_obj.obj_id " +
                     "AND link_obj.date_id = obj_amt.date_id";
@@ -476,8 +476,8 @@ public class database_handler {
         }
     }
 
-    // Escape special characters for CSV (e.g., commas, quotes, newlines)
     private static String escapeCSV(String data) {
+        // Escape special characters for CSV (e.g., commas, quotes, newlines)
         if (data == null) {
             return "";  // Handle null values
         }
