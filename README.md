@@ -29,3 +29,5 @@
 - (Later) Tensorflow development dependant -- hardware acceleration usage (npu) & detect images with checkpoints made
 
 - Based on tensorflow 2.x for unix systems (Tested on macOS 14 M1 Pro)
+
+- Everything is commented for easier usage and better understanding

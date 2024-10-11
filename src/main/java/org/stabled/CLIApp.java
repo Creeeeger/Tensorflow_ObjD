@@ -1,41 +1,3 @@
-/*
- * Copyright (c) 2023, 2024, Oracle and/or its affiliates.
- *
- * The Universal Permissive License (UPL), Version 1.0
- *
- * Subject to the condition set forth below, permission is hereby granted to any
- * person obtaining a copy of this software, associated documentation and/or data
- * (collectively the "Software"), free of charge and under any and all copyright
- * rights in the Software, and any and all patent rights owned or freely
- * licensable by each licensor hereunder covering either (i) the unmodified
- * Software as contributed to or provided by such licensor, or (ii) the Larger
- * Works (as defined below), to deal in both
- *
- * (a) the Software, and
- * (b) any piece of software and/or hardware listed in the lrgrwrks.txt file if
- * one is included with the Software (each a "Larger Work" to which the Software
- * is contributed by such licensors),
- *
- * without restriction, including without limitation the rights to copy, create
- * derivative works of, display, perform, and distribute the Software and make,
- * use, sell, offer for sale, import, export, have made, and have sold the
- * Software and the Larger Work(s), and to sublicense the foregoing rights on
- * either these or other terms.
- *
- * This license is subject to the following condition:
- * The above copyright notice and either this complete permission notice or at
- * a minimum a reference to the UPL must be included in all copies or
- * substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE.
- */
-
 package org.stabled;
 
 import ai.onnxruntime.OrtException;
@@ -45,35 +7,52 @@ import java.util.List;
 import java.util.Optional;
 import java.util.logging.Logger;
 
-/**
- * A short command line demo that makes two images, one with only a positive prompt and one with a positive and negative prompt.
- */
 public final class CLIApp {
     private static final Logger logger = Logger.getLogger(CLIApp.class.getName());
 
     private CLIApp() {
-    }
-
-    public static void main(String[] args) throws IOException, OrtException{
-        String[] arg = {};
-        gen(arg, 5, "a tree", 1, "/Users/gregor/Desktop");
+        // Private constructor to prevent instantiation of the utility class
     }
 
     public static void gen(String[] args, int steps, String prompt, int B_size, String output_path) throws OrtException, IOException {
+        // Generates an image based on a given prompt using SD4J
+
+        // Parse command line arguments to create an SD4JConfig (specific configuration for Stable Diffusion model usage)
         Optional<SD4J.SD4JConfig> config = SD4J.SD4JConfig.parseArgs(args);
+
         if (config.isEmpty()) {
+            // If configuration cannot be created (likely due to missing arguments), print the help message and exit
             System.out.println(SD4J.SD4JConfig.help());
-            System.exit(1);
+            System.exit(1); // Exit with status code 1 (indicating an error)
         }
 
+        // Create an instance of SD4J using the configuration from the arguments
         SD4J sd = SD4J.factory(config.get());
 
+        // Generate a random seed for generating images, adding some randomness to the output
         int seed = (int) (Math.random() * 1000) + 2;
-        List<SD4J.SDImage> images = sd.generateImage(steps, prompt, "", 7.5f, B_size, new SD4J.ImageSize(512, 512), seed);
-        String output = output_path + "/output-" + seed + ".png";
-        logger.info("Saving to " + output);
-        SD4J.save(images.get(0), output);
 
+        // Generate images based on the provided prompt and other parameters
+        List<SD4J.SDImage> images = sd.generateImage(
+                steps,               // Number of steps to generate the image
+                prompt,              // Prompt text for generating the image
+                "",                  // Additional conditioning text (empty in this case)
+                7.5f,                // Guidance scale, which affects how strongly the model follows the prompt
+                B_size,              // Batch size (number of images to generate simultaneously)
+                new SD4J.ImageSize(512, 512), // Dimensions of the generated images (512x512 pixels)
+                seed                 // Random seed for reproducibility
+        );
+
+        // Construct the output path, using the random seed to differentiate file names
+        String output = output_path + "/output-" + seed + ".png";
+
+        // Log a message indicating where the image will be saved
+        logger.info("Saving to " + output);
+
+        // Save the first generated image in the specified output path
+        SD4J.save(images.getFirst(), output);
+
+        // Close the SD4J instance to release resources
         sd.close();
     }
 }
