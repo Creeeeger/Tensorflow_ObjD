@@ -35,71 +35,91 @@ import java.util.List;
 import java.util.*;
 
 public class tensorTrainerCNN extends JFrame {
-    static int numberClasses, epochs;
-    static float maxLoss = Main_UI.learning;
-    static int[][] confusionMatrix;
-    static List<Float> boxLossValues = new ArrayList<>();  // Store the loss values
-    static List<Float> classLossValues = new ArrayList<>();  // Store the loss values
-    static List<Float> totalLossValues = new ArrayList<>();  // Store the loss values
-    static JTextArea textArea;
-    static JLabel accuracy_label;
-    JPanel box_loss_panel, class_loss_panel, total_loss_panel, confusion_matrix_panel;
+    static int numberClasses, epochs; // Declare variables for the number of classes and epochs (training iterations)
+    static float maxLoss = Main_UI.learning_rate; // Initialize maxLoss with the learning rate value from the Main_UI class
+    static int[][] confusionMatrix; // Declare a 2D array for the confusion matrix
+    static List<Float> boxLossValues = new ArrayList<>();  // List to store loss values for bounding boxes
+    static List<Float> classLossValues = new ArrayList<>();  // List to store loss values for class predictions
+    static List<Float> totalLossValues = new ArrayList<>();  // List to store total loss values (combined)
+    static JTextArea textArea; // Declare a text area for displaying output as well as the matrix
+    static JLabel accuracy_label; // Label to display the accuracy of the model
+    JPanel box_loss_panel, class_loss_panel, total_loss_panel, confusion_matrix_panel; // Panels to display loss values and confusion matrix
 
     public tensorTrainerCNN() {
-        setLayout(new GridLayout(4, 1, 10, 10));
+        setLayout(new GridLayout(4, 1, 10, 10)); // Set layout for the panel, a 4-row grid with spacing between elements
+
+        // Initialize and configure the box loss panel
         box_loss_panel = new JPanel();
-        box_loss_panel.setBorder(BorderFactory.createTitledBorder("Box loss"));
-        box_loss_graph boxLossGraph = new box_loss_graph();
-        box_loss_panel.add(boxLossGraph);
+        box_loss_panel.setBorder(BorderFactory.createTitledBorder("Box loss")); // Set a titled border for the panel
+        box_loss_graph boxLossGraph = new box_loss_graph(); // Create an instance of the graph for box loss
+        box_loss_panel.add(boxLossGraph); // Add the graph to the panel
 
+        // Initialize and configure the class loss panel
         class_loss_panel = new JPanel();
-        class_loss_panel.setBorder(BorderFactory.createTitledBorder("Class loss"));
-        class_loss_graph classLossGraph = new class_loss_graph();
-        class_loss_panel.add(classLossGraph);
+        class_loss_panel.setBorder(BorderFactory.createTitledBorder("Class loss")); // Set a titled border for the panel
+        class_loss_graph classLossGraph = new class_loss_graph(); // Create an instance of the graph for class loss
+        class_loss_panel.add(classLossGraph); // Add the graph to the panel
 
+        // Initialize and configure the total loss panel
         total_loss_panel = new JPanel();
-        total_loss_panel.setBorder(BorderFactory.createTitledBorder("Total loss"));
-        total_loss_graph totalLossGraph = new total_loss_graph();
-        total_loss_panel.add(totalLossGraph);
+        total_loss_panel.setBorder(BorderFactory.createTitledBorder("Total loss")); // Set a titled border for the panel
+        total_loss_graph totalLossGraph = new total_loss_graph(); // Create an instance of the graph for total loss
+        total_loss_panel.add(totalLossGraph); // Add the graph to the panel
 
+        // Initialize and configure the confusion matrix panel
         confusion_matrix_panel = new JPanel();
-        confusion_matrix_panel.setBorder(BorderFactory.createTitledBorder("Confusion matrix"));
+        confusion_matrix_panel.setBorder(BorderFactory.createTitledBorder("Confusion matrix")); // Set a titled border
 
+        // Add the panels to the layout
         add(box_loss_panel);
         add(class_loss_panel);
         add(total_loss_panel);
         add(confusion_matrix_panel);
 
+        // Initialize the text area for the confusion matrix and the accuracy label
+        // Set text area size dynamically based on the number of classes
+        // ( + 2 because the number row is one and the counting process requires one more
         textArea = new JTextArea(numberClasses + 2, numberClasses + 2);
-        accuracy_label = new JLabel("Final accuracy: ...");
+        accuracy_label = new JLabel("Final accuracy: ..."); // Label to display final accuracy
 
+        // Add the accuracy label and text area to the confusion matrix panel
         confusion_matrix_panel.add(accuracy_label);
         confusion_matrix_panel.add(textArea);
     }
 
-    //access void for accessing the program over the trainer
+    // Method to access the program for training a model using the specified folder
     public static void access(String folder) throws IOException {
+        // Load the OpenCV library locally this is the new method since the native library method doesn't work anymore
         nu.pattern.OpenCV.loadLocally();
+
+        // Create a File object pointing to the provided folder directory
         File folderDir = new File(folder);
 
+        // Count the number of subdirectories (representing different classes) in the folder images must be grouped for this in the folder depending on classes
         numberClasses = (int) Arrays.stream(Objects.requireNonNull(folderDir.listFiles()))
                 .filter(File::isDirectory)
                 .count();
-        int imageSize = Main_UI.resolution;
-        epochs = Main_UI.epochs;
-        int batchSize = Main_UI.batch;
 
+        // Retrieve training configuration from Main_UI settings
+        int imageSize = Main_UI.resolution; // Get the image resolution
+        epochs = Main_UI.epochs; // Get the number of training epochs
+        int batchSize = Main_UI.batch_size; // Get the batch size for training
+
+        // Check if the folder contains no subdirectories (i.e., no grouped images)
         if (numberClasses == 0) {
-            throw new RuntimeException("You cant use a folder without grouped images!");
+            throw new RuntimeException("You can't use a folder without grouped images!"); // Throw an error if no classes found
         }
 
-        TFloat32[] datasetBatch = loadCocoDataset(folder, batchSize, imageSize, imageSize, 3, numberClasses);
-        TFloat32 images = datasetBatch[0];
-        TFloat32 labels = datasetBatch[1];
+        // Load the dataset into batches with specified parameters
+        TFloat32[] datasetBatch = loadDataset(folder, batchSize, imageSize, imageSize, 3, numberClasses);
+        TFloat32 images = datasetBatch[0]; // Extract the image batch
+        TFloat32 labels = datasetBatch[1]; // Extract the corresponding labels batch
+
+        // Train the model with the loaded dataset, number of classes, epochs, and image size
         trainModel(images, labels, numberClasses, epochs, imageSize);
     }
 
-    public static TFloat32[] loadCocoDataset(String dataDir, int batchSize, int imageHeight, int imageWidth, int numChannels, int numClasses) throws IOException {
+    public static TFloat32[] loadDataset(String dataDir, int batchSize, int imageHeight, int imageWidth, int numChannels, int numClasses) throws IOException {
         File[] classDirs = new File(dataDir).listFiles(File::isDirectory);
         if (classDirs == null) {
             throw new IOException("No class directories found.");
@@ -282,7 +302,7 @@ public class tensorTrainerCNN extends JFrame {
         return tf.nn.relu(dense);
     }
 
-    public static TFloat32 generateSyntheticboxes(int batchSize) {
+    public static TFloat32 generate_Synthetic_boxes(int batchSize) {
         // Create a tensor of shape [batchSize, 4] with synthetic bounding box data
         float[][] boxData = new float[batchSize][4];
         for (int i = 0; i < batchSize; i++) {
@@ -309,7 +329,7 @@ public class tensorTrainerCNN extends JFrame {
             // Setup Adam Optimizer
             new Adam(graph, 0.001f, 0.9f, 0.999f, 1e-8f);
 
-            TFloat32 boxTensor = generateSyntheticboxes((int) images.shape().get(0));
+            TFloat32 boxTensor = generate_Synthetic_boxes((int) images.shape().get(0));
 
             Result outputs = null;
 
