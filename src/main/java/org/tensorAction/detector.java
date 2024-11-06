@@ -54,15 +54,6 @@ public class detector { // Class for detecting objects and labeling them as well
 
         try (ModelBundle) {
             // Initialize the TensorFlow model bundle
-            // Load COCO labels into a TreeMap for easy lookup during classification
-            TreeMap<Float, String> cocoLabelMap = new TreeMap<>();
-            float Label_count = 0;
-
-            // Map each COCO label to a unique float key
-            for (String cocoLabel : cocoLabels) {
-                cocoLabelMap.put(Label_count, cocoLabel); // Store label with incremental float key
-                Label_count++;
-            }
 
             // Set up the TensorFlow graph and session for image processing
             try (Graph graph = new Graph()) {
@@ -112,9 +103,6 @@ public class detector { // Class for detecting objects and labeling them as well
                                     // Number of detections (as int)
                                     int detections = (int) amount.getFloat(0);
 
-                                    // ArrayList to hold the bounding boxes for visualization
-                                    ArrayList<FloatNdArray> boxList = new ArrayList<>();
-
                                     // Proceed only if there are detections
                                     if (detections > 0) {
                                         // Get image dimensions (height and width)
@@ -134,7 +122,6 @@ public class detector { // Class for detecting objects and labeling them as well
 
                                                 // Get the bounding box coordinates for the detected object
                                                 FloatNdArray boxFloat = boxes.get(0, i); // Bounding box coordinates
-                                                boxList.add(boxFloat); // Store the bounding box
 
                                                 // Calculate the bounding box coordinates scaled to the image dimensions
                                                 float yMin = boxFloat.getFloat(0) * imageHeight; // Top boundary
@@ -223,16 +210,6 @@ public class detector { // Class for detecting objects and labeling them as well
                 StringBuilder returnString = new StringBuilder(); // To store the detection results for the image
 
                 try (ModelBundle) {
-                    // Initialize the model and prepare the COCO label map
-                    TreeMap<Float, String> cocoLabelMap = new TreeMap<>();
-                    float Label_count = 0;
-
-                    // Fill the label map with COCO class names, mapping float keys to label names
-                    for (String cocoLabel : cocoLabels) {
-                        cocoLabelMap.put(Label_count, cocoLabel);
-                        Label_count++;
-                    }
-
                     // Set up TensorFlow graph for image processing
                     try (Graph graph = new Graph()) {
                         // Create a TensorFlow session within the graph to run operations
@@ -277,8 +254,6 @@ public class detector { // Class for detecting objects and labeling them as well
                                             // Get the total number of detected objects from the model's output
                                             int detections = (int) amount.getFloat(0);
 
-                                            // Create a list to store bounding box coordinates
-                                            ArrayList<FloatNdArray> boxList = new ArrayList<>();
                                             returnString = new StringBuilder(); // Reset the return string for the current image
 
                                             // Proceed only if the model detected at least one object
@@ -296,7 +271,6 @@ public class detector { // Class for detecting objects and labeling them as well
                                                     if (score > 0.3f) {
                                                         // Get the bounding box coordinates for each detected object
                                                         FloatNdArray boxFloat = boxes.get(0, j);
-                                                        boxList.add(boxFloat); // Add the bounding box coordinates to the list for coordinate extraction
 
                                                         // Calculate the bounding box coordinates relative to the image size
                                                         float yMin = boxFloat.getFloat(0) * imageHeight; // Top coordinate
