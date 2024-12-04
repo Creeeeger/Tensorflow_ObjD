@@ -2,6 +2,7 @@ package org.object_d;
 
 import nu.pattern.OpenCV;
 import org.tensorflow.SavedModelBundle;
+import org.tensorflow.Session;
 import org.tensorflow.ndarray.FloatNdArray;
 import org.tensorflow.ndarray.NdArrays;
 import org.tensorflow.ndarray.Shape;
@@ -67,8 +68,8 @@ public class trained_detector extends JFrame {
         image_select = new JButton("Select image file");
         image_select.setEnabled(false); // Initially disabled since tensor file is selected first
 
-        // Label for displaying the predicted class; contains a note about potential issues with variable initialization
-        output_name = new JLabel("Predicted class -- Since we made the model in java and ts2x removed since 3 Years the init function this probably wont work and fail due to failed variable initialization");
+        // Label for displaying the predicted class
+        output_name = new JLabel("Predicted class: "); // No, I solved the issue that stuff works now
 
         // Initialize the predict button, but keep it disabled initially
         predict = new JButton("Predict");
@@ -152,25 +153,48 @@ public class trained_detector extends JFrame {
         return (TFloat32.tensorOf(imageData));
     }
 
-    public static void detect() throws IOException {
+    public static void detect() throws IOException { // Detection logic is now in the format required for doing its job
+        // This is a known fact, since the StageTwoExporter has proven that the loading works properly by this code
+        // --> The exporter logic in the TrainerCNN code is Sh!t <<Time to fix it>>
+        // -> fixed the logic in there - detection works now
+
         // Load the trained model from the directory specified by tensor_file, using the 'serve' tag.
         try (SavedModelBundle model = SavedModelBundle.load(tensor_file.getPath(), "serve")) {
+            try (Session session = model.session()) {
+                // Prepare the image file by converting it to a tensor that can be fed into the model.
+                TFloat32 imageTensor = image_preparation(image_file);
 
-            // Prepare the image file by converting it to a tensor that can be fed into the model.
-            TFloat32 imageTensor = image_preparation(image_file);
+                // Run the model session and fetch the output for class prediction.
+                // 'input' refers to the model's input tensor name, and 'class_output' is the tensor
+                // that will contain the class probabilities.
+                TFloat32 classOutput = (TFloat32) session.runner()
+                        .feed("input", imageTensor)   // Feed the prepared image tensor to the model input
+                        .fetch("class_output")        // Fetch the predicted class output
+                        .run()
+                        .get(0);                               // Get the first output, which is the class prediction
 
-            // Run the model session and fetch the output for class prediction.
-            // 'input' refers to the model's input tensor name, and 'class_output' is the tensor
-            // that will contain the class probabilities.
-            TFloat32 classOutput = (TFloat32) model.session().forceInitialize()
-                    .runner()
-                    .feed("input", imageTensor)   // Feed the prepared image tensor to the model input
-                    .fetch("class_output")        // Fetch the predicted class output
-                    .run()
-                    .get(0);                      // Get the first output, which is the class prediction
+                // Find the index of the maximum probability in the classOutput tensor
+                int predictedClass = 0;
+                float maxProbability = -1.0f;
 
-            // Print the predicted class probability.
-            System.out.println(classOutput.getFloat() + " class output probability");
+                // Quick softmax algorithm
+                for (int i = 0; i < classOutput.shape().get(1); i++) {
+                    float probability = classOutput.getFloat(0, i); // Get the probability for each class
+                    if (probability > maxProbability) {
+                        maxProbability = probability; // Update maximum probability
+                        predictedClass = i;           // Update predicted class index
+                    }
+
+                    // Print out probability for each class for checking
+                    System.out.printf("Class %s, probability: %.2f\n", i, probability);
+                }
+
+                // Print the predicted class and its probability to the console.
+                System.out.printf("Final predicted class: %d with probability: %.2f%n", predictedClass, maxProbability);
+
+                // Set the predicted class and probability in the label with proper formatting.
+                output_name.setText(String.format("Predicted class: %d with probability: %.2f", predictedClass, maxProbability));
+            }
         }
     }
 

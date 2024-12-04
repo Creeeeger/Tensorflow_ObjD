@@ -2,7 +2,6 @@ package org.tensorAction;
 
 import org.object_d.Main_UI;
 import org.tensorflow.*;
-import org.tensorflow.framework.*;
 import org.tensorflow.framework.losses.Losses;
 import org.tensorflow.framework.optimizers.Adam;
 import org.tensorflow.framework.optimizers.Optimizer;
@@ -33,11 +32,11 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
 import java.util.*;
+import java.util.stream.IntStream;
 
 public class tensorTrainerCNN extends JFrame {
     static int numberClasses, epochs; // Declare variables for the number of classes and epochs (training iterations)
     static float maxLoss = Main_UI.learning_rate; // Initialize maxLoss with the learning rate value from the Main_UI class
-    static int[][] confusionMatrix; // Declare a 2D array for the confusion matrix
     static List<Float> boxLossValues = new ArrayList<>();  // List to store loss values for bounding boxes
     static List<Float> classLossValues = new ArrayList<>();  // List to store loss values for class predictions
     static List<Float> totalLossValues = new ArrayList<>();  // List to store total loss values (combined)
@@ -80,11 +79,16 @@ public class tensorTrainerCNN extends JFrame {
         // Set text area size dynamically based on the number of classes
         // + 2 because the number row is one and the counting process requires one more
         textArea = new JTextArea(numberClasses + 2, numberClasses + 2);
+        textArea.setEditable(false);
         accuracy_label = new JLabel("Final accuracy: ..."); // Label to display final accuracy
 
         // Add the accuracy label and text area to the confusion matrix panel
         confusion_matrix_panel.add(accuracy_label);
         confusion_matrix_panel.add(textArea);
+    }
+
+    public static void main(String[] args) throws IOException {
+        access("/Users/gregor/Downloads/flower_photos/");
     }
 
     // Method to access the program for training a model using the specified folder
@@ -104,6 +108,12 @@ public class tensorTrainerCNN extends JFrame {
         int imageSize = Main_UI.resolution; // Get the image resolution
         epochs = Main_UI.epochs; // Get the number of training epochs
         int batchSize = Main_UI.batch_size; // Get the batch size for training
+
+        //values for testing
+//        maxLoss = 1.0f;
+//        int imageSize = 32; // Get the image resolution
+//        epochs = 400; // Get the number of training epochs
+//        int batchSize = 30; // Get the batch size for training
 
         // Check if the folder contains no subdirectories (i.e., no grouped images)
         if (numberClasses == 0) {
@@ -427,7 +437,7 @@ public class tensorTrainerCNN extends JFrame {
                         .fetch("box_output")
                         .fetch("class_output")
                         .fetch("totalLoss")
-                        .run();  // Run the session and collect the results
+                        .run();                           // Run the session and collect the results
 
                 // Get the loss values from the fetched outputs
                 TFloat32 lossTensor = (TFloat32) outputs.get(0);   // Box loss
@@ -449,11 +459,26 @@ public class tensorTrainerCNN extends JFrame {
             // Print completion message after training is done
             System.out.println("Training completed.");
 
+            //GOD BLESS THE MODEL SAVER WORKS
+            // Create a session and function
+            SessionFunction function = new SessionFunction(
+                    new Signature.Builder().build(),
+                    session
+            ).withNewSession(session);
+
+            // Create the main model directory and the variables subdirectory
+            Path path = Paths.get("");
+            Files.createDirectories(Paths.get(Paths.get(path.toAbsolutePath().toString()).getParent().toString(), "model")); // Create the model directory if it doesn't exist
+
+            // Save the graph with the new operations
+            SavedModelBundle.exporter(Paths.get(path.toAbsolutePath().toString()).getParent().toString() + "/model")
+                    .withTags("serve")
+                    .withSession(session)
+                    .withFunction(function)
+                    .export();
+
             // Validate the model using the labels and outputs after training
             validate(labels, numClasses, Objects.requireNonNull(outputs));
-
-            // Save the trained model to the specified directory
-            saveModel(graph, session, Paths.get(Paths.get("").toAbsolutePath().toString()).getParent().toString());
 
             // Print message confirming model save
             System.out.println("Model saved");
@@ -461,57 +486,92 @@ public class tensorTrainerCNN extends JFrame {
     }
 
     // Method to test the model and compute accuracy and confusion matrix
+    // This method validates the model's predictions against true labels, calculates accuracy,
+    // and generates a confusion matrix to evaluate model performance.
     public static void validate(TFloat32 label, int numClasses, Result outputs) {
-        int correctCount = 0;  // Variable to track the number of correct predictions
-        confusionMatrix = new int[numClasses][numClasses];  // Initialize confusion matrix with the size of the classes
+        int correctCount = 0; // Variable to track the number of correct predictions
+        int[][] confusionMatrix = new int[numClasses][numClasses]; // Initialize confusion matrix with size [numClasses x numClasses]
+        TFloat32 classPredictionTensor = (TFloat32) outputs.get(1); // Retrieve the prediction tensor containing softmax probabilities
 
-        // Retrieve the class prediction tensor (softmax output for class probabilities)
-        TFloat32 classPredictionTensor = (TFloat32) outputs.get(1);
+        // Extract the batch size (number of samples in the batch) and number of classes from the tensor shape
+        int batchSize = (int) classPredictionTensor.shape().get(0); // Number of images in the batch
+        int numClassesFromTensor = (int) classPredictionTensor.shape().get(1); // Number of classes (dimension of the softmax output)
 
-        // Get the batch size (number of images) and the number of classes from the tensor's shape
-        long batchSize = classPredictionTensor.shape().get(0);  // Number of images
-        long Classes = classPredictionTensor.shape().get(1);  // Number of possible classes
-
-        int[] predictedLabels = new int[(int) batchSize];  // Array to store predicted labels for each image in the batch
-
-        // Iterate over each image in the batch
-        for (int i = 0; i < batchSize; i++) {
-            float maxProb = -1.0f;  // Variable to track the maximum probability for the current image
-            int softmax_label = -1;  // Variable to store the predicted class (index of maximum probability)
-
-            // Iterate over each class to find the class with the highest probability (softmax output)
-            for (int j = 0; j < Classes; j++) {
-                float prob = classPredictionTensor.getFloat(i, j);  // Get the probability for class j of image i
-                if (prob > maxProb) {
-                    maxProb = prob;  // Update max probability
-                    softmax_label = j;  // Update predicted label (class index)
-                }
-            }
-
-            predictedLabels[i] = softmax_label;  // Store the predicted label for image i
+        // Ensure the number of classes matches between the given parameter and the tensor's shape
+        if (numClasses != numClassesFromTensor) {
+            throw new IllegalArgumentException("Mismatch between numClasses and tensor dimensions.");
+            // Throw an error if there's a mismatch, as it would cause invalid indexing
         }
 
-        // Iterate over the predicted labels and true labels for accuracy calculation and confusion matrix update
-        for (int i = 0; i < predictedLabels.length; i++) {
-            System.out.println("Predicted label for image " + i + ": " + predictedLabels[i] + " True label: " + argmaxLabel(label, i));
+        // Process predictions for each image in parallel using Java Streams
+        // Map each image index to its predicted label based on the class with the highest probability
+        int[] predictedLabels = IntStream.range(0, batchSize) // Create a stream of image indices from 0 to batchSize-1
+                .parallel() // Enable parallel processing for faster computation on larger batches
+                .map(i -> { // Map each index to its corresponding predicted label
+                    float maxProb = -1.0f; // Initialize a variable to track the maximum softmax probability
+                    int predictedLabel = -1; // Initialize the predicted class label
+
+                    // Iterate over all classes to find the one with the highest probability
+                    for (int j = 0; j < numClasses; j++) {
+                        float prob = classPredictionTensor.getFloat(i, j); // Retrieve the probability for class `j` for image `i`
+                        if (prob > maxProb) { // Update max probability and predicted label if current probability is higher
+                            maxProb = prob;
+                            predictedLabel = j;
+                        }
+                    }
+                    return predictedLabel; // Return the predicted label for the current image
+                })
+                .toArray(); // Collect all predicted labels into an array
+
+        // Calculate accuracy and update the confusion matrix
+        for (int i = 0; i < batchSize; i++) { // Loop through each image in the batch
+            int trueLabel = argmaxLabel(label, i); // Retrieve the true label for image `i` using the argmax function
+            System.out.println("Predicted label for image " + i + ": " + predictedLabels[i] + " True label: " + trueLabel); // Print predicted and true labels for debugging/logging
 
             // Check if the prediction matches the true label
-            if (predictedLabels[i] == argmaxLabel(label, i)) {
-                correctCount++;  // Increment the correct count if the prediction is correct
+            if (predictedLabels[i] == trueLabel) {
+                correctCount++; // Increment the correct prediction count
             }
 
-            // Update the confusion matrix (true label vs. predicted label)
-            confusionMatrix[argmaxLabel(label, i)][predictedLabels[i]]++;
+            // Update the confusion matrix
+            // confusionMatrix[trueLabel][predictedLabel] represents the count of true vs. predicted occurrences
+            synchronized (confusionMatrix) {
+                // Synchronize to ensure thread safety as the confusion matrix is shared across threads
+                confusionMatrix[trueLabel][predictedLabels[i]]++;
+            }
         }
 
-        // Calculate the overall accuracy of the model
-        float accuracy = (float) correctCount / classPredictionTensor.shape().get(0);
-        System.out.println("Final accuracy: " + accuracy);
+        // Calculate the overall accuracy as the ratio of correct predictions to total images
+        float accuracy = (float) correctCount / batchSize;
+        System.out.println("Final accuracy: " + accuracy); // Print the calculated accuracy
 
-        // Print and display the confusion matrix
-        System.out.println(getStringBuilder(confusionMatrix));
-        textArea.setText(getStringBuilder(confusionMatrix).toString());
-        accuracy_label.setText("Final accuracy: " + accuracy);
+        // Generate a string representation of the confusion matrix for display purposes
+        StringBuilder matrixString = getStringBuilder(confusionMatrix);
+        System.out.println(matrixString); // Print the confusion matrix to the console
+
+        // Update the GUI components to display results
+        textArea.setText(matrixString.toString()); // Display the confusion matrix in the text area
+        accuracy_label.setText("Final accuracy: " + accuracy); // Display the final accuracy in the accuracy label
+    }
+
+    // Method to get the index of the maximum value (class label) in the tensor for a given iteration
+    public static int argmaxLabel(TFloat32 tensor, int iteration) {
+        // Extract the label for the specified iteration (slice of the tensor)
+        FloatNdArray label = tensor.slice(Indices.at(iteration));
+
+        // Variable to store the index of the class with a value of 1.0 (indicating the correct class)
+        int classIndex = 0;
+
+        // Loop through the label array to find the index where the value is 1.0
+        for (int i = 0; i < label.shape().get(0); i++) {
+            if (label.getFloat(i) == 1.0f) {  // Check if the value at index i is 1.0 (one-hot encoding)
+                classIndex = i;  // Set classIndex to the current index
+                break;  // Exit the loop once the correct class is found
+            }
+        }
+
+        // Return the index of the correct class label
+        return classIndex;
     }
 
     // Method to build the confusion matrix as a formatted string
@@ -536,90 +596,6 @@ public class tensorTrainerCNN extends JFrame {
             sb.append("\n");  // Move to the next line after the row is printed
         }
         return sb;  // Return the formatted confusion matrix as a StringBuilder
-    }
-
-    // Method to get the index of the maximum value (class label) in the tensor for a given iteration
-    public static int argmaxLabel(TFloat32 tensor, int iteration) {
-        // Extract the label for the specified iteration (slice of the tensor)
-        FloatNdArray label = tensor.slice(Indices.at(iteration));
-
-        // Variable to store the index of the class with a value of 1.0 (indicating the correct class)
-        int classIndex = 0;
-
-        // Loop through the label array to find the index where the value is 1.0
-        for (int i = 0; i < label.shape().get(0); i++) {
-            if (label.getFloat(i) == 1.0f) {  // Check if the value at index i is 1.0 (one-hot encoding)
-                classIndex = i;  // Set classIndex to the current index
-                break;  // Exit the loop once the correct class is found
-            }
-        }
-
-        // Return the index of the correct class label
-        return classIndex;
-    }
-
-    public static void saveModel(Graph graph, Session session, String exportDir) throws IOException {
-        // Create the main model directory and the variables subdirectory
-        Path modelDir = Paths.get(exportDir, "model");
-        Files.createDirectories(modelDir); // Create the model directory if it doesn't exist
-        Files.createDirectories(modelDir.resolve("variables")); // Create the variables subdirectory
-
-        // Initialize a MetaGraphDef to store the graph definition and associated metadata
-        MetaGraphDef.Builder metaGraphDefBuilder = MetaGraphDef.newBuilder();
-        // Convert the graph to its byte representation and add it to the MetaGraphDef
-        metaGraphDefBuilder.setGraphDef(GraphDef.parseFrom(graph.toGraphDef().toByteArray()));
-
-        // Create a MetaInfoDef to store additional information about the graph
-        MetaGraphDef.MetaInfoDef.Builder metaInfoDefBuilder = MetaGraphDef.MetaInfoDef.newBuilder();
-        metaInfoDefBuilder.addTags("serve"); // Tag for serving the model
-        metaGraphDefBuilder.setMetaInfoDef(metaInfoDefBuilder.build()); // Add the MetaInfoDef to the MetaGraphDef
-
-        // Define a SignatureDef for the model's input and output tensors
-        SignatureDef.Builder signatureDefBuilder = SignatureDef.newBuilder();
-
-        // Create an input tensor signature to define the model's input shape and type
-        TensorInfo inputTensorInfo = TensorInfo.newBuilder()
-                .setDtype(DataType.DT_FLOAT) // Set the data type to float
-                .setTensorShape(TensorShapeProto.newBuilder()
-                        .addDim(TensorShapeProto.Dim.newBuilder().setSize(-1)) // Batch size (dynamic)
-                        .addDim(TensorShapeProto.Dim.newBuilder().setSize(-1)) // Height (dynamic)
-                        .addDim(TensorShapeProto.Dim.newBuilder().setSize(-1)) // Width (dynamic)
-                        .addDim(TensorShapeProto.Dim.newBuilder().setSize(-1)) // Channels (dynamic)
-                )
-                .setName("input") // Name of the input tensor
-                .build();
-        signatureDefBuilder.putInputs("input", inputTensorInfo); // Add input tensor info to the signature
-
-        // Create output tensor signatures for class predictions and bounding box predictions
-        TensorInfo classOutputTensorInfo = TensorInfo.newBuilder()
-                .setDtype(DataType.DT_FLOAT) // Set the data type to float
-                .setTensorShape(TensorShapeProto.newBuilder().addDim(TensorShapeProto.Dim.newBuilder().setSize(-1))) // Dynamic output size
-                .setName("class_output") // Name of the class output tensor
-                .build();
-        signatureDefBuilder.putOutputs("class_output", classOutputTensorInfo); // Add to signature
-
-        TensorInfo boxOutputTensorInfo = TensorInfo.newBuilder()
-                .setDtype(DataType.DT_FLOAT) // Set the data type to float
-                .setTensorShape(TensorShapeProto.newBuilder().addDim(TensorShapeProto.Dim.newBuilder().setSize(-1))) // Dynamic output size
-                .setName("box_output") // Name of the box output tensor
-                .build();
-        signatureDefBuilder.putOutputs("box_output", boxOutputTensorInfo); // Add to signature
-
-        // Attach the SignatureDef to the MetaGraphDef
-        metaGraphDefBuilder.putSignatureDef("serving_default", signatureDefBuilder.build());
-
-        // Create a SavedModel builder and add the MetaGraphDef to it
-        SavedModel.Builder builder = SavedModel.newBuilder();
-        builder.addMetaGraphs(metaGraphDefBuilder); // Add the MetaGraphDef to the SavedModel
-
-        // Save the session's variables to the specified directory
-        session.save(exportDir + "/model/variables/variables");
-
-        // Write the MetaGraphDef to the saved_model.pb file within the model directory
-        Files.write(modelDir.resolve("saved_model.pb"), builder.build().toByteArray());
-
-        // Log the success message indicating where the model has been saved
-        System.out.println("Model saved to " + modelDir);
     }
 
     // Method to update the loss values for box, class, and total losses, and refresh the graph
