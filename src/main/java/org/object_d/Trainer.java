@@ -14,20 +14,12 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
-public class Trainer extends JFrame {
-    // Panel components for organizing the layout
-    JPanel leftPanel; // Panel for the left section of the UI
-    JPanel rightPanel; // Panel for the right section of the UI
-    JPanel leftUpperPanel; // Upper panel of the left section
-    JPanel leftLowerPanel; // Lower panel of the left section
+import static org.tensorAction.tensorTrainerCNN.access;
 
+public class Trainer extends JFrame {
     // Button components for user interactions
-    JButton image_folder; // Button to select an image folder
-    JButton stable_gen; // Button to trigger generation
-    JButton output_path_button; // Button to specify the output path
     JButton create_model; // Button to create a model
     JButton sd4j; // Button for SD4J
-    JButton CoreML_input_path; // Button for selecting CoreML input path
     JButton prepare; // Button to prepare data
     JButton model; // Button to manage model actions
 
@@ -49,31 +41,24 @@ public class Trainer extends JFrame {
     File Ml_inp_file; // File for CoreML input
     File tensor_file; // File for tensor data storage
 
-    // String variables for holding command strings and folder paths
-    String command_string; // String to hold the command input
-    String image_folder_String; // String to hold the image folder path
-
-    // Model component for handling the saved model
-    SavedModelBundle savedModelBundle; // Bundle to manage the saved model
-
     public Trainer() {
         // Set layout for the main frame with a horizontal grid layout
         setLayout(new GridLayout(1, 2, 10, 10)); // Use horizontal grid layout with spacing
 
         // Create left and right panels
-        leftPanel = new JPanel(new GridLayout(2, 1)); // Panel for training controls
+        JPanel leftPanel = new JPanel(new GridLayout(2, 1)); // Panel for training controls
         leftPanel.setBorder(BorderFactory.createTitledBorder("Training Panel")); // Add border with title
 
-        rightPanel = new JPanel(); // Panel for image generation controls
+        JPanel rightPanel = new JPanel(); // Panel for image generation controls
         rightPanel.setLayout(new BoxLayout(rightPanel, BoxLayout.Y_AXIS));
         rightPanel.setBorder(BorderFactory.createTitledBorder("Image Generation Panel")); // Add border with title
 
         // Create upper and lower panels for the left panel
-        leftUpperPanel = new JPanel(); // Upper section for training model controls
+        JPanel leftUpperPanel = new JPanel(); // Upper section for training model controls
         leftUpperPanel.setLayout(new BoxLayout(leftUpperPanel, BoxLayout.Y_AXIS));
         leftUpperPanel.setBorder(BorderFactory.createTitledBorder("Train Tensorflow model")); // Add border with title
 
-        leftLowerPanel = new JPanel(); // Lower section for CoreML preparation controls
+        JPanel leftLowerPanel = new JPanel(); // Lower section for CoreML preparation controls
         leftLowerPanel.setLayout(new BoxLayout(leftLowerPanel, BoxLayout.Y_AXIS));
         leftLowerPanel.setBorder(BorderFactory.createTitledBorder("Prepare for CoreML training")); // Add border with title
 
@@ -87,7 +72,7 @@ public class Trainer extends JFrame {
 
         // Left Upper Panel Components
         images_path = new JLabel("Select a folder with images first"); // Instruction label
-        image_folder = new JButton("1. Select folder with images"); // Button for folder selection
+        JButton image_folder = new JButton("1. Select folder with images"); // Button for folder selection
         create_model = new JButton("2. Create model"); // Button to create a model
         create_model.setEnabled(false); // Initially disabled
 
@@ -102,7 +87,7 @@ public class Trainer extends JFrame {
         // Left Lower Panel Components
         JLabel title = new JLabel("Prepare a folder of images with subfolders for training in CoreML."); // Instruction label
         ML_inp = new JLabel("Input path comes here"); // Placeholder for input path
-        CoreML_input_path = new JButton("Select folder for input for conversion"); // Button for CoreML input folder
+        JButton CoreML_input_path = new JButton("Select folder for input for conversion"); // Button for CoreML input folder
         model_path = new JLabel("Model path comes here"); // Placeholder for model path
         model = new JButton("Select tensor file"); // Button to select tensor file
         prepare = new JButton("Start preparing folder and JSON"); // Button to start preparation
@@ -130,12 +115,12 @@ public class Trainer extends JFrame {
         gen = new JLabel("If you want to generate images with Stable Diffusion use this:"); // Instruction label
         command = new JTextField("1. Enter input for image generator", 75); // Text field for input
         output_path = new JLabel("Path of generated output images"); // Placeholder for output path
-        output_path_button = new JButton("2. Select path for output generated images"); // Button for selecting output path
+        JButton output_path_button = new JButton("2. Select path for output generated images"); // Button for selecting output path
         JLabel step = new JLabel("3. Select steps for generation: more is better image quality"); // Instructions for steps
         steps = new JSlider(SwingConstants.HORIZONTAL, 1, 50, 5); // Slider for steps
         JLabel batch = new JLabel("4. Select how many images should get generated"); // Instructions for batch size
         batch_size = new JSlider(SwingConstants.HORIZONTAL, 1, 20, 1); // Slider for batch size
-        stable_gen = new JButton("5. Generate images - Over web"); // Button to generate images via web
+        JButton stable_gen = new JButton("5. Generate images - Over web"); // Button to generate images via web
         sd4j = new JButton("5. Generate images directly"); // Button for direct image generation
         sd4j.setEnabled(false); // Initially disabled since pre steps need to be fulfilled
 
@@ -265,7 +250,7 @@ public class Trainer extends JFrame {
 
             try {
                 // Load the saved model bundle from the selected tensor file
-                savedModelBundle = SavedModelBundle.load(tensor_file.getPath(), "serve");
+                SavedModelBundle.load(tensor_file.getPath(), "serve");
                 System.out.println("Model loaded"); // Print a confirmation message
             } catch (Exception ex) {
                 // Handle any exceptions that occur during model loading
@@ -322,11 +307,11 @@ public class Trainer extends JFrame {
         @Override
         public void actionPerformed(ActionEvent e) {
             // Get the path for training images
-            image_folder_String = img_for_train.getPath(); // Store the path to images for model training
+            String image_folder_String = img_for_train.getPath(); // Store the path to images for model training
             System.out.println("Start Training Model"); // Indicate that training started
             try {
                 // Access the TensorFlow model trainer with the image folder path
-                org.tensorAction.tensorTrainerCNN.access(image_folder_String);
+                access(image_folder_String);
             } catch (IOException ex) {
                 // Handle exceptions during model training
                 throw new RuntimeException(ex);
@@ -338,7 +323,6 @@ public class Trainer extends JFrame {
 
         @Override
         public void actionPerformed(ActionEvent e) {
-            command_string = command.getText(); // Get the command input from the user
             // Provide instructions in case of download issues
             gen.setText("In case the download stops: download the safeTensor manually and put it into the model directory, in case the model gets stuck re run the sd web component");
 

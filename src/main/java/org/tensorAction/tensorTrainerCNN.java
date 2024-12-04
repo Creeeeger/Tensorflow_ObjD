@@ -42,31 +42,30 @@ public class tensorTrainerCNN extends JFrame {
     static List<Float> totalLossValues = new ArrayList<>();  // List to store total loss values (combined)
     static JTextArea textArea; // Declare a text area for displaying output as well as the matrix
     static JLabel accuracy_label; // Label to display the accuracy of the model
-    JPanel box_loss_panel, class_loss_panel, total_loss_panel, confusion_matrix_panel; // Panels to display loss values and confusion matrix
 
     public tensorTrainerCNN() {
         setLayout(new GridLayout(4, 1, 10, 10)); // Set layout for the panel, a 4-row grid with spacing between elements
 
         // Initialize and configure the box loss panel
-        box_loss_panel = new JPanel();
+        JPanel box_loss_panel = new JPanel();
         box_loss_panel.setBorder(BorderFactory.createTitledBorder("Box loss")); // Set a titled border for the panel
         box_loss_graph boxLossGraph = new box_loss_graph(); // Create an instance of the graph for box loss
         box_loss_panel.add(boxLossGraph); // Add the graph to the panel
 
         // Initialize and configure the class loss panel
-        class_loss_panel = new JPanel();
+        JPanel class_loss_panel = new JPanel();
         class_loss_panel.setBorder(BorderFactory.createTitledBorder("Class loss")); // Set a titled border for the panel
         class_loss_graph classLossGraph = new class_loss_graph(); // Create an instance of the graph for class loss
         class_loss_panel.add(classLossGraph); // Add the graph to the panel
 
         // Initialize and configure the total loss panel
-        total_loss_panel = new JPanel();
+        JPanel total_loss_panel = new JPanel();
         total_loss_panel.setBorder(BorderFactory.createTitledBorder("Total loss")); // Set a titled border for the panel
         total_loss_graph totalLossGraph = new total_loss_graph(); // Create an instance of the graph for total loss
         total_loss_panel.add(totalLossGraph); // Add the graph to the panel
 
         // Initialize and configure the confusion matrix panel
-        confusion_matrix_panel = new JPanel();
+        JPanel confusion_matrix_panel = new JPanel();
         confusion_matrix_panel.setBorder(BorderFactory.createTitledBorder("Confusion matrix")); // Set a titled border
 
         // Add the panels to the layout
@@ -87,10 +86,6 @@ public class tensorTrainerCNN extends JFrame {
         confusion_matrix_panel.add(textArea);
     }
 
-    public static void main(String[] args) throws IOException {
-        access("/Users/gregor/Downloads/flower_photos/");
-    }
-
     // Method to access the program for training a model using the specified folder
     public static void access(String folder) throws IOException {
         // Load the OpenCV library locally this is the new method since the native library method doesn't work anymore
@@ -108,12 +103,6 @@ public class tensorTrainerCNN extends JFrame {
         int imageSize = Main_UI.resolution; // Get the image resolution
         epochs = Main_UI.epochs; // Get the number of training epochs
         int batchSize = Main_UI.batch_size; // Get the batch size for training
-
-        //values for testing
-//        maxLoss = 1.0f;
-//        int imageSize = 32; // Get the image resolution
-//        epochs = 400; // Get the number of training epochs
-//        int batchSize = 30; // Get the batch size for training
 
         // Check if the folder contains no subdirectories (i.e., no grouped images)
         if (numberClasses == 0) {

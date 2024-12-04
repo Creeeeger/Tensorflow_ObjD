@@ -5,11 +5,8 @@ import ai.onnxruntime.OrtException;
 import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
-import java.util.logging.Logger;
 
 public final class CLIApp {
-    private static final Logger logger = Logger.getLogger(CLIApp.class.getName());
-
     private CLIApp() {
         // Private constructor to prevent instantiation of the utility class
     }
@@ -47,7 +44,7 @@ public final class CLIApp {
         String output = output_path + "/output-" + seed + ".png";
 
         // Log a message indicating where the image will be saved
-        logger.info("Saving to " + output);
+        System.out.println("Saving to " + output);
 
         // Save the first generated image in the specified output path
         SD4J.save(images.getFirst(), output);

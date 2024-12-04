@@ -14,7 +14,6 @@ import java.util.Comparator;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class coreML_converter {
-
     public static void organiseFiles(String sourceFolderPath) {
         try {
             // Create the target directory path for organized files

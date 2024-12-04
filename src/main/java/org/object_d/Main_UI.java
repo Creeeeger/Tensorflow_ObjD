@@ -17,46 +17,22 @@ import static org.object_d.config_handler.load_config;
 
 public class Main_UI extends JFrame {
     // Static JLabel components for displaying various information and results
-    public static JLabel label; // Label for general display
-    public static JLabel img; // Label for displaying images
-    public static JLabel image_path; // Label to show the image file path
-    public static JLabel model_path; // Label to display the model file path
-    public static JLabel result; // Label for showing results
-    public static JLabel output_img; // Label for output images
+    static JLabel label; // Label for general display
+    static JLabel img; // Label for displaying images
+    static JLabel image_path; // Label to show the image file path
+    static JLabel model_path; // Label to display the model file path
+    static JLabel result; // Label for showing results
+    static JLabel output_img; // Label for output images
 
-    // Static JMenuBar and JMenu components for creating a menu interface
-    public static JMenuBar menuBar; // Main menu bar
-    public static JMenu file; // Menu for file-related actions
-    public static JMenu model; // Menu for model-related actions
-    public static JMenu database; // Menu for database operations
-    public static JMenu model_trainer; // Menu for model training options
-    public static JMenu detector_menu; // Menu for object detection options
-
-    // Static JMenuItem components for individual menu actions
-    public static JMenuItem exit; // Menu item for exiting the application
-    public static JMenuItem load; // Menu item for loading a file
-    public static JMenuItem load_database; // Menu item for loading a database
-    public static JMenuItem reset_database; // Menu item for resetting the database
-    public static JMenuItem db_utility; // Menu item for database utility options
-    public static JMenuItem load_model; // Menu item for loading a model
-    public static JMenuItem set_params; // Menu item for setting parameters
-    public static JMenuItem restore_last; // Menu item for restoring the last state
-    public static JMenuItem train_model; // Menu item for training a model
-    public static JMenuItem self_detector; // Menu item for self-detection options
-    public static JMenuItem save_manually; // Menu item for manual saving
-
-    // Static JScrollPane for enabling scrolling of data
-    public static JScrollPane data_scrollPane; // Scroll pane for displaying data
-
-    // Static JPanel components for organizing the layout of the user interface
-    public static JPanel leftPanel, rightPanel; // Panels for left and right boxes
+    // Static JPanel component for organizing the layout of the user interface
+    static JPanel rightPanel; // Panels for right boxes
 
     // Static File components for handling file paths
-    public static File tensor_file = new File("/"); // Default tensor file path
-    public static File prev_picture = new File("/"); // Default previous picture path
+    static File tensor_file = new File("/"); // Default tensor file path
+    static File prev_picture = new File("/"); // Default previous picture path
 
     // Static JButton component for triggering object detection
-    public static JButton detect_objects; // Button for detecting objects
+    static JButton detect_objects; // Button for detecting objects
 
     // Static variables for training parameters
     public static int resolution; // Variable for image resolution
@@ -72,7 +48,7 @@ public class Main_UI extends JFrame {
         setLayout(new GridLayout(1, 2, 10, 10));
 
         // Create left and right panels for the UI
-        leftPanel = new JPanel();
+        JPanel leftPanel = new JPanel();
         leftPanel.setLayout(new BoxLayout(leftPanel, BoxLayout.Y_AXIS)); // Vertical layout for left panel
         leftPanel.setBorder(BorderFactory.createTitledBorder("Detection Panel")); // Add title border
 
@@ -123,24 +99,24 @@ public class Main_UI extends JFrame {
         leftPanel.add(detect_objects); // Add button to left panel
 
         // Right Panel Components
-        data_scrollPane = new JScrollPane(); // Create scroll pane for right panel
+        JScrollPane data_scrollPane = new JScrollPane(); // Create scroll pane for right panel
         rightPanel.add(data_scrollPane); // Add scroll pane to right panel
 
         // Menu Bar Configuration
-        menuBar = new JMenuBar(); // Create menu bar
+        JMenuBar menuBar = new JMenuBar(); // Create menu bar
         setJMenuBar(menuBar); // Set the menu bar for the main frame
 
         // File Menu and its items
-        file = new JMenu("File"); // Create "File" menu
-        load = new JMenuItem("Load image"); // Menu item for loading an image
+        JMenu file = new JMenu("File"); // Create "File" menu
+        JMenuItem load = new JMenuItem("Load image"); // Menu item for loading an image
         load.addActionListener(new event_load(img)); // Add action listener
-        load_model = new JMenuItem("Load a tensor model"); // Menu item for loading a model
+        JMenuItem load_model = new JMenuItem("Load a tensor model"); // Menu item for loading a model
         load_model.addActionListener(new event_load_tensor()); // Add action listener
-        restore_last = new JMenuItem("Restore last config"); // Menu item for restoring last config
+        JMenuItem restore_last = new JMenuItem("Restore last config"); // Menu item for restoring last config
         restore_last.addActionListener(new event_restore_last()); // Add action listener
-        save_manually = new JMenuItem("Save config"); // Menu item for saving configuration
+        JMenuItem save_manually = new JMenuItem("Save config"); // Menu item for saving configuration
         save_manually.addActionListener(new save_manu()); // Add action listener
-        exit = new JMenuItem("Save and Exit"); // Menu item for exiting the application
+        JMenuItem exit = new JMenuItem("Save and Exit"); // Menu item for exiting the application
         exit.addActionListener(new event_exit()); // Add action listener
 
         // Add file menu items to the file menu
@@ -154,19 +130,19 @@ public class Main_UI extends JFrame {
         menuBar.add(file);
 
         // Model Menu and its items
-        model = new JMenu("Model"); // Create "Model" menu
-        set_params = new JMenuItem("Set model parameters"); // Menu item for setting parameters
+        JMenu model = new JMenu("Model"); // Create "Model" menu
+        JMenuItem set_params = new JMenuItem("Set model parameters"); // Menu item for setting parameters
         set_params.addActionListener(new event_set_params()); // Add action listener
         model.add(set_params); // Add parameter setting item to the model menu
         menuBar.add(model); // Add model menu to the menu bar
 
         // Database Menu and its items
-        database = new JMenu("Database"); // Create "Database" menu
-        load_database = new JMenuItem("Load database"); // Menu item for loading a database
+        JMenu database = new JMenu("Database"); // Create "Database" menu
+        JMenuItem load_database = new JMenuItem("Load database"); // Menu item for loading a database
         load_database.addActionListener(new event_load_database()); // Add action listener
-        reset_database = new JMenuItem("Reset database"); // Menu item for resetting database
+        JMenuItem reset_database = new JMenuItem("Reset database"); // Menu item for resetting database
         reset_database.addActionListener(new event_reset_database()); // Add action listener
-        db_utility = new JMenuItem("Database utility"); // Menu item for database utilities
+        JMenuItem db_utility = new JMenuItem("Database utility"); // Menu item for database utilities
         db_utility.addActionListener(new event_database_utility()); // Add action listener
         database.add(load_database); // Add database loading item to the database menu
         database.add(reset_database); // Add reset database item to the database menu
@@ -174,15 +150,15 @@ public class Main_UI extends JFrame {
         menuBar.add(database); // Add database menu to the menu bar
 
         // Model Trainer Menu and its items
-        model_trainer = new JMenu("Model creator"); // Create "Model creator" menu
-        train_model = new JMenuItem("Train own models"); // Menu item for training own models
+        JMenu model_trainer = new JMenu("Model creator"); // Create "Model creator" menu
+        JMenuItem train_model = new JMenuItem("Train own models"); // Menu item for training own models
         train_model.addActionListener(new event_train()); // Add action listener
         model_trainer.add(train_model); // Add training item to the model trainer menu
         menuBar.add(model_trainer); // Add model trainer menu to the menu bar
 
         // Object Detection Menu and its items
-        detector_menu = new JMenu("Object detection v2"); // Create "Object detection" menu
-        self_detector = new JMenuItem("detect objects with own models"); // Menu item for detecting objects
+        JMenu detector_menu = new JMenu("Object detection v2"); // Create "Object detection" menu
+        JMenuItem self_detector = new JMenuItem("detect objects with own models"); // Menu item for detecting objects
         self_detector.addActionListener(new create_detector_window()); // Add action listener
         detector_menu.add(self_detector); // Add detection item to the detector menu
         menuBar.add(detector_menu); // Add detector menu to the menu bar

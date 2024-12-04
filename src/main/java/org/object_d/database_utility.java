@@ -19,12 +19,7 @@ import java.util.ArrayList;
 public class database_utility extends JFrame {
     // Static JLabel components for displaying various statuses and information
     static JLabel delete_status; // Label to show the status of delete operations
-    static JLabel search_Info_name; // Label to display information about the searched name
-    static JLabel search_info_date; // Label to display information about the searched date
-    static JLabel search_info_amount; // Label to display information about the searched amount
-    static JLabel delete_instruction; // Label for instructions related to deletion
     static JLabel selected_entry; // Label to show the currently selected entry
-    static JLabel modify_hint; // Label that provide hints for modifying entries
     static JLabel del_info; // Label for displaying delete-related information
 
     // Static JTable components for displaying results
@@ -40,16 +35,8 @@ public class database_utility extends JFrame {
     // Static Object array for initializing table data as a placeholder
     static Object[][] data; // Placeholder data for the tables
 
-    // Static JPanel components for organizing the layout of the user interface
-    static JPanel left_panel; // Panel for the left section of the UI
-    static JPanel middle_panel; // Panel for the middle section of the UI
-    static JPanel right_panel; // Panel for the right section of the UI
-
     // Static JButton components for performing actions within the UI
-    static JButton reset_whole_db; // Button to reset the entire database
     static JButton delete_entry_button; // Button to trigger the deletion of an entry
-    static JButton write_to_db; // Button to write data to the database
-    static JButton csvExport; // Button to export data to a CSV file
 
     // Static JTextField components for user input
     static JTextField searchField_search; // Text field for entering search queries related to names
@@ -66,17 +53,17 @@ public class database_utility extends JFrame {
         BorderFactory.createTitledBorder("Database actions"); // Create a titled border for the main actions
 
         // Set up the left panel for search operations
-        left_panel = new JPanel(); // Create the left panel
+        JPanel left_panel = new JPanel(); // Create the left panel
         left_panel.setLayout(new BoxLayout(left_panel, BoxLayout.Y_AXIS)); // Set vertical box layout
         left_panel.setBorder(BorderFactory.createTitledBorder("Search operation")); // Set a titled border
 
         // Set up the middle panel for modifying operations
-        middle_panel = new JPanel(); // Create the middle panel
+        JPanel middle_panel = new JPanel(); // Create the middle panel
         middle_panel.setLayout(new BoxLayout(middle_panel, BoxLayout.Y_AXIS)); // Set vertical box layout
         middle_panel.setBorder(BorderFactory.createTitledBorder("Modify operation")); // Set a titled border
 
         // Set up the right panel for delete operations
-        right_panel = new JPanel(); // Create the right panel
+        JPanel right_panel = new JPanel(); // Create the right panel
         right_panel.setLayout(new BoxLayout(right_panel, BoxLayout.Y_AXIS)); // Set vertical box layout
         right_panel.setBorder(BorderFactory.createTitledBorder("Delete operation")); // Set a titled border
 
@@ -111,7 +98,7 @@ public class database_utility extends JFrame {
 
         // Set up the search panel
         // Add a label and text field for searching by name
-        search_Info_name = new JLabel("Search for specific objects by Name");
+        JLabel search_Info_name = new JLabel("Search for specific objects by Name");
         searchField_search = new JTextField();
         searchField_search.setMaximumSize(new Dimension(800, 30)); // Set maximum size for the search field
 
@@ -119,7 +106,7 @@ public class database_utility extends JFrame {
         left_panel.add(searchField_search); // Add name search field to the panel
 
         // Add a label and text field for searching by date
-        search_info_date = new JLabel("Search for specific object by Date");
+        JLabel search_info_date = new JLabel("Search for specific object by Date");
         dateField_search = new JTextField();
         dateField_search.setMaximumSize(new Dimension(800, 30)); // Set maximum size for the date field
 
@@ -127,7 +114,7 @@ public class database_utility extends JFrame {
         left_panel.add(dateField_search); // Add date search field to the panel
 
         // Add a label and text field for searching by amount
-        search_info_amount = new JLabel("Search for specific objects by amount");
+        JLabel search_info_amount = new JLabel("Search for specific objects by amount");
         amountField_search = new JTextField();
         amountField_search.setMaximumSize(new Dimension(800, 30)); // Set maximum size for the amount field
 
@@ -141,7 +128,7 @@ public class database_utility extends JFrame {
 
         // Set up the modify panel
         // Add components for modifying entries
-        modify_hint = new JLabel("Modify the entries you want to and then press write to database");
+        JLabel modify_hint = new JLabel("Modify the entries you want to and then press write to database");
         middle_panel.add(modify_hint);
         middle_panel.add(result_table_middle); // Add the middle result table
 
@@ -152,7 +139,7 @@ public class database_utility extends JFrame {
         middle_panel.add(del_info); // Add save reminder label
 
         // Create and add a button for writing changes to the database
-        write_to_db = new JButton("Write changes to database");
+        JButton write_to_db = new JButton("Write changes to database");
         middle_panel.add(write_to_db); // Add button to the middle panel
 
         // Setup the delete panel
@@ -162,18 +149,18 @@ public class database_utility extends JFrame {
         right_panel.add(delete_status); // Add status label to the delete panel
 
         // Add a button to reset the entire database
-        reset_whole_db = new JButton("Reset the whole database");
+        JButton reset_whole_db = new JButton("Reset the whole database");
         right_panel.add(reset_whole_db); // Add reset button to the delete panel
 
         // Add the result table to the right panel
         right_panel.add(result_table_right); // Add non-editable table
 
         // Add components for deleting entries
-        delete_instruction = new JLabel("Select entry to delete");
+        JLabel delete_instruction = new JLabel("Select entry to delete");
         selected_entry = new JLabel("Here will the entry appear you selected to delete");
         delete_entry_button = new JButton("Delete selected entry");
         delete_entry_button.setEnabled(false); // Disable delete button initially
-        csvExport = new JButton("Export Database as CSV file"); // Button to export data
+        JButton csvExport = new JButton("Export Database as CSV file"); // Button to export data
 
         // Add delete-related labels and buttons to the right panel
         right_panel.add(delete_instruction);

@@ -19,35 +19,13 @@ import java.io.IOException;
 
 public class trained_detector extends JFrame {
     // Create a File object to represent the path for a tensor file.
-    // Initially, the path is set to the root directory ("/"),
-    public static File tensor_file = new File("/");
-
-    // Static GUI components for the application interface
-    // JLabel is used to display text and images in the GUI
-
-    // Tensor_name label to display the name of the tensor file
-    static JLabel Tensor_name;
-
-    // image_name label to show the name of the selected image file
-    static JLabel image_name;
-
-    // output_name label to display the name of the output
-    static JLabel output_name;
-
-    // img label to display an image in the GUI
-    static JLabel img;
-
-    // JButton for selecting an image file. This button will trigger a file chooser dialog to select an image.
-    static JButton image_select;
-
-    // JButton for selecting a tensor file. This button will also trigger a file chooser dialog to select a tensor file.
-    static JButton tensor_select;
-
-    // JButton to initiate the prediction process. This button will call the method to make predictions based on the selected image and tensor.
-    static JButton predict;
-
-    // File object to store the selected image file. This will be updated when the user selects an image.
-    static File image_file;
+    static File tensor_file = new File("/");    // Initially, the path is set to the root directory ("/"),
+    static JLabel Tensor_name;       // Tensor_name label to display the name of the tensor file
+    static JLabel image_name;        // image_name label to show the name of the selected image file
+    static JLabel output_name;       // output_name label to display the name of the output
+    static JButton image_select;     // JButton for selecting an image file. This button will trigger a file chooser dialog to select an image.
+    static JButton predict;          // JButton to initiate the prediction process. This button will call the method to make predictions based on the selected image and tensor.
+    static File image_file;          // File object to store the selected image file. This will be updated when the user selects an image.
 
     public trained_detector() {
         // Create the layout using BorderLayout with 10px spacing
@@ -62,7 +40,7 @@ public class trained_detector extends JFrame {
 
         // Initialize labels and buttons for selecting tensor and image files
         Tensor_name = new JLabel("Tensor file");
-        tensor_select = new JButton("Select Tensor file");
+        JButton tensor_select = new JButton("Select Tensor file");
 
         image_name = new JLabel("Image file");
         image_select = new JButton("Select image file");
@@ -84,7 +62,7 @@ public class trained_detector extends JFrame {
         g2d.drawString("Image comes here", 50, 100); // Display placeholder text
         g2d.dispose(); // Dispose of the graphics object
         ImageIcon dummyImage = new ImageIcon(placeholderImage); // Convert image to an icon
-        img = new JLabel(dummyImage); // Set the placeholder image in a JLabel
+        JLabel img = new JLabel(dummyImage); // Set the placeholder image in a JLabel
 
         // Add components to the detector panel with spacing between them
         detectorPanel.add(Tensor_name);
@@ -186,14 +164,14 @@ public class trained_detector extends JFrame {
                     }
 
                     // Print out probability for each class for checking
-                    System.out.printf("Class %s, probability: %.2f\n", i, probability);
+                    System.out.printf("Class %s, probability: %.4f\n", i, probability);
                 }
 
                 // Print the predicted class and its probability to the console.
-                System.out.printf("Final predicted class: %d with probability: %.2f%n", predictedClass, maxProbability);
+                System.out.printf("Final predicted class: %d with probability: %.4f%n", predictedClass, maxProbability);
 
                 // Set the predicted class and probability in the label with proper formatting.
-                output_name.setText(String.format("Predicted class: %d with probability: %.2f", predictedClass, maxProbability));
+                output_name.setText(String.format("Predicted class: %d with probability: %.4f", predictedClass, maxProbability));
             }
         }
     }

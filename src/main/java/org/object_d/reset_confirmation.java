@@ -6,9 +6,6 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 
 public class reset_confirmation extends JFrame {
-    // Static JButton variables for user confirmation buttons
-    static JButton yes, no; // Buttons for user confirmation
-
     // Constructor for the reset confirmation dialog
     public reset_confirmation() {
         // Set the layout of the frame to a grid layout with 1 row and 1 column
@@ -19,9 +16,9 @@ public class reset_confirmation extends JFrame {
         BorderFactory.createTitledBorder("Decide to reset the Database");
 
         // Initialize the "Yes" button to allow the user to confirm resetting the database
-        yes = new JButton("Yes, reset Database");
+        JButton yes = new JButton("Yes, reset Database");
         // Initialize the "No" button to allow the user to cancel the reset action
-        no = new JButton("No, don't reset the Database");
+        JButton no = new JButton("No, don't reset the Database");
 
         // Add the "Yes" and "No" buttons to the frame
         add(yes);

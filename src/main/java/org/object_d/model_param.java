@@ -10,7 +10,6 @@ public class model_param extends JFrame {
     int res; // Variable to hold the resolution for image processing (in pixels)
     int epo; // Variable to hold the number of training epochs
     int bat; // Variable to hold the batch size for training
-
     float lea; // Variable to hold the learning rate for the model
 
     // JTextField components for user input
@@ -19,11 +18,7 @@ public class model_param extends JFrame {
     JTextField batch; // Text field for the user to input the batch size
     JTextField display_scale; // Text field for the user to input the data visualization scale
 
-    // Descriptive labels to guide the user in the GUI
-    JLabel resolution_desc; // Label describing the resolution input field
-    JLabel epochs_desc; // Label describing the epochs input field
-    JLabel batch_desc; // Label describing the batch size input field
-    JLabel display_scale_desc; // Label describing the display scale input field
+    // Descriptive label to guide the user in the GUI
     JLabel infos; // Label for displaying informational messages or error messages
 
     // Parameters to hold picture and tensor values
@@ -60,19 +55,19 @@ public class model_param extends JFrame {
         settingsPanel.add(Box.createRigidArea(new Dimension(0, 10)));
 
         // Create and add components for the resolution setting
-        resolution_desc = new JLabel("Picture size - to x * x pixel the images will be downscaled first before processing (larger value more information but longer processing time)");
+        JLabel resolution_desc = new JLabel("Picture size - to x * x pixel the images will be downscaled first before processing (larger value more information but longer processing time)");
         resolution = new JTextField(String.valueOf(res), 4); // Create a text field with the current resolution as its initial value
 
         // Create and add components for the epochs setting
-        epochs_desc = new JLabel("Epochs - How many training rounds");
+        JLabel epochs_desc = new JLabel("Epochs - How many training rounds");
         epochs = new JTextField(String.valueOf(epo), 4); // Create a text field for the number of epochs
 
         // Create and add components for the batch size setting
-        batch_desc = new JLabel("Batch size - how many images should be used for training at once");
+        JLabel batch_desc = new JLabel("Batch size - how many images should be used for training at once");
         batch = new JTextField(String.valueOf(bat), 4); // Create a text field for batch size
 
         // Create and add components for the display scale setting
-        display_scale_desc = new JLabel("Data visualisation scale for the displaying and analysis of training");
+        JLabel display_scale_desc = new JLabel("Data visualisation scale for the displaying and analysis of training");
         display_scale = new JTextField(String.valueOf(lea), 10); // Create a text field for display scale
 
         // Add components to the settings panel with spacing

@@ -39,7 +39,6 @@
 package org.stabled;
 
 import java.util.SplittableRandom;
-import java.util.logging.Logger;
 
 /**
  * An Euler Ancestral scheduler.
@@ -49,10 +48,8 @@ import java.util.logging.Logger;
  * Scheduler implementations are stateful and not thread-safe.
  */
 public final class EulerAncestralDiscreteScheduler implements Scheduler {
-    private static final Logger logger = Logger.getLogger(EulerAncestralDiscreteScheduler.class.getName());
 
     private final int numTrainTimesteps;
-    private final float[] alphasCumulativeProducts;
     private final float[] initialVariance;
     private final SplittableRandom rng;
     private float initNoiseSigma;
@@ -97,7 +94,7 @@ public final class EulerAncestralDiscreteScheduler implements Scheduler {
         };
 
         var alphas = new float[betas.length];
-        this.alphasCumulativeProducts = new float[alphas.length];
+        float[] alphasCumulativeProducts = new float[alphas.length];
         var cumProd = 1.0f;
         for (int i = 0; i < alphas.length; i++) {
             alphas[i] = 1 - betas[i];
@@ -146,9 +143,9 @@ public final class EulerAncestralDiscreteScheduler implements Scheduler {
         var range = MathUtils.arange(0, initialVariance.length, 1.0f);
         this.sigmas = MathUtils.interpolate(timesteps, range, initialVariance);
         float curMax = Float.NEGATIVE_INFINITY;
-        for (int i = 0; i < sigmas.length; i++) {
-            if (curMax < sigmas[i]) {
-                curMax = sigmas[i];
+        for (float sigma : sigmas) {
+            if (curMax < sigma) {
+                curMax = sigma;
             }
         }
         this.initNoiseSigma = curMax;
