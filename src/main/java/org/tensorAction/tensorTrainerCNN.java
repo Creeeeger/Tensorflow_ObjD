@@ -455,12 +455,14 @@ public class tensorTrainerCNN extends JFrame {
                     session
             ).withNewSession(session);
 
-            // Create the main model directory and the variables subdirectory
-            Path path = Paths.get("");
-            Files.createDirectories(Paths.get(Paths.get(path.toAbsolutePath().toString()).getParent().toString(), "model")); // Create the model directory if it doesn't exist
+            // Create the main model directory
+            Path modelDir = Paths.get("").toAbsolutePath().getParent().resolve("model"); // Resolving the "model" directory path
+
+            // Create the model directory if it doesn't exist
+            Files.createDirectories(modelDir);
 
             // Save the graph with the new operations
-            SavedModelBundle.exporter(Paths.get(path.toAbsolutePath().toString()).getParent().toString() + "/model")
+            SavedModelBundle.exporter(modelDir.toString())
                     .withTags("serve")
                     .withSession(session)
                     .withFunction(function)

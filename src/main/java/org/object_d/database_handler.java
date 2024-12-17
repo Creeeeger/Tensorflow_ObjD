@@ -28,7 +28,7 @@ public class database_handler {
             statement = connection.createStatement();
 
             // File instance to check the existence of the database file
-            File dbFile = new File("results.db");
+            File dbFile = new File(System.getProperty("user.dir") + File.separator + "results.db");
 
             if (!dbFile.exists()) {
                 // If the database file does not exist, create and initialize it
@@ -226,7 +226,7 @@ public class database_handler {
         Connection connection;  // Database connection object
         Statement statement;    // Statement object for executing queries
 
-        File dbfile = new File("results.db");  // File object representing the database file
+        File dbfile = new File(System.getProperty("user.dir") + File.separator + "results.db");  // File object representing the database file
 
         if (!dbfile.exists()) {
             // Check if the database file exists

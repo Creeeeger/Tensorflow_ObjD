@@ -16,6 +16,11 @@ import java.util.Objects;
 import static org.object_d.config_handler.load_config;
 
 public class Main_UI extends JFrame {
+    // Static variables for training parameters
+    public static int resolution; // Variable for image resolution
+    public static int epochs; // Variable for number of training epochs
+    public static int batch_size; // Variable for batch size during training
+    public static float learning_rate; // Variable for learning rate
     // Static JLabel components for displaying various information and results
     static JLabel label; // Label for general display
     static JLabel img; // Label for displaying images
@@ -23,23 +28,13 @@ public class Main_UI extends JFrame {
     static JLabel model_path; // Label to display the model file path
     static JLabel result; // Label for showing results
     static JLabel output_img; // Label for output images
-
     // Static JPanel component for organizing the layout of the user interface
     static JPanel rightPanel; // Panels for right boxes
-
     // Static File components for handling file paths
-    static File tensor_file = new File("/"); // Default tensor file path
-    static File prev_picture = new File("/"); // Default previous picture path
-
+    static File tensor_file = new File(System.getProperty("user.dir") + File.separator + "tensor_file"); // Default tensor file path
+    static File prev_picture = new File(System.getProperty("user.dir") + File.separator + "prev_picture"); // Default previous picture path
     // Static JButton component for triggering object detection
     static JButton detect_objects; // Button for detecting objects
-
-    // Static variables for training parameters
-    public static int resolution; // Variable for image resolution
-    public static int epochs; // Variable for number of training epochs
-    public static int batch_size; // Variable for batch size during training
-    public static float learning_rate; // Variable for learning rate
-
     // Static variable for handling the saved model bundle
     static SavedModelBundle savedModelBundle; // Bundle for managing the saved model
 
@@ -158,22 +153,26 @@ public class Main_UI extends JFrame {
 
         // Object Detection Menu and its items
         JMenu detector_menu = new JMenu("Object detection v2"); // Create "Object detection" menu
-        JMenuItem self_detector = new JMenuItem("detect objects with own models"); // Menu item for detecting objects
+        JMenuItem self_detector = new JMenuItem("Detect Objects with own trained model"); // Menu item for detecting objects
         self_detector.addActionListener(new create_detector_window()); // Add action listener
         detector_menu.add(self_detector); // Add detection item to the detector menu
+
+        JMenuItem CNNPlayground = new JMenuItem("Create your own custom Cnn GUI");
+        CNNPlayground.addActionListener(new event_launch_CNN_playground());
+        detector_menu.add(CNNPlayground);
         menuBar.add(detector_menu); // Add detector menu to the menu bar
     }
 
     public static void main(String[] args) {
         // Create config file if it doesn't exist
-        File config = new File("config.xml");
+        File config = new File(System.getProperty("user.dir") + File.separator + "config.xml");
         if (!config.exists()) {
             org.object_d.config_handler.create_config(); // Call method to create config
             System.out.println("Config Created"); // Output confirmation
         }
 
         // Create database file if it doesn't exist
-        File database = new File("results.db");
+        File database = new File(System.getProperty("user.dir") + File.separator + "results.db");
         if (!database.exists()) {
             database_handler.reset_init_db(); // Call method to initialize database
             System.out.println("Database created"); // Output confirmation
@@ -306,6 +305,18 @@ public class Main_UI extends JFrame {
             gui.setSize(1400, 900); // Set window size
             gui.setLocation(100, 100); // Set window location
             gui.setTitle("Model trainer"); // Set window title
+        }
+    }
+
+    public static class event_launch_CNN_playground implements ActionListener {
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            CNNPlayground gui = new CNNPlayground();
+            gui.setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE); // Set the window to hide on close
+            gui.setTitle("CNN Playground"); // Set the window title
+            gui.setVisible(true); // Make the window visible
+            gui.setSize(new Dimension(1300, 1000));
+            gui.setLocation(200, 50); // Position the window on the screen
         }
     }
 

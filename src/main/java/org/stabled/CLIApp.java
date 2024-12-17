@@ -3,6 +3,7 @@ package org.stabled;
 import ai.onnxruntime.OrtException;
 
 import java.io.IOException;
+import java.nio.file.Paths;
 import java.util.List;
 import java.util.Optional;
 
@@ -41,7 +42,7 @@ public final class CLIApp {
         );
 
         // Construct the output path, using the random seed to differentiate file names
-        String output = output_path + "/output-" + seed + ".png";
+        String output = Paths.get(output_path, "output-" + seed + ".png").toString();
 
         // Log a message indicating where the image will be saved
         System.out.println("Saving to " + output);

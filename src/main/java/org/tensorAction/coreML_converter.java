@@ -211,7 +211,7 @@ public class coreML_converter {
         }
 
         // Write the JSON array to a file
-        File file = new File("CoreML_out/Annotations.json"); // Define the output file
+        File file = new File(Paths.get("CoreML_out", "Annotations.json").toString()); // Define the output file
         System.out.println("Annotation process has finished"); //give an output of the process
 
         try {

@@ -19,7 +19,7 @@ import java.io.IOException;
 
 public class trained_detector extends JFrame {
     // Create a File object to represent the path for a tensor file.
-    static File tensor_file = new File("/");    // Initially, the path is set to the root directory ("/"),
+    static File tensor_file = new File(System.getProperty("user.dir") + File.separator + "tensor_file");  // Initially set to the current working directory
     static JLabel Tensor_name;       // Tensor_name label to display the name of the tensor file
     static JLabel image_name;        // image_name label to show the name of the selected image file
     static JLabel output_name;       // output_name label to display the name of the output

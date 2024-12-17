@@ -159,7 +159,7 @@ public class Trainer extends JFrame {
 
     public static boolean check_if_env_exists() {
         boolean does_exist = false; // Initialize a boolean to track if the environment exists
-        Path path = Paths.get("stable_diff_env"); // Define the path to the environment directory
+        Path path = Paths.get(System.getProperty("user.dir"), "stable_diff_env"); // Define the path to the environment directory
 
         try {
             // Check if the path exists and is a directory

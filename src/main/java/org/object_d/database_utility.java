@@ -12,6 +12,7 @@ import javax.swing.table.TableModel;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.io.File;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -328,7 +329,7 @@ public class database_utility extends JFrame {
             System.out.println("Export started.");
 
             // Call the export method from the database handler
-            database_handler.exportToCSV("exported_data.csv");
+            database_handler.exportToCSV(System.getProperty("user.dir") + File.separator + "exported_data.csv");
 
             // Indicate the completion of the export process
             System.out.println("Export done.");
@@ -345,12 +346,16 @@ public class database_utility extends JFrame {
             // Get the selected row index from the right table
             int selected_Row = result_table_right.getSelectedRow();
 
-            // Call the delete method from the database handler with the selected entry's details
-            database_handler.delete_entry(
-                    result_table_right.getValueAt(selected_Row, 0).toString(), // Name
-                    result_table_right.getValueAt(selected_Row, 1).toString(), // Date
-                    result_table_right.getValueAt(selected_Row, 2).toString()  // Amount
-            );
+            try {
+                // Call the delete method from the database handler with the selected entry's details
+                database_handler.delete_entry(
+                        result_table_right.getValueAt(selected_Row, 0).toString(), // Name
+                        result_table_right.getValueAt(selected_Row, 1).toString(), // Date
+                        result_table_right.getValueAt(selected_Row, 2).toString()  // Amount
+                );
+            } catch (Exception ex) {
+                System.out.println("No values available to delete " + ex.getMessage());
+            }
 
             // Refresh the UI to update the tables with the new data
             refresh();

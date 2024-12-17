@@ -44,7 +44,7 @@ public class detector { // Class for detecting objects and labeling them as well
         ArrayList<entry> data = new ArrayList<>();
 
         // Create output directory "output_images" if it doesn't already exist
-        File output_dir = new File("output_images");
+        File output_dir = new File(Paths.get("output_images").toString());
         if (!output_dir.exists()) {
             output_dir.mkdir(); // Create the directory for storing annotated images
         }
@@ -162,7 +162,7 @@ public class detector { // Class for detecting objects and labeling them as well
                                         }
 
                                         // Save the annotated image with bounding boxes
-                                        String outputImagePath = "output_images/annotated_" + new File(imagePath).getName();
+                                        String outputImagePath = Paths.get("output_images", "annotated_" + new File(imagePath).getName()).toString();
                                         Imgcodecs.imwrite(outputImagePath, image); // Save the image
 
                                         // Add the image path to a new entry
