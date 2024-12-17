@@ -1,22 +1,28 @@
 package org.object_d;
 
 import javax.swing.*;
+import javax.swing.border.Border;
+import javax.swing.border.TitledBorder;
 import java.awt.*;
 import java.awt.datatransfer.DataFlavor;
 import java.awt.datatransfer.Transferable;
 import java.io.File;
 import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Stack;
 
 public class CNNPlayground extends JFrame {
     static JButton startButton;
     static JTextArea logTextArea;
     static String filepath;
+    static JPanel leftPanel;
 
     public CNNPlayground() {
         setLayout(new GridLayout(1, 2));
         setTitle("CNN Playground");
 
-        JPanel leftPanel = new JPanel();
+        leftPanel = new JPanel();
         leftPanel.setBorder(BorderFactory.createTitledBorder("Drag & Drop Area - right click for deleting - left click for highlighting and moving"));
         leftPanel.setLayout(new GridLayout(8, 1, 0, 5)); // Vertical gap of 10 pixels
         leftPanel.setBackground(Color.LIGHT_GRAY);
@@ -53,10 +59,15 @@ public class CNNPlayground extends JFrame {
 
         // Start Button
         startButton = new JButton("Start training");
-        startButton.setEnabled(false);
+        startButton.setEnabled(true);
         startButton.addActionListener(_ -> {
             // Action for starting the process
-            logTextArea.append("Start button clicked!\n");
+            if (validateCNN()) {
+                logTextArea.append("CNN check passed, start training\n");
+
+            } else {
+                logTextArea.append("Error occurred during CNN validation\n");
+            }
         });
         actionArea.add(startButton);
 
@@ -81,6 +92,67 @@ public class CNNPlayground extends JFrame {
         // Add Panels to Frame
         add(leftPanel);
         add(rightPanel);
+    }
+
+    // more Recursion
+    private static boolean validateCNN() {
+        // Create a stack to collect the inputs and block labels
+        Stack<String> inputsStack = new Stack<>();
+
+        // Call the recursive method to process the left panel
+        processPanelComponents(leftPanel, inputsStack);
+
+        // Create a list to store the collected inputs
+        ArrayList<Object> collectedInputs = new ArrayList<>();
+
+        // Transfer the collected inputs from the stack to the list
+        while (!inputsStack.isEmpty()) {
+            collectedInputs.add(inputsStack.pop());
+        }
+
+        Collections.reverse(collectedInputs); // Reverse the list to keep stack order maintained
+
+        // Optionally, print the list (for debugging purposes)
+        for (Object input : collectedInputs) {
+            System.out.println(input);
+        }
+
+        return true; // All fields are valid
+    }
+
+    private static void processPanelComponents(Container container, Stack<String> inputsStack) {
+        // Iterate through each component in the panel/container
+        for (Component component : container.getComponents()) {
+            if (component instanceof JPanel blockPanel) {
+                // Process the block panel and its components recursively
+                processBlockPanel(blockPanel, inputsStack);
+            }
+        }
+    }
+
+    private static void processBlockPanel(JPanel blockPanel, Stack<String> inputsStack) {
+        // Get the block label (name) from the first component in the panel, which should be a JLabel
+        Component[] blockComponents = blockPanel.getComponents();
+        if (blockComponents.length > 0 && blockComponents[0] instanceof JLabel blockLabel) {
+            // Push the block label onto the stack
+            inputsStack.push("Block Label: " + blockLabel.getText());
+
+            // Recursively process each child component in the block panel
+            processChildComponents(blockPanel, inputsStack);
+        }
+    }
+
+    private static void processChildComponents(JPanel blockPanel, Stack<String> inputsStack) {
+        // Iterate over the child components of the block panel
+        for (Component child : blockPanel.getComponents()) {
+            if (child instanceof JTextField textField) {
+                // Push the value of the JTextField onto the stack
+                inputsStack.push("Text Field Value: " + textField.getText());
+            } else if (child instanceof JPanel nestedPanel) {
+                // If a nested JPanel is found, recursively process its components
+                processPanelComponents(nestedPanel, inputsStack);
+            }
+        }
     }
 
     private static JPanel addFilePanel() {
@@ -148,7 +220,7 @@ public class CNNPlayground extends JFrame {
             }
             case "Activation Layer" -> {
                 blockPanel.add(new JLabel(" Activation:"));    // First column
-                blockPanel.add(new JLabel("ReLU"));            // Second column
+                blockPanel.add(new JTextField(10));         // Second column
             }
         }
 
@@ -178,6 +250,16 @@ public class CNNPlayground extends JFrame {
     private static class ComponentTransferHandler extends TransferHandler {
         private static final DataFlavor COMPONENT_FLAVOR = new DataFlavor(JComponent.class, "JComponent");
 
+        // Recursion
+        private static void printPanelLayoutsRecursively(JComponent component) {
+            if (component instanceof JPanel panel) {
+                System.out.println("Panel: " + panel.getLayout());
+                for (Component child : panel.getComponents()) {
+                    printPanelLayoutsRecursively((JComponent) child); // Recurse through child components
+                }
+            }
+        }
+
         @Override
         protected Transferable createTransferable(JComponent c) {
             return new ComponentTransferable(c);
@@ -190,7 +272,26 @@ public class CNNPlayground extends JFrame {
 
         @Override
         public boolean canImport(TransferSupport support) {
-            return support.isDataFlavorSupported(COMPONENT_FLAVOR);
+            // Check the drop target component
+            Component dropTarget = support.getComponent();
+
+            // Ensure the target is a JPanel
+            if (dropTarget instanceof JPanel targetPanel) {
+                Border border = targetPanel.getBorder();
+
+                // Check if the panel has a TitledBorder and compare its title
+                if (border instanceof TitledBorder) {
+
+                    String panelTitle = ((TitledBorder) border).getTitle();
+                    if (panelTitle.contains("Drag & Drop Area")) {
+                        return support.isDataFlavorSupported(COMPONENT_FLAVOR);
+                    } else {
+                        return false;
+                    }
+                }
+            }
+
+            return super.canImport(support);
         }
 
         @Override
@@ -201,6 +302,9 @@ public class CNNPlayground extends JFrame {
 
             try {
                 JComponent component = (JComponent) support.getTransferable().getTransferData(COMPONENT_FLAVOR);
+
+                printPanelLayoutsRecursively(component);
+
                 Container targetContainer = (Container) support.getComponent();
 
                 // Remove from old container
@@ -319,8 +423,7 @@ public class CNNPlayground extends JFrame {
 
 /*
 ToDo:
-    - remove duplication error on right side
-    - do input check and get input
+    - do input check for right conversion (add correct inputs) -> validation function
     - do layer check
     - add layer extraction
     - link process later
