@@ -345,7 +345,41 @@ public class tensorTrainerCNN extends JFrame {
         BiasAdd<TFloat32> biasAdd = tf.nn.biasAdd(conv, convBiases);
 
         // Apply the ReLU activation function to introduce non-linearity. ReLU sets negative values to 0 and keeps positive values as they are
-        return tf.nn.relu(biasAdd); // ->learn more complex patterns
+        return tf.nn.relu(biasAdd); // -> learn more complex patterns
+    }
+
+    /**
+     * Build 2D convolutional layer with weights and biases.
+     *
+     * @param tf             TensorFlow Ops for building the graph.
+     * @param input          The input tensor of shape [batch, height, width, inputChannels].
+     * @param kernelSize     The size of the convolutional kernel (filter), e.g., 5 for a 5x5 kernel.
+     * @param inputChannels  The number of input channels (depth of the input tensor).
+     * @param outputChannels The number of output channels (number of filters).
+     * @param stride         The stride of the convolution, typically 1 for no down sampling.
+     * @param weightScale    The scale to initialize the weights, e.g., 0.1f to scale the weights.
+     * @param seed           The random seed to ensure reproducibility for weight initialization.
+     * @return The output tensor after applying the convolution, bias addition, and ReLU activation.
+     */
+    private static Operand<TFloat32> buildVariableConvLayer(Ops tf, Operand<TFloat32> input, int kernelSize, int inputChannels,
+                                                    int outputChannels, long stride, float weightScale, long seed) {
+        // Initialize the convolutional weights with a truncated normal distribution
+        Operand<TFloat32> convWeights = tf.variable(tf.math.mul(
+                tf.random.truncatedNormal(tf.array(kernelSize, kernelSize, inputChannels, outputChannels),
+                        TFloat32.class, TruncatedNormal.seed(seed)),
+                tf.constant(weightScale)));
+
+        // Initialize the biases as zeros
+        Operand<TFloat32> convBiases = tf.variable(tf.fill(tf.array(outputChannels), tf.constant(0.0f)));
+
+        // Perform the 2D convolution operation
+        Conv2d<TFloat32> conv = tf.nn.conv2d(input, convWeights, Arrays.asList(1L, stride, stride, 1L), "SAME");
+
+        // Add the biases to the convolution result
+        BiasAdd<TFloat32> biasAdd = tf.nn.biasAdd(conv, convBiases);
+
+        // Apply the ReLU activation function
+        return tf.nn.relu(biasAdd);
     }
 
     // Method to build a Max Pooling Layer for scaling image down
@@ -354,6 +388,19 @@ public class tensorTrainerCNN extends JFrame {
         // "SAME" padding ensures that the output size is reduced evenly
         return tf.nn.maxPool(input, tf.array(1, 2, 2, 1), tf.array(1, 2, 2, 1), "SAME");
         // Max Pooling helps keeping important features while reducing computational complexity
+    }
+
+    /**
+     * Builds a Max Pooling layer with a configurable kernel size and padding.
+     *
+     * @param tf          TensorFlow Ops object for building the computational graph.
+     * @param input       The input tensor to the Max Pooling layer (shape: [batchSize, height, width, channels]).
+     * @param kernelSize  The size of the pooling window (applied equally to height and width).
+     * @param padding     The padding algorithm to use, either "SAME" or "VALID".
+     * @return output of Max Pooling operation.
+     */
+    private static Operand<TFloat32> buildVariableMaxPoolLayer(Ops tf, Operand<TFloat32> input, int kernelSize, String padding) {
+        return tf.nn.maxPool(input, tf.array(1, kernelSize, kernelSize, 1), tf.array(1, kernelSize, kernelSize, 1), padding);
     }
 
     // Method to build a Fully Connected Layer + ReLU
@@ -371,6 +418,36 @@ public class tensorTrainerCNN extends JFrame {
         Operand<TFloat32> dense = tf.math.add(tf.linalg.matMul(input, weights), biases);
 
         // Apply the ReLU activation function to the result of the fully connected layer to introduce non-linearity
+        return tf.nn.relu(dense);
+    }
+
+    /**
+     * Build fully connected layer for neural network.
+     *
+     * @param tf          TensorFlow Ops object for building graph.
+     * @param input       The input tensor to the fully connected layer (shape: [batchSize, inputUnits]).
+     * @param inputUnits  Number of input features (units).
+     * @param outputUnits Number of output features (neurons in the layer).
+     * @param weightInitScale Scale factor for initializing weights.
+     * @param biasInitValue Initial value for biases (e.g., 0.1 to avoid "dead neurons").
+     * @param seed        Seed value for random initialization of weights.
+     * @return output of fully connected layer.
+     */
+    private static Operand<TFloat32> buildVariableFullyConnectedLayer(Ops tf, Operand<TFloat32> input, int inputUnits, int outputUnits,
+                                                                      float weightInitScale, float biasInitValue, long seed) {
+        // Initialize the weights matrix for the fully connected layer
+        Operand<TFloat32> weights = tf.variable(tf.math.mul(
+                tf.random.truncatedNormal(tf.array(inputUnits, outputUnits), TFloat32.class, TruncatedNormal.seed(seed)),
+                tf.constant(weightInitScale)
+        ));
+
+        // Initialize biases for each output unit
+        Operand<TFloat32> biases = tf.variable(tf.fill(tf.array(outputUnits), tf.constant(biasInitValue)));
+
+        // Perform matrix multiplication between the input and weights and add the biases
+        Operand<TFloat32> dense = tf.math.add(tf.linalg.matMul(input, weights), biases);
+
+        // Apply the ReLU activation function
         return tf.nn.relu(dense);
     }
 

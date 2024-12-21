@@ -6,10 +6,12 @@ import javax.swing.border.TitledBorder;
 import java.awt.*;
 import java.awt.datatransfer.DataFlavor;
 import java.awt.datatransfer.Transferable;
+import java.awt.event.ActionEvent;
 import java.io.File;
 import java.io.Serializable;
 import java.util.ArrayList;
-import java.util.Collections;
+import java.util.Arrays;
+import java.util.LinkedList;
 import java.util.Stack;
 
 public class CNNPlayground extends JFrame {
@@ -17,6 +19,7 @@ public class CNNPlayground extends JFrame {
     static JTextArea logTextArea;
     static String filepath;
     static JPanel leftPanel;
+    static boolean isValid = true;
 
     public CNNPlayground() {
         setLayout(new GridLayout(1, 2));
@@ -34,16 +37,59 @@ public class CNNPlayground extends JFrame {
 
         // Block Area
         JPanel blockArea = new JPanel(new GridLayout(3, 2));
-        blockArea.setBorder(BorderFactory.createTitledBorder("Block Area"));
-        JLabel DaDInfo = new JLabel("<html>Drag and drop the blocks below to form a CNN.<br>Set parameters and train the model.</html>");
-        DaDInfo.setHorizontalAlignment(SwingConstants.CENTER);  // Center the text
-        blockArea.add(DaDInfo);
+        blockArea.setBorder(BorderFactory.createTitledBorder("Block Area - Drag and drop the blocks below to form a CNN. Set parameters and train the model."));
 
         // Add draggable blocks
-        String[] blockNames = {"Conv Layer", "Pooling Layer", "Dense Layer", "Activation Layer"};
-        for (String block : blockNames) {
-            JPanel blockPanel = getBlockPanel(block);
-            blockArea.add(blockPanel);
+        String[] blockNames = {"Convolutional Layer", "Pooling Layer", "Fully Connected Layer"};
+        String[] descriptions = {
+                """
+Convolutional Layer:
+-> goes in windows over the image to find patterns like lines, etc.
+Inputs:
+- Kernel Size: Size of the window? (3 -> a 3x3 square of pixels).
+- Stride: pixels to move window each step? (1 = 1 pixel = small steps).
+- Weight Scale: number for helping the learn process between 0 and 1 (eg. 0.1).
+- Seed: A number to keep the result the same and prevent randomization (eg 1234)""",
+
+                """
+Pooling Layer:
+-> Minimizes the image by reducing the pixels but keeping the most important features
+Inputs:
+- Kernel Size: Size of the window? (2 -> a 2x2 square of pixels).
+- Padding: Should edges have the same size? (Enter 1 for yes, 0 for no).""",
+
+                """
+Fully Connected Layer:
+-> makes a final decision about which answer is the right one\s
+Inputs:
+- Weight Init Scale: initial number for weighting calculations between 0 and 1 (eg. 0.1).
+- Bias Init Value: number for adjusting the answers between 0 and 1 (eg. 0.1).
+- Seed: A number to keep the result the same and prevent randomization (eg 1234)"""
+        };
+
+        for (int i = 0; i < blockNames.length; i++) {
+            // Create a button for each layer
+            JButton infoButton = new JButton(blockNames[i] + " Info");
+
+            // Add action listener to display explanation in a new window
+            String description = descriptions[i]; // Needed because of lambda scope
+            int finalI = i;
+            infoButton.addActionListener((ActionEvent _) -> {
+                // Show a dialog with the explanation
+                JOptionPane.showMessageDialog(
+                        null,
+                        "<html><p style='width:600px;'>" + description.replace("\n", "<br>") + "</p></html>",
+                        blockNames[finalI] + " Explanation",
+                        JOptionPane.INFORMATION_MESSAGE
+                );
+            });
+
+            // Add the button to the block area
+            blockArea.add(infoButton);
+
+            // Get the block-specific UI panel
+            JPanel blockPanel = getBlockPanel(blockNames[i]);
+            blockArea.add(blockPanel); // Add the block panel to the second column
         }
 
         rightPanel.add(blockArea);
@@ -64,6 +110,8 @@ public class CNNPlayground extends JFrame {
             // Action for starting the process
             if (validateCNN()) {
                 logTextArea.append("CNN check passed, start training\n");
+
+                //continue with CNN creation and training
 
             } else {
                 logTextArea.append("Error occurred during CNN validation\n");
@@ -96,28 +144,57 @@ public class CNNPlayground extends JFrame {
 
     // more Recursion
     private static boolean validateCNN() {
-        // Create a stack to collect the inputs and block labels
+        // Initialize the validity flag
+        isValid = true;
+
+        // Stack to collect inputs and block labels
         Stack<String> inputsStack = new Stack<>();
 
-        // Call the recursive method to process the left panel
+        // Recursively process the left panel and populate the stack
         processPanelComponents(leftPanel, inputsStack);
 
-        // Create a list to store the collected inputs
-        ArrayList<Object> collectedInputs = new ArrayList<>();
-
-        // Transfer the collected inputs from the stack to the list
+        // Use a LinkedList to efficiently reverse the stack contents
+        LinkedList<String> collectedInputs = new LinkedList<>();
         while (!inputsStack.isEmpty()) {
-            collectedInputs.add(inputsStack.pop());
+            collectedInputs.addFirst(inputsStack.pop());
         }
 
-        Collections.reverse(collectedInputs); // Reverse the list to keep stack order maintained
+        // Convert collected inputs into structured layers
+        ArrayList<layerEntry> convertedInputs = new ArrayList<>();
+        int currentLayerIndex = -1;
 
-        // Optionally, print the list (for debugging purposes)
-        for (Object input : collectedInputs) {
+        for (String input : collectedInputs) {
             System.out.println(input);
+
+            if (input.contains("Layer")) {
+                // Start a new layer if the input contains "Layer"
+                currentLayerIndex++;
+                convertedInputs.add(new layerEntry(input, new ArrayList<>()));
+            } else {
+                try {
+                    // Parse the input as a number and add to the current layer
+                    double number = Double.parseDouble(input);
+                    ArrayList<Double> list = convertedInputs.get(currentLayerIndex).getList();
+                    list.add(number);
+                    convertedInputs.get(currentLayerIndex).setList(list);
+                } catch (NumberFormatException e) {
+                    // Handle invalid number format
+                    logTextArea.append("Invalid number format: " + input + "\n");
+                    isValid = false;
+                } catch (IndexOutOfBoundsException e) {
+                    // Handle cases where inputs are not properly structured
+                    logTextArea.append("Error: Input found outside a defined layer: " + input + "\n");
+                    isValid = false;
+                }
+            }
+        }
+        if (convertedInputs.isEmpty()) {
+            isValid = false;
+            logTextArea.append("Can't train an empty network\n");
         }
 
-        return true; // All fields are valid
+        System.out.println(isValid);
+        return isValid; // Return whether all fields are valid
     }
 
     private static void processPanelComponents(Container container, Stack<String> inputsStack) {
@@ -135,7 +212,7 @@ public class CNNPlayground extends JFrame {
         Component[] blockComponents = blockPanel.getComponents();
         if (blockComponents.length > 0 && blockComponents[0] instanceof JLabel blockLabel) {
             // Push the block label onto the stack
-            inputsStack.push("Block Label: " + blockLabel.getText());
+            inputsStack.push(blockLabel.getText());
 
             // Recursively process each child component in the block panel
             processChildComponents(blockPanel, inputsStack);
@@ -147,7 +224,12 @@ public class CNNPlayground extends JFrame {
         for (Component child : blockPanel.getComponents()) {
             if (child instanceof JTextField textField) {
                 // Push the value of the JTextField onto the stack
-                inputsStack.push("Text Field Value: " + textField.getText());
+                if (textField.getText().contains("Layer")) {
+                    logTextArea.append("Input text can't contain Layer\n");
+                    isValid = false;
+                } else {
+                    inputsStack.push(textField.getText());
+                }
             } else if (child instanceof JPanel nestedPanel) {
                 // If a nested JPanel is found, recursively process its components
                 processPanelComponents(nestedPanel, inputsStack);
@@ -197,30 +279,35 @@ public class CNNPlayground extends JFrame {
 
         // Parameters section
         switch (block) {
-            case "Conv Layer" -> {
-                blockPanel.add(new JLabel(" Filters:"));         // First column
-                blockPanel.add(new JTextField(5));            // Second column
+            case "Convolutional Layer" -> {
+                blockPanel.add(new JLabel(" Kernel Size:"));        // First column
+                blockPanel.add(new JTextField(5));                  // Second column
 
-                blockPanel.add(new JLabel(" Kernel Size:"));     // First column
-                blockPanel.add(new JTextField(5));            // Second column
+                blockPanel.add(new JLabel(" Stride:"));             // First column
+                blockPanel.add(new JTextField(5));                  // Second column
 
-                blockPanel.add(new JLabel(" Stride:"));          // First column
-                blockPanel.add(new JTextField(5));            // Second column
+                blockPanel.add(new JLabel(" Weight Scale:"));       // First column
+                blockPanel.add(new JTextField(5));                  // Second column
+
+                blockPanel.add(new JLabel(" Seed:"));               // First column
+                blockPanel.add(new JTextField(5));                  // Second column
             }
             case "Pooling Layer" -> {
-                blockPanel.add(new JLabel(" Pool Size:"));       // First column
+                blockPanel.add(new JLabel(" Kernel Size:"));       // First column
                 blockPanel.add(new JTextField(5));            // Second column
 
-                blockPanel.add(new JLabel(" Stride:"));          // First column
+                blockPanel.add(new JLabel(" Padding:"));          // First column
                 blockPanel.add(new JTextField(5));            // Second column
             }
-            case "Dense Layer" -> {
-                blockPanel.add(new JLabel(" Units:"));           // First column
-                blockPanel.add(new JTextField(5));            // Second column
-            }
-            case "Activation Layer" -> {
-                blockPanel.add(new JLabel(" Activation:"));    // First column
-                blockPanel.add(new JTextField(10));         // Second column
+            case "Fully Connected Layer" -> {
+                blockPanel.add(new JLabel(" Weight Init Scale:"));   // First column
+                blockPanel.add(new JTextField(5));                   // Second column
+
+                blockPanel.add(new JLabel(" Bias Init Value:"));     // First column
+                blockPanel.add(new JTextField(5));                   // Second column
+
+                blockPanel.add(new JLabel(" Seed:"));                // First column
+                blockPanel.add(new JTextField(5));                   // Second column
             }
         }
 
@@ -419,11 +506,39 @@ public class CNNPlayground extends JFrame {
             }
         }
     }
+
+    public static class layerEntry {
+        private ArrayList<Double> list;
+        private final String layer;
+
+        public layerEntry(String layer, ArrayList<Double> list) {
+            this.list = list;
+            this.layer = layer;
+        }
+
+        public String getLayer() {
+            return layer;
+        }
+
+        public ArrayList<Double> getList() {
+            return list;
+        }
+
+        public void setList(ArrayList<Double> list) {
+            this.list = list;
+        }
+
+        public String toString() {
+            return "LayerEntry{" +
+                    "layer='" + layer + '\'' +
+                    ", list=" + Arrays.toString(list.toArray()) +
+                    '}';
+        }
+    }
 }
 
 /*
 ToDo:
-    - do input check for right conversion (add correct inputs) -> validation function
     - do layer check
     - add layer extraction
     - link process later
