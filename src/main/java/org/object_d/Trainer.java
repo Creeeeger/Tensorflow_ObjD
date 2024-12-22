@@ -311,7 +311,7 @@ public class Trainer extends JFrame {
             System.out.println("Start Training Model"); // Indicate that training started
             try {
                 // Access the TensorFlow model trainer with the image folder path
-                access(image_folder_String);
+                access(image_folder_String, false, null);
             } catch (IOException ex) {
                 // Handle exceptions during model training
                 throw new RuntimeException(ex);

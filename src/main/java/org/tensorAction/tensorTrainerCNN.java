@@ -1,5 +1,6 @@
 package org.tensorAction;
 
+import org.object_d.CNNPlayground;
 import org.object_d.Main_UI;
 import org.tensorflow.*;
 import org.tensorflow.framework.losses.Losses;
@@ -87,7 +88,9 @@ public class tensorTrainerCNN extends JFrame {
     }
 
     // Method to access the program for training a model using the specified folder
-    public static void access(String folder) throws IOException {
+    // variable for CNN Playground
+    // layers for the layers which are used
+    public static void access(String folder, Boolean variable, ArrayList<CNNPlayground.layerEntry> layers) throws IOException {
         // Load the OpenCV library locally this is the new method since the native library method doesn't work anymore
         nu.pattern.OpenCV.loadLocally();
 
@@ -115,7 +118,12 @@ public class tensorTrainerCNN extends JFrame {
         TFloat32 labels = datasetBatch[1]; // Extract the corresponding labels batch
 
         // Train the model with the loaded dataset, number of classes, epochs, and image size
-        trainModel(images, labels, numberClasses, epochs, imageSize);
+        // create switch for variable layer training and normal training
+        if (variable) {
+            trainModel(images, labels, numberClasses, epochs, imageSize, true, layers);
+        } else {
+            trainModel(images, labels, numberClasses, epochs, imageSize, false, null);
+        }
     }
 
     // Method to load a dataset from a specified directory, preprocess images, and prepare them for training
@@ -253,10 +261,12 @@ public class tensorTrainerCNN extends JFrame {
         return resizedImage;
     }
 
-    public static Graph Graph(int numClasses, int imageSize) {
+    public static Graph Graph(int numClasses, int imageSize, ArrayList<CNNPlayground.layerEntry> layers) {
         // Define constants for the number of channels and random seed for initialization
         final int NUM_CHANNELS = 3; // RGB image
-        final long SEED = 12345L; // Seed for random number generation
+        final long SEED = 12345L;   // Seed for random number generation
+        final boolean variable = (layers == null); // check if layers is null since if so we don't use layers
+        // Create logic for variable graph !!!
 
         // Create a new computation graph
         Graph graph = new Graph();
@@ -274,8 +284,7 @@ public class tensorTrainerCNN extends JFrame {
 
         // Input normalization (feature scaling)
         // Scale pixel values from [0, 255] to [-1, 1] for better training convergence
-        Operand<TFloat32> scaledInput = tf.math.div(
-                tf.math.sub(tf.dtypes.cast(inputReshaped, TFloat32.class), tf.constant(127.5f)), tf.constant(255.0f));
+        Operand<TFloat32> scaledInput = tf.math.div(tf.math.sub(tf.dtypes.cast(inputReshaped, TFloat32.class), tf.constant(127.5f)), tf.constant(255.0f));
 
         // Build Convolutional Layers followed by Max Pooling layers
         Operand<TFloat32> conv1 = buildConvLayer(tf, scaledInput, NUM_CHANNELS, 32); // First convolution layer
@@ -308,12 +317,14 @@ public class tensorTrainerCNN extends JFrame {
 
         // Loss Functions: Compute losses for bounding boxes and classification
         Mean<TFloat32> boxLoss = tf.math.mean(Losses.huber(tf, box, boxPrediction, 1.0f), tf.constant(0)); // Huber loss for bounding boxes
+
         // Compute softmax cross-entropy loss for classification
         SoftmaxCrossEntropyWithLogits<TFloat32> crossEntropy = tf.nn.softmaxCrossEntropyWithLogits(logits, classLabels);
         Mean<TFloat32> classLoss = tf.math.mean(crossEntropy.loss(), tf.constant(0)); // Mean cross-entropy loss
 
         // Regularization (L2 Loss) to prevent overfitting
         Add<TFloat32> regularizers = tf.math.add(tf.nn.l2Loss(fc1), tf.nn.l2Loss(logits)); // L2 loss for fully connected layer and logits
+
         // Compute total loss as the sum of box loss, class loss, and regularization
         Add<TFloat32> totalLoss = tf.withName("totalLoss").math.add(tf.math.add(boxLoss, classLoss),
                 tf.math.mul(regularizers, tf.constant(5e-4f))); // Scale regularization term
@@ -362,7 +373,7 @@ public class tensorTrainerCNN extends JFrame {
      * @return The output tensor after applying the convolution, bias addition, and ReLU activation.
      */
     private static Operand<TFloat32> buildVariableConvLayer(Ops tf, Operand<TFloat32> input, int kernelSize, int inputChannels,
-                                                    int outputChannels, long stride, float weightScale, long seed) {
+                                                            int outputChannels, long stride, float weightScale, long seed) {
         // Initialize the convolutional weights with a truncated normal distribution
         Operand<TFloat32> convWeights = tf.variable(tf.math.mul(
                 tf.random.truncatedNormal(tf.array(kernelSize, kernelSize, inputChannels, outputChannels),
@@ -393,10 +404,10 @@ public class tensorTrainerCNN extends JFrame {
     /**
      * Builds a Max Pooling layer with a configurable kernel size and padding.
      *
-     * @param tf          TensorFlow Ops object for building the computational graph.
-     * @param input       The input tensor to the Max Pooling layer (shape: [batchSize, height, width, channels]).
-     * @param kernelSize  The size of the pooling window (applied equally to height and width).
-     * @param padding     The padding algorithm to use, either "SAME" or "VALID".
+     * @param tf         TensorFlow Ops object for building the computational graph.
+     * @param input      The input tensor to the Max Pooling layer (shape: [batchSize, height, width, channels]).
+     * @param kernelSize The size of the pooling window (applied equally to height and width).
+     * @param padding    The padding algorithm to use, either "SAME" or "VALID".
      * @return output of Max Pooling operation.
      */
     private static Operand<TFloat32> buildVariableMaxPoolLayer(Ops tf, Operand<TFloat32> input, int kernelSize, String padding) {
@@ -424,13 +435,13 @@ public class tensorTrainerCNN extends JFrame {
     /**
      * Build fully connected layer for neural network.
      *
-     * @param tf          TensorFlow Ops object for building graph.
-     * @param input       The input tensor to the fully connected layer (shape: [batchSize, inputUnits]).
-     * @param inputUnits  Number of input features (units).
-     * @param outputUnits Number of output features (neurons in the layer).
+     * @param tf              TensorFlow Ops object for building graph.
+     * @param input           The input tensor to the fully connected layer (shape: [batchSize, inputUnits]).
+     * @param inputUnits      Number of input features (units).
+     * @param outputUnits     Number of output features (neurons in the layer).
      * @param weightInitScale Scale factor for initializing weights.
-     * @param biasInitValue Initial value for biases (e.g., 0.1 to avoid "dead neurons").
-     * @param seed        Seed value for random initialization of weights.
+     * @param biasInitValue   Initial value for biases (e.g., 0.1 to avoid "dead neurons").
+     * @param seed            Seed value for random initialization of weights.
      * @return output of fully connected layer.
      */
     private static Operand<TFloat32> buildVariableFullyConnectedLayer(Ops tf, Operand<TFloat32> input, int inputUnits, int outputUnits,
@@ -468,7 +479,7 @@ public class tensorTrainerCNN extends JFrame {
         return TFloat32.tensorOf(StdArrays.ndCopyOf(boxData));
     }
 
-    public static void trainModel(TFloat32 images, TFloat32 labels, int numClasses, int epochs, int imageSize) throws IOException {
+    public static void trainModel(TFloat32 images, TFloat32 labels, int numClasses, int epochs, int imageSize, Boolean variable, ArrayList<CNNPlayground.layerEntry> layers) throws IOException {
         // Initialize and display the live training analysis GUI window
         tensorTrainerCNN gui = new tensorTrainerCNN();
         gui.setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE); // Set the window to hide on close
@@ -478,9 +489,16 @@ public class tensorTrainerCNN extends JFrame {
         gui.pack(); // Adjust the window to fit its content
 
         // Create a new computation graph and session
-        try (Graph graph = Graph(numClasses, imageSize);
-             Session session = new Session(graph)) {
+        try {
+            Graph graph;
+            // variable initializer for layers
+            if (variable) {
+                graph = Graph(numClasses, imageSize, layers);
+            } else {
+                graph = Graph(numClasses, imageSize, null);
+            }
 
+            Session session = new Session(graph);
             // Initialize the Adam optimizer
             new Adam(graph, 0.001f, 0.9f, 0.999f, 1e-8f);
 
@@ -550,6 +568,8 @@ public class tensorTrainerCNN extends JFrame {
 
             // Print message confirming model save
             System.out.println("Model saved");
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
     }
 

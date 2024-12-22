@@ -8,11 +8,14 @@ import java.awt.datatransfer.DataFlavor;
 import java.awt.datatransfer.Transferable;
 import java.awt.event.ActionEvent;
 import java.io.File;
+import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.Stack;
+
+import static org.tensorAction.tensorTrainerCNN.access;
 
 public class CNNPlayground extends JFrame {
     static JButton startButton;
@@ -20,6 +23,7 @@ public class CNNPlayground extends JFrame {
     static String filepath;
     static JPanel leftPanel;
     static boolean isValid = true;
+    static ArrayList<layerEntry> convertedInputs;
 
     public CNNPlayground() {
         setLayout(new GridLayout(1, 2));
@@ -105,13 +109,21 @@ Inputs:
 
         // Start Button
         startButton = new JButton("Start training");
-        startButton.setEnabled(true);
+        startButton.setEnabled(false);
         startButton.addActionListener(_ -> {
             // Action for starting the process
             if (validateCNN()) {
                 logTextArea.append("CNN check passed, start training\n");
 
-                //continue with CNN creation and training
+                for (layerEntry convertedInput : convertedInputs) {
+                    System.out.println(convertedInput.getLayer() + " " + convertedInput.getList()); //debug layers
+                }
+
+                try {
+                    access(filepath, true, convertedInputs); // add training access method
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
 
             } else {
                 logTextArea.append("Error occurred during CNN validation\n");
@@ -160,12 +172,10 @@ Inputs:
         }
 
         // Convert collected inputs into structured layers
-        ArrayList<layerEntry> convertedInputs = new ArrayList<>();
+        convertedInputs = new ArrayList<>();
         int currentLayerIndex = -1;
 
         for (String input : collectedInputs) {
-            System.out.println(input);
-
             if (input.contains("Layer")) {
                 // Start a new layer if the input contains "Layer"
                 currentLayerIndex++;
@@ -508,8 +518,8 @@ Inputs:
     }
 
     public static class layerEntry {
-        private ArrayList<Double> list;
         private final String layer;
+        private ArrayList<Double> list;
 
         public layerEntry(String layer, ArrayList<Double> list) {
             this.list = list;
@@ -539,7 +549,8 @@ Inputs:
 
 /*
 ToDo:
-    - do layer check
-    - add layer extraction
-    - link process later
+    - add training process
+
+    - change seed
+    - remove box logic
  */

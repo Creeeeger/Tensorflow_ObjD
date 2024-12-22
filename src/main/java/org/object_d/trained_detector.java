@@ -148,7 +148,7 @@ public class trained_detector extends JFrame {
                 TFloat32 classOutput = (TFloat32) session.runner()
                         .feed("input", imageTensor)   // Feed the prepared image tensor to the model input
                         .fetch("class_output")        // Fetch the predicted class output
-                        .run()
+                        .run()                                 // Run the detection
                         .get(0);                               // Get the first output, which is the class prediction
 
                 // Find the index of the maximum probability in the classOutput tensor
