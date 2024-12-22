@@ -550,7 +550,4 @@ Inputs:
 /*
 ToDo:
     - add training process
-
-    - change seed
-    - remove box logic
  */

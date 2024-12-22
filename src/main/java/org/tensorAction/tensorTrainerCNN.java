@@ -3,13 +3,11 @@ package org.tensorAction;
 import org.object_d.CNNPlayground;
 import org.object_d.Main_UI;
 import org.tensorflow.*;
-import org.tensorflow.framework.losses.Losses;
 import org.tensorflow.framework.optimizers.Adam;
 import org.tensorflow.framework.optimizers.Optimizer;
 import org.tensorflow.ndarray.FloatNdArray;
 import org.tensorflow.ndarray.NdArrays;
 import org.tensorflow.ndarray.Shape;
-import org.tensorflow.ndarray.StdArrays;
 import org.tensorflow.ndarray.index.Indices;
 import org.tensorflow.op.Ops;
 import org.tensorflow.op.core.Placeholder;
@@ -21,6 +19,7 @@ import org.tensorflow.op.nn.Conv2d;
 import org.tensorflow.op.nn.SoftmaxCrossEntropyWithLogits;
 import org.tensorflow.op.random.TruncatedNormal;
 import org.tensorflow.types.TFloat32;
+import org.tensorflow.types.TInt32;
 
 import javax.imageio.ImageIO;
 import javax.swing.*;
@@ -38,7 +37,6 @@ import java.util.stream.IntStream;
 public class tensorTrainerCNN extends JFrame {
     static int numberClasses, epochs; // Declare variables for the number of classes and epochs (training iterations)
     static float maxLoss = Main_UI.learning_rate; // Initialize maxLoss with the learning rate value from the Main_UI class
-    static List<Float> boxLossValues = new ArrayList<>();  // List to store loss values for bounding boxes
     static List<Float> classLossValues = new ArrayList<>();  // List to store loss values for class predictions
     static List<Float> totalLossValues = new ArrayList<>();  // List to store total loss values (combined)
     static JTextArea textArea; // Declare a text area for displaying output as well as the matrix
@@ -46,12 +44,6 @@ public class tensorTrainerCNN extends JFrame {
 
     public tensorTrainerCNN() {
         setLayout(new GridLayout(4, 1, 10, 10)); // Set layout for the panel, a 4-row grid with spacing between elements
-
-        // Initialize and configure the box loss panel
-        JPanel box_loss_panel = new JPanel();
-        box_loss_panel.setBorder(BorderFactory.createTitledBorder("Box loss")); // Set a titled border for the panel
-        box_loss_graph boxLossGraph = new box_loss_graph(); // Create an instance of the graph for box loss
-        box_loss_panel.add(boxLossGraph); // Add the graph to the panel
 
         // Initialize and configure the class loss panel
         JPanel class_loss_panel = new JPanel();
@@ -70,7 +62,6 @@ public class tensorTrainerCNN extends JFrame {
         confusion_matrix_panel.setBorder(BorderFactory.createTitledBorder("Confusion matrix")); // Set a titled border
 
         // Add the panels to the layout
-        add(box_loss_panel);
         add(class_loss_panel);
         add(total_loss_panel);
         add(confusion_matrix_panel);
@@ -264,7 +255,6 @@ public class tensorTrainerCNN extends JFrame {
     public static Graph Graph(int numClasses, int imageSize, ArrayList<CNNPlayground.layerEntry> layers) {
         // Define constants for the number of channels and random seed for initialization
         final int NUM_CHANNELS = 3; // RGB image
-        final long SEED = 12345L;   // Seed for random number generation
         final boolean variable = (layers == null); // check if layers is null since if so we don't use layers
         // Create logic for variable graph !!!
 
@@ -278,8 +268,7 @@ public class tensorTrainerCNN extends JFrame {
         // Reshape input tensor if necessary
         Reshape<TFloat32> inputReshaped = tf.reshape(input, tf.array(-1, imageSize, imageSize, NUM_CHANNELS));
 
-        // Placeholder for bounding box coordinates and class labels
-        Placeholder<TFloat32> box = tf.withName("box").placeholder(TFloat32.class, Placeholder.shape(Shape.of(-1, 4))); // shape for bounding boxes
+        // Placeholder for class labels
         Placeholder<TFloat32> classLabels = tf.withName("labels").placeholder(TFloat32.class, Placeholder.shape(Shape.of(-1, numClasses))); // shape for class labels
 
         // Input normalization (feature scaling)
@@ -308,16 +297,6 @@ public class tensorTrainerCNN extends JFrame {
         Operand<TFloat32> logits = buildFullyConnectedLayer(tf, fc1, 512, numClasses); // Fully connected layer for class logits
         tf.withName("class_output").nn.softmax(logits); // Apply softmax to logits for class probabilities
 
-        // Bounding Box Output for regression
-        // Initialize weights and biases for bounding box predictions
-        Operand<TFloat32> boxWeights = tf.variable(tf.math.mul(tf.random.truncatedNormal(tf.array(512, 4), TFloat32.class, TruncatedNormal.seed(SEED)),
-                tf.constant(0.1f))); // Weights for bounding box regression
-        Operand<TFloat32> boxBiases = tf.variable(tf.fill(tf.array(4), tf.constant(0.1f))); // Biases for bounding box regression
-        Add<TFloat32> boxPrediction = tf.withName("box_output").math.add(tf.linalg.matMul(fc1, boxWeights), boxBiases); // Box prediction calculation
-
-        // Loss Functions: Compute losses for bounding boxes and classification
-        Mean<TFloat32> boxLoss = tf.math.mean(Losses.huber(tf, box, boxPrediction, 1.0f), tf.constant(0)); // Huber loss for bounding boxes
-
         // Compute softmax cross-entropy loss for classification
         SoftmaxCrossEntropyWithLogits<TFloat32> crossEntropy = tf.nn.softmaxCrossEntropyWithLogits(logits, classLabels);
         Mean<TFloat32> classLoss = tf.math.mean(crossEntropy.loss(), tf.constant(0)); // Mean cross-entropy loss
@@ -325,12 +304,11 @@ public class tensorTrainerCNN extends JFrame {
         // Regularization (L2 Loss) to prevent overfitting
         Add<TFloat32> regularizers = tf.math.add(tf.nn.l2Loss(fc1), tf.nn.l2Loss(logits)); // L2 loss for fully connected layer and logits
 
-        // Compute total loss as the sum of box loss, class loss, and regularization
-        Add<TFloat32> totalLoss = tf.withName("totalLoss").math.add(tf.math.add(boxLoss, classLoss),
-                tf.math.mul(regularizers, tf.constant(5e-4f))); // Scale regularization term
+        // Compute total loss as the sum of class loss and regularization
+        Add<TFloat32> totalLoss = tf.withName("totalLoss").math.add(classLoss, tf.math.mul(regularizers, tf.constant(5e-4f))); // Scale regularization term
 
         // Optimizer (Adam) for minimizing the total loss
-        Optimizer optimizer = new Adam(graph, 0.001f, 0.9f, 0.999f, 1e-8f); // Create an Adam optimizer
+        Optimizer optimizer = new Adam(graph, 0.001f, 0.9f, 0.999f, 1e-6f); // Create an Adam optimizer
         optimizer.minimize(totalLoss, "train"); // Add minimization operation to the optimizer
 
         return graph; // Return the constructed computation graph
@@ -357,6 +335,32 @@ public class tensorTrainerCNN extends JFrame {
 
         // Apply the ReLU activation function to introduce non-linearity. ReLU sets negative values to 0 and keeps positive values as they are
         return tf.nn.relu(biasAdd); // -> learn more complex patterns
+    }
+
+    // Method to build a Fully Connected Layer + ReLU
+    private static Operand<TFloat32> buildFullyConnectedLayer(Ops tf, Operand<TFloat32> input, int inputUnits, int outputUnits) {
+        // Initialize the weights matrix for the fully connected layer with inputUnits (number of input features) and outputUnits (number of neurons)
+        Operand<TFloat32> weights = tf.variable(tf.math.mul(
+                tf.random.truncatedNormal(tf.array(inputUnits, outputUnits), TFloat32.class, TruncatedNormal.seed(12345L)),
+                tf.constant(0.1f)));
+
+        // Initialize biases for each output unit (neuron), set to a small positive value (0.1) to avoid "dead neurons"
+        Operand<TFloat32> biases = tf.variable(tf.fill(tf.array(outputUnits), tf.constant(0.1f)));
+
+        // Perform matrix multiplication between the input and weights, which combines features across neurons
+        // Add biases to the result of the matrix multiplication, shifting the values before applying activation
+        Operand<TFloat32> dense = tf.math.add(tf.linalg.matMul(input, weights), biases);
+
+        // Apply the ReLU activation function to the result of the fully connected layer to introduce non-linearity
+        return tf.nn.relu(dense);
+    }
+
+    // Method to build a Max Pooling Layer for scaling image down
+    private static Operand<TFloat32> buildMaxPoolLayer(Ops tf, Operand<TFloat32> input) {
+        // Apply max pooling with a 2x2 filter which halves the height and width of the input
+        // "SAME" padding ensures that the output size is reduced evenly
+        return tf.nn.maxPool(input, tf.array(1, 2, 2, 1), tf.array(1, 2, 2, 1), "SAME");
+        // Max Pooling helps keeping important features while reducing computational complexity
     }
 
     /**
@@ -393,14 +397,6 @@ public class tensorTrainerCNN extends JFrame {
         return tf.nn.relu(biasAdd);
     }
 
-    // Method to build a Max Pooling Layer for scaling image down
-    private static Operand<TFloat32> buildMaxPoolLayer(Ops tf, Operand<TFloat32> input) {
-        // Apply max pooling with a 2x2 filter which halves the height and width of the input
-        // "SAME" padding ensures that the output size is reduced evenly
-        return tf.nn.maxPool(input, tf.array(1, 2, 2, 1), tf.array(1, 2, 2, 1), "SAME");
-        // Max Pooling helps keeping important features while reducing computational complexity
-    }
-
     /**
      * Builds a Max Pooling layer with a configurable kernel size and padding.
      *
@@ -412,24 +408,6 @@ public class tensorTrainerCNN extends JFrame {
      */
     private static Operand<TFloat32> buildVariableMaxPoolLayer(Ops tf, Operand<TFloat32> input, int kernelSize, String padding) {
         return tf.nn.maxPool(input, tf.array(1, kernelSize, kernelSize, 1), tf.array(1, kernelSize, kernelSize, 1), padding);
-    }
-
-    // Method to build a Fully Connected Layer + ReLU
-    private static Operand<TFloat32> buildFullyConnectedLayer(Ops tf, Operand<TFloat32> input, int inputUnits, int outputUnits) {
-        // Initialize the weights matrix for the fully connected layer with inputUnits (number of input features) and outputUnits (number of neurons)
-        Operand<TFloat32> weights = tf.variable(tf.math.mul(
-                tf.random.truncatedNormal(tf.array(inputUnits, outputUnits), TFloat32.class, TruncatedNormal.seed(12345L)),
-                tf.constant(0.1f)));
-
-        // Initialize biases for each output unit (neuron), set to a small positive value (0.1) to avoid "dead neurons"
-        Operand<TFloat32> biases = tf.variable(tf.fill(tf.array(outputUnits), tf.constant(0.1f)));
-
-        // Perform matrix multiplication between the input and weights, which combines features across neurons
-        // Add biases to the result of the matrix multiplication, shifting the values before applying activation
-        Operand<TFloat32> dense = tf.math.add(tf.linalg.matMul(input, weights), biases);
-
-        // Apply the ReLU activation function to the result of the fully connected layer to introduce non-linearity
-        return tf.nn.relu(dense);
     }
 
     /**
@@ -462,24 +440,7 @@ public class tensorTrainerCNN extends JFrame {
         return tf.nn.relu(dense);
     }
 
-    public static TFloat32 generate_Synthetic_boxes(int batchSize) {
-        // Create a 2D float array to hold the bounding box data for each image in the batch
-        float[][] boxData = new float[batchSize][4];
-
-        // Loop through each item in the batch to generate random synthetic bounding boxes
-        for (int i = 0; i < batchSize; i++) {
-            // Assign random float values (0 to 1) for the bounding box coordinates
-            boxData[i][0] = (float) Math.random(); // x_min (left)
-            boxData[i][1] = (float) Math.random(); // y_min (top)
-            boxData[i][2] = (float) Math.random(); // x_max (right)
-            boxData[i][3] = (float) Math.random(); // y_max (bottom)
-        }
-
-        // Convert the 2D array into a TFloat32 tensor and return it
-        return TFloat32.tensorOf(StdArrays.ndCopyOf(boxData));
-    }
-
-    public static void trainModel(TFloat32 images, TFloat32 labels, int numClasses, int epochs, int imageSize, Boolean variable, ArrayList<CNNPlayground.layerEntry> layers) throws IOException {
+    public static void trainModel(TFloat32 images, TFloat32 labels, int numClasses, int epochs, int imageSize, Boolean variable, ArrayList<CNNPlayground.layerEntry> layers) {
         // Initialize and display the live training analysis GUI window
         tensorTrainerCNN gui = new tensorTrainerCNN();
         gui.setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE); // Set the window to hide on close
@@ -500,39 +461,33 @@ public class tensorTrainerCNN extends JFrame {
 
             Session session = new Session(graph);
             // Initialize the Adam optimizer
-            new Adam(graph, 0.001f, 0.9f, 0.999f, 1e-8f);
-
-            // Generate synthetic bounding box data for the batch of images
-            TFloat32 boxTensor = generate_Synthetic_boxes((int) images.shape().get(0));
+            new Adam(graph, 0.001f, 0.9f, 0.999f, 1e-6f);
 
             Result outputs = null;
 
             // Loop over the specified number of training epochs
             for (int epoch = 0; epoch < epochs; epoch++) {
-                // Run the session, feeding the images, labels, and synthetic box data, and target training
+                // Run the session, feeding the images, labels and target training
                 Session.Runner runner = session.runner()
-                        .feed("box", boxTensor)  // Feed synthetic bounding box data
                         .feed("input", images)   // Feed image data
                         .feed("labels", labels)  // Feed label data
                         .addTarget("train");     // Target the "train" operation for optimization
 
-                // Fetch the loss values for different components (box loss, class loss, total loss)
+                // Fetch the loss values for different components (class loss, total loss)
                 outputs = runner
-                        .fetch("box_output")
                         .fetch("class_output")
                         .fetch("totalLoss")
                         .run();                           // Run the session and collect the results
 
                 // Get the loss values from the fetched outputs
-                TFloat32 lossTensor = (TFloat32) outputs.get(0);   // Box loss
-                TFloat32 lossTensor1 = (TFloat32) outputs.get(1);  // Class loss
-                TFloat32 lossTensor2 = (TFloat32) outputs.get(2);  // Total loss
+                TFloat32 classTensor = (TFloat32) outputs.get(0);  // Class loss
+                TFloat32 totalTensor = (TFloat32) outputs.get(1);  // Total loss
 
                 // Print the loss values for the current epoch
-                System.out.printf("Loss at epoch %d: %-10.6f %-10.6f %-10.6f%n", epoch, lossTensor.getFloat(), lossTensor1.getFloat(), lossTensor2.getFloat());
+                System.out.printf("Loss at epoch %d: %-10.6f %-10.6f%n", epoch, classTensor.getFloat(), totalTensor.getFloat());
 
                 // Update the GUI with the new loss values for live visualization
-                gui.updateLossValues(lossTensor.getFloat(), lossTensor1.getFloat(), lossTensor2.getFloat());
+                gui.updateLossValues(classTensor.getFloat(), totalTensor.getFloat());
 
                 // Close output tensors to free resources
                 for (Map.Entry<String, Tensor> tensor : outputs) {
@@ -579,7 +534,7 @@ public class tensorTrainerCNN extends JFrame {
     public static void validate(TFloat32 label, int numClasses, Result outputs) {
         int correctCount = 0; // Variable to track the number of correct predictions
         int[][] confusionMatrix = new int[numClasses][numClasses]; // Initialize confusion matrix with size [numClasses x numClasses]
-        TFloat32 classPredictionTensor = (TFloat32) outputs.get(1); // Retrieve the prediction tensor containing softmax probabilities
+        TFloat32 classPredictionTensor = (TFloat32) outputs.get(0); // Retrieve the prediction tensor containing softmax probabilities
 
         // Extract the batch size (number of samples in the batch) and number of classes from the tensor shape
         int batchSize = (int) classPredictionTensor.shape().get(0); // Number of images in the batch
@@ -686,11 +641,8 @@ public class tensorTrainerCNN extends JFrame {
         return sb;  // Return the formatted confusion matrix as a StringBuilder
     }
 
-    // Method to update the loss values for box, class, and total losses, and refresh the graph
-    public void updateLossValues(float box_l, float class_l, float total_l) {
-        // Add the new box loss value for the current epoch
-        boxLossValues.add(box_l);
-
+    // Method to update the loss values for class and total losses, and refresh the graph
+    public void updateLossValues(float class_l, float total_l) {
         // Add the new class loss value for the current epoch
         classLossValues.add(class_l);
 
@@ -699,62 +651,6 @@ public class tensorTrainerCNN extends JFrame {
 
         // Repaint the graph to reflect the updated loss values
         repaint();
-    }
-
-    // Custom JPanel class for drawing the box loss graph
-    static class box_loss_graph extends JPanel {
-        @Override
-        protected void paintComponent(Graphics g) {
-            super.paintComponent(g);
-
-            // Use Graphics2D for advanced control over rendering
-            Graphics2D g2d = (Graphics2D) g;
-
-            // Enable antialiasing for smoother graphics
-            g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-
-            // Get the dimensions of the panel
-            int panelWidth = getWidth();
-            int panelHeight = getHeight();
-
-            // Set margins for axis positioning
-            int marginLeft = 30;
-            int marginBottom = 30;
-
-            // Define the origin point for the graph (bottom-left corner)
-            int originY = panelHeight - marginBottom;
-
-            // Draw the x-axis (epochs)
-            g2d.drawLine(marginLeft, originY, panelWidth - marginLeft, originY);
-
-            // Draw the y-axis (loss values)
-            g2d.drawLine(marginLeft, originY, marginLeft, marginBottom);
-
-            // Get the number of epochs to display
-            int maxEpochs = boxLossValues.size();
-
-            // Draw the loss values as a line graph across epochs
-            for (int epoch = 1; epoch < maxEpochs; epoch++) {
-                // Get the previous and current loss values for each epoch
-                float lossPrev = boxLossValues.get(epoch - 1);
-                float lossCurrent = boxLossValues.get(epoch);
-
-                // Calculate the x and y coordinates, scaling for better visibility
-                int x1 = marginLeft + (epoch - 1) * 2; // Scale x-axis (e.g., 2 pixels per epoch)
-                int y1 = originY - (int) (lossPrev / maxLoss * (panelHeight - marginBottom - 30));  // Scale loss values
-                int x2 = marginLeft + epoch * 2;  // Next epoch's x-coordinate
-                int y2 = originY - (int) (lossCurrent / maxLoss * (panelHeight - marginBottom - 30));  // Next loss value
-
-                // Draw the line connecting the points (previous and current epoch)
-                g2d.drawLine(x1, y1, x2, y2);
-            }
-        }
-
-        @Override
-        public Dimension getPreferredSize() {
-            // Return preferred size for the panel based on the number of epochs
-            return new Dimension(epochs * 2, 230);
-        }
     }
 
     // Custom JPanel class for drawing the class loss graph
