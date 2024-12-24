@@ -19,7 +19,6 @@ import org.tensorflow.op.nn.Conv2d;
 import org.tensorflow.op.nn.SoftmaxCrossEntropyWithLogits;
 import org.tensorflow.op.random.TruncatedNormal;
 import org.tensorflow.types.TFloat32;
-import org.tensorflow.types.TInt32;
 
 import javax.imageio.ImageIO;
 import javax.swing.*;
@@ -256,7 +255,6 @@ public class tensorTrainerCNN extends JFrame {
         // Define constants for the number of channels and random seed for initialization
         final int NUM_CHANNELS = 3; // RGB image
         final boolean variable = (layers == null); // check if layers is null since if so we don't use layers
-        // Create logic for variable graph !!!
 
         // Create a new computation graph
         Graph graph = new Graph();
@@ -275,41 +273,131 @@ public class tensorTrainerCNN extends JFrame {
         // Scale pixel values from [0, 255] to [-1, 1] for better training convergence
         Operand<TFloat32> scaledInput = tf.math.div(tf.math.sub(tf.dtypes.cast(inputReshaped, TFloat32.class), tf.constant(127.5f)), tf.constant(255.0f));
 
-        // Build Convolutional Layers followed by Max Pooling layers
-        Operand<TFloat32> conv1 = buildConvLayer(tf, scaledInput, NUM_CHANNELS, 32); // First convolution layer
-        Operand<TFloat32> pool1 = buildMaxPoolLayer(tf, conv1); // First max pooling layer
+        if (variable) { // no dynamic layers
+            // Build Convolutional Layers followed by Max Pooling layers
+            Operand<TFloat32> conv1 = buildConvLayer(tf, scaledInput, NUM_CHANNELS, 32); // First convolution layer
+            Operand<TFloat32> pool1 = buildMaxPoolLayer(tf, conv1); // First max pooling layer
 
-        Operand<TFloat32> conv2 = buildConvLayer(tf, pool1, 32, 64); // Second convolution layer
-        Operand<TFloat32> pool2 = buildMaxPoolLayer(tf, conv2); // Second max pooling layer
+            Operand<TFloat32> conv2 = buildConvLayer(tf, pool1, 32, 64); // Second convolution layer
+            Operand<TFloat32> pool2 = buildMaxPoolLayer(tf, conv2); // Second max pooling layer
 
-        Operand<TFloat32> conv3 = buildConvLayer(tf, pool2, 64, 128); // Third convolution layer
-        Operand<TFloat32> pool3 = buildMaxPoolLayer(tf, conv3); // Third max pooling layer
+            Operand<TFloat32> conv3 = buildConvLayer(tf, pool2, 64, 128); // Third convolution layer
+            Operand<TFloat32> pool3 = buildMaxPoolLayer(tf, conv3); // Third max pooling layer
 
-        // Flatten the output from the last pooling layer to feed into fully connected layers
-        Operand<TFloat32> flatten = tf.reshape(pool3, tf.concat(Arrays.asList(
-                tf.slice(tf.shape(pool3), tf.array(0), tf.array(1)), // Keep batch size
-                tf.array(-1)), tf.constant(0))); // Flatten other dimensions
+            // Flatten the output from the last pooling layer to feed into fully connected layers
+            Operand<TFloat32> flatten = tf.reshape(pool3, tf.concat(Arrays.asList(
+                    tf.slice(tf.shape(pool3), tf.array(0), tf.array(1)), // Keep batch size
+                    tf.array(-1)), tf.constant(0))); // Flatten other dimensions
 
-        // Fully Connected Layers
-        Operand<TFloat32> fc1 = buildFullyConnectedLayer(tf, flatten, imageSize * imageSize * 128 / 64, 512); // First fully connected layer
+            int inputs = (int) (pool3.shape().get(1) * pool3.shape().get(2) * pool3.shape().get(3)); //fix amount of inputs for avoiding errors and improving performance
 
-        // Classification Output using Softmax activation
-        Operand<TFloat32> logits = buildFullyConnectedLayer(tf, fc1, 512, numClasses); // Fully connected layer for class logits
-        tf.withName("class_output").nn.softmax(logits); // Apply softmax to logits for class probabilities
+            // Fully Connected Layers
+            Operand<TFloat32> fc1 = buildFullyConnectedLayer(tf, flatten, inputs, 512); // First fully connected layer
 
-        // Compute softmax cross-entropy loss for classification
-        SoftmaxCrossEntropyWithLogits<TFloat32> crossEntropy = tf.nn.softmaxCrossEntropyWithLogits(logits, classLabels);
-        Mean<TFloat32> classLoss = tf.math.mean(crossEntropy.loss(), tf.constant(0)); // Mean cross-entropy loss
+            // Classification Output using Softmax activation
+            Operand<TFloat32> logits = buildFullyConnectedLayer(tf, fc1, 512, numClasses); // Fully connected layer for class logits
+            tf.withName("class_output").nn.softmax(logits); // Apply softmax to logits for class probabilities
 
-        // Regularization (L2 Loss) to prevent overfitting
-        Add<TFloat32> regularizers = tf.math.add(tf.nn.l2Loss(fc1), tf.nn.l2Loss(logits)); // L2 loss for fully connected layer and logits
+            // Compute softmax cross-entropy loss for classification
+            SoftmaxCrossEntropyWithLogits<TFloat32> crossEntropy = tf.nn.softmaxCrossEntropyWithLogits(logits, classLabels);
+            Mean<TFloat32> classLoss = tf.math.mean(crossEntropy.loss(), tf.constant(0)); // Mean cross-entropy loss
 
-        // Compute total loss as the sum of class loss and regularization
-        Add<TFloat32> totalLoss = tf.withName("totalLoss").math.add(classLoss, tf.math.mul(regularizers, tf.constant(5e-4f))); // Scale regularization term
+            // Regularization (L2 Loss) to prevent overfitting
+            Add<TFloat32> regularizers = tf.math.add(tf.nn.l2Loss(fc1), tf.nn.l2Loss(logits)); // L2 loss for fully connected layer and logits
 
-        // Optimizer (Adam) for minimizing the total loss
-        Optimizer optimizer = new Adam(graph, 0.001f, 0.9f, 0.999f, 1e-6f); // Create an Adam optimizer
-        optimizer.minimize(totalLoss, "train"); // Add minimization operation to the optimizer
+            // Compute total loss as the sum of class loss and regularization
+            Add<TFloat32> totalLoss = tf.withName("totalLoss").math.add(classLoss, tf.math.mul(regularizers, tf.constant(5e-4f))); // Scale regularization term
+
+            // Optimizer (Adam) for minimizing the total loss
+            Optimizer optimizer = new Adam(graph, 0.001f, 0.9f, 0.999f, 1e-6f); // Create an Adam optimizer
+            optimizer.minimize(totalLoss, "train"); // Add minimization operation to the optimizer
+        } else { // Layers
+            Operand<TFloat32> currentLayer = scaledInput;
+            int localChannelsIn = NUM_CHANNELS;
+            int channelsOut = 32;
+
+            // Iterate over the layers and dynamically add them to the graph
+            for (CNNPlayground.layerEntry layer : layers) {
+                String layerType = layer.getLayer();
+                ArrayList<Double> params = layer.getList();
+
+                switch (layerType) {
+                    case "Convolutional Layer":
+                        double kernelSize = params.get(0);
+                        double stride = params.get(1);
+                        double weightScale = params.get(2);
+                        double seed = params.get(3);
+                        currentLayer = buildVariableConvLayer(tf, currentLayer, (int) kernelSize, localChannelsIn, channelsOut, (long) stride, (float) weightScale, (long) seed);
+
+                        // Update the channel variables for the next iteration
+                        localChannelsIn = channelsOut;  // Input channels for the next layer = Output channels of current layer
+                        channelsOut *= 2;               // Double the output channels for the next layer
+                        break;
+
+                    case "Pooling Layer":
+                        double kernelSizeP = params.get(0);
+
+                        if (params.get(1) == null || (params.get(1) != 0 && params.get(1) != 1)) {
+                            throw new IllegalArgumentException("Invalid padding parameter for pooling layer.");
+                        }
+
+                        String paddingConverted = (params.get(1) == 0) ? "VALID" : "SAME";
+                        currentLayer = buildVariableMaxPoolLayer(tf, currentLayer, (int) kernelSizeP, paddingConverted);
+                        break;
+
+                    case "Fully Connected Layer":
+                        double weightInitScale = params.get(0);
+                        double biasInitScale = params.get(1);
+                        double seedFC = params.get(2);
+
+                        // Extract the height, width, and channels before flattening
+                        int height = (int) currentLayer.shape().get(1);  // Height of the feature map
+                        int width = (int) currentLayer.shape().get(2);   // Width of the feature map
+                        int channels = (int) currentLayer.shape().get(3); // Number of channels
+                        int units = height * width * channels;
+
+                        // Flatten the output of the previous layer to prepare for the fully connected layer
+                        currentLayer = tf.reshape(currentLayer, tf.concat(Arrays.asList(
+                                tf.slice(tf.shape(currentLayer), tf.array(0), tf.array(1)), // Keep batch size
+                                tf.array(-1)), tf.constant(0))); // Flatten other dimensions
+
+                        currentLayer = buildVariableFullyConnectedLayer(tf, currentLayer, units, units, (float) weightInitScale, (float) biasInitScale, (long) seedFC);
+
+                        // Un-flatten back to 4D tensor (after fully connected layer)
+                        currentLayer = tf.reshape(currentLayer, tf.concat(Arrays.asList(
+                                tf.slice(tf.shape(currentLayer), tf.array(0), tf.array(1)), // Keep batch size
+                                tf.array(height, width, channels) // Un-flatten back to 4D tensor
+                        ), tf.constant(0)));
+                        break;
+
+                    default:
+                        throw new IllegalArgumentException("Unsupported layer type: " + layerType);
+                }
+            }
+
+            // Flatten the tensor before the classification output
+            int inputs = (int) (currentLayer.shape().get(1) * currentLayer.shape().get(2) * currentLayer.shape().get(3));
+            currentLayer = tf.reshape(currentLayer, tf.concat(Arrays.asList(
+                    tf.slice(tf.shape(currentLayer), tf.array(0), tf.array(1)), // Keep batch size
+                    tf.array(-1)), tf.constant(0))); // Flatten other dimensions
+
+            Operand<TFloat32> logits = buildFullyConnectedLayer(tf, currentLayer, inputs, numClasses);
+
+            tf.withName("class_output").nn.softmax(logits); // Apply softmax to logits for class probabilities
+
+            // Compute softmax cross-entropy loss for classification
+            Mean<TFloat32> classLoss = tf.math.mean(tf.nn.softmaxCrossEntropyWithLogits(logits, classLabels).loss(), tf.constant(0));
+
+            // Regularization (L2 Loss) to prevent overfitting
+            Add<TFloat32> regularizers = tf.math.add(tf.nn.l2Loss(currentLayer), tf.nn.l2Loss(logits));
+
+            // Compute total loss as the sum of class loss and regularization
+            Add<TFloat32> totalLoss = tf.withName("totalLoss").math.add(classLoss, tf.math.mul(regularizers, tf.constant(5e-4f)));
+
+            // Optimizer (Adam) for minimizing the total loss
+            Optimizer optimizer = new Adam(graph, 0.001f, 0.9f, 0.999f, 1e-6f); // Create an Adam optimizer
+            optimizer.minimize(totalLoss, "train"); // Add minimization operation to the optimizer
+        }
 
         return graph; // Return the constructed computation graph
     }
@@ -337,6 +425,14 @@ public class tensorTrainerCNN extends JFrame {
         return tf.nn.relu(biasAdd); // -> learn more complex patterns
     }
 
+    // Method to build a Max Pooling Layer for scaling image down
+    private static Operand<TFloat32> buildMaxPoolLayer(Ops tf, Operand<TFloat32> input) {
+        // Apply max pooling with a 2x2 filter which halves the height and width of the input
+        // "SAME" padding ensures that the output size is reduced evenly
+        return tf.nn.maxPool(input, tf.array(1, 2, 2, 1), tf.array(1, 2, 2, 1), "SAME");
+        // Max Pooling helps keeping important features while reducing computational complexity
+    }
+
     // Method to build a Fully Connected Layer + ReLU
     private static Operand<TFloat32> buildFullyConnectedLayer(Ops tf, Operand<TFloat32> input, int inputUnits, int outputUnits) {
         // Initialize the weights matrix for the fully connected layer with inputUnits (number of input features) and outputUnits (number of neurons)
@@ -353,14 +449,6 @@ public class tensorTrainerCNN extends JFrame {
 
         // Apply the ReLU activation function to the result of the fully connected layer to introduce non-linearity
         return tf.nn.relu(dense);
-    }
-
-    // Method to build a Max Pooling Layer for scaling image down
-    private static Operand<TFloat32> buildMaxPoolLayer(Ops tf, Operand<TFloat32> input) {
-        // Apply max pooling with a 2x2 filter which halves the height and width of the input
-        // "SAME" padding ensures that the output size is reduced evenly
-        return tf.nn.maxPool(input, tf.array(1, 2, 2, 1), tf.array(1, 2, 2, 1), "SAME");
-        // Max Pooling helps keeping important features while reducing computational complexity
     }
 
     /**
@@ -416,22 +504,21 @@ public class tensorTrainerCNN extends JFrame {
      * @param tf              TensorFlow Ops object for building graph.
      * @param input           The input tensor to the fully connected layer (shape: [batchSize, inputUnits]).
      * @param inputUnits      Number of input features (units).
-     * @param outputUnits     Number of output features (neurons in the layer).
      * @param weightInitScale Scale factor for initializing weights.
      * @param biasInitValue   Initial value for biases (e.g., 0.1 to avoid "dead neurons").
      * @param seed            Seed value for random initialization of weights.
      * @return output of fully connected layer.
      */
-    private static Operand<TFloat32> buildVariableFullyConnectedLayer(Ops tf, Operand<TFloat32> input, int inputUnits, int outputUnits,
+    private static Operand<TFloat32> buildVariableFullyConnectedLayer(Ops tf, Operand<TFloat32> input, int inputUnits, int OutputUnits,
                                                                       float weightInitScale, float biasInitValue, long seed) {
         // Initialize the weights matrix for the fully connected layer
         Operand<TFloat32> weights = tf.variable(tf.math.mul(
-                tf.random.truncatedNormal(tf.array(inputUnits, outputUnits), TFloat32.class, TruncatedNormal.seed(seed)),
+                tf.random.truncatedNormal(tf.array(inputUnits, OutputUnits), TFloat32.class, TruncatedNormal.seed(seed)),
                 tf.constant(weightInitScale)
         ));
 
         // Initialize biases for each output unit
-        Operand<TFloat32> biases = tf.variable(tf.fill(tf.array(outputUnits), tf.constant(biasInitValue)));
+        Operand<TFloat32> biases = tf.variable(tf.fill(tf.array(OutputUnits), tf.constant(biasInitValue)));
 
         // Perform matrix multiplication between the input and weights and add the biases
         Operand<TFloat32> dense = tf.math.add(tf.linalg.matMul(input, weights), biases);

@@ -546,8 +546,3 @@ Inputs:
         }
     }
 }
-
-/*
-ToDo:
-    - add training process
- */
