@@ -529,10 +529,10 @@ public class CNNPlayground extends JFrame {
                         } else if (SwingUtilities.isLeftMouseButton(evt)) {
                             // Left-click: Toggle highlight color
                             if (isHighlighted) {
-                                component.setBackground(Color.WHITE); // Remove highlight
+                                component.setBackground(Color.DARK_GRAY); // Remove highlight
                                 isHighlighted = false;
                             } else {
-                                component.setBackground(Color.YELLOW); // Highlight the component
+                                component.setBackground(Color.lightGray); // Highlight the component
                                 isHighlighted = true;
                             }
                         }

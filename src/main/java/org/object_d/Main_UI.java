@@ -39,6 +39,8 @@ public class Main_UI extends JFrame {
     static SavedModelBundle savedModelBundle; // Bundle for managing the saved model
 
     public Main_UI() {
+        applyDarkMode(); // Apply dark mode settings
+
         // Set layout for the main UI as a horizontal grid with spacing
         setLayout(new GridLayout(1, 2, 10, 10));
 
@@ -255,6 +257,115 @@ public class Main_UI extends JFrame {
                     break;
             }
         }
+    }
+
+    // Method for changing the colour of items into dark mode
+    private void applyDarkMode() {
+        UIManager.put("Table.background", Color.DARK_GRAY); // Background of the table (rows and cells)
+        UIManager.put("Table.foreground", Color.WHITE); // Text color for table cells
+        UIManager.put("Table.gridColor", Color.GRAY); // Color of the grid lines between cells
+        UIManager.put("Table.selectionBackground", Color.GRAY); // Background color for selected rows
+        UIManager.put("Table.selectionForeground", Color.WHITE); // Text color for selected rows
+        UIManager.put("Table.headerBackground", Color.BLACK); // Background color for table header
+        UIManager.put("Table.headerForeground", Color.WHITE); // Text color for table header
+        UIManager.put("Table.headerFont", new Font("Arial", Font.BOLD, 12)); // Font for the table header
+        UIManager.put("Table.cellFont", new Font("Arial", Font.PLAIN, 12)); // Font for table cells
+        UIManager.put("Table.rowHeight", 30); // Row height for better readability
+
+        UIManager.put("FileChooser.background", Color.DARK_GRAY); // Background of the entire file chooser
+        UIManager.put("FileChooser.foreground", Color.WHITE); // Text color
+        UIManager.put("FileChooser.selectionBackground", Color.GRAY); // Background of selected file
+        UIManager.put("FileChooser.selectionForeground", Color.WHITE); // Text color of selected file
+        UIManager.put("FileChooser.listViewBackground", Color.DARK_GRAY); // Background of the file list
+        UIManager.put("FileChooser.listViewForeground", Color.WHITE); // Text color in the file list
+        UIManager.put("FileChooser.listViewSelectionBackground", Color.GRAY); // Highlight color for selection
+        UIManager.put("FileChooser.listViewSelectionForeground", Color.WHITE); // Highlighted text color
+        UIManager.put("FileChooser.controlPanelBackground", Color.DARK_GRAY); // Background of control buttons
+        UIManager.put("FileChooser.controlPanelForeground", Color.WHITE); // Text color for control buttons
+        UIManager.put("FileChooser.buttonBackground", Color.GRAY); // Button background
+        UIManager.put("FileChooser.buttonForeground", Color.WHITE); // Button text color
+        UIManager.put("FileChooser.buttonHighlight", Color.LIGHT_GRAY); // Button highlight when pressed
+        UIManager.put("FileChooser.border", BorderFactory.createLineBorder(Color.GRAY)); // Border for the file chooser
+        UIManager.put("FileChooser.directoryBackground", Color.DARK_GRAY);
+        UIManager.put("FileChooser.directoryForeground", Color.WHITE);
+        UIManager.put("FileChooser.listBackground", Color.DARK_GRAY);
+        UIManager.put("FileChooser.listForeground", Color.WHITE);
+
+        UIManager.put("MenuBar.background", Color.DARK_GRAY); // Menu bar background color
+        UIManager.put("MenuBar.border", BorderFactory.createLineBorder(Color.GRAY)); // Menu bar border
+
+        UIManager.put("Menu.background", Color.DARK_GRAY); // Menu background color
+        UIManager.put("Menu.foreground", Color.WHITE); // Menu text color
+        UIManager.put("Menu.selectionBackground", Color.GRAY); // Highlight color when menu item is selected
+        UIManager.put("Menu.selectionForeground", Color.WHITE); // Highlighted menu text color
+
+        UIManager.put("MenuItem.background", Color.DARK_GRAY); // Menu item background color
+        UIManager.put("MenuItem.foreground", Color.WHITE); // Menu item text color
+        UIManager.put("MenuItem.selectionBackground", Color.GRAY); // Highlight color for selected menu item
+        UIManager.put("MenuItem.selectionForeground", Color.WHITE); // Highlighted text color
+        UIManager.put("MenuItem.border", BorderFactory.createEmptyBorder(5, 10, 5, 10)); // Padding for menu items
+
+        UIManager.put("Panel.background", Color.DARK_GRAY);
+
+        UIManager.put("Label.foreground", Color.WHITE);
+
+        UIManager.put("Button.background", Color.GRAY); // Default background
+        UIManager.put("Button.foreground", Color.WHITE); // Default text color
+        UIManager.put("Button.focus", Color.DARK_GRAY); // Focus indicator color
+        UIManager.put("Button.select", Color.LIGHT_GRAY); // Color when the button is pressed
+        UIManager.put("Button.disabledText", Color.LIGHT_GRAY); // Text color when disabled
+        UIManager.put("Button.disabledBackground", Color.DARK_GRAY); // Background color when disabled
+        UIManager.put("Button.border", BorderFactory.createLineBorder(Color.WHITE)); // Optional border for buttons
+
+        UIManager.put("ScrollPane.background", Color.DARK_GRAY);
+        UIManager.put("ScrollPane.foreground", Color.WHITE); // Foreground color of the scroll pane
+
+        UIManager.put("TitledBorder.titleColor", Color.WHITE);
+
+        UIManager.put("Slider.background", Color.DARK_GRAY);
+        UIManager.put("Slider.foreground", Color.WHITE);
+
+        UIManager.put("TextField.background", Color.GRAY);
+        UIManager.put("TextField.foreground", Color.WHITE);
+        UIManager.put("TextField.caretForeground", Color.WHITE);
+
+        UIManager.put("ComboBox.background", Color.DARK_GRAY);
+        UIManager.put("ComboBox.foreground", Color.WHITE);
+        UIManager.put("ComboBox.selectionBackground", Color.GRAY);
+        UIManager.put("ComboBox.selectionForeground", Color.WHITE);
+        UIManager.put("CheckBox.background", Color.DARK_GRAY);
+        UIManager.put("CheckBox.foreground", Color.WHITE);
+
+        UIManager.put("RadioButton.background", Color.DARK_GRAY);
+        UIManager.put("RadioButton.foreground", Color.WHITE);
+
+        UIManager.put("ProgressBar.background", Color.DARK_GRAY);
+        UIManager.put("ProgressBar.foreground", Color.GRAY);
+        UIManager.put("ProgressBar.selectionBackground", Color.DARK_GRAY);
+        UIManager.put("ProgressBar.selectionForeground", Color.WHITE);
+
+        UIManager.put("Spinner.background", Color.DARK_GRAY);
+        UIManager.put("Spinner.foreground", Color.WHITE);
+
+        UIManager.put("TextArea.background", Color.DARK_GRAY); // Background color for JTextArea
+        UIManager.put("TextArea.foreground", Color.WHITE); // Text color for JTextArea
+        UIManager.put("TextArea.caretForeground", Color.WHITE); // Caret (cursor) color
+        UIManager.put("TextArea.selectionBackground", Color.GRAY); // Highlight color for selected text
+        UIManager.put("TextArea.selectionForeground", Color.WHITE); // Highlighted text color
+        UIManager.put("TextArea.border", BorderFactory.createLineBorder(Color.GRAY)); // Border for JTextArea
+
+        UIManager.put("OptionPane.background", Color.DARK_GRAY); // Background of the dialog
+        UIManager.put("OptionPane.foreground", Color.WHITE); // Text color for the dialog
+        UIManager.put("OptionPane.messageForeground", Color.WHITE); // Foreground color for message text
+
+        UIManager.put("Viewport.background", Color.DARK_GRAY); // Background color of the viewport (area containing the content)
+
+        UIManager.put("ScrollBar.background", Color.DARK_GRAY); // Scroll bar background
+        UIManager.put("ScrollBar.foreground", Color.WHITE); // Scroll bar color (thumb, etc.)
+        UIManager.put("ScrollBar.thumbBackground", Color.GRAY); // Scroll bar thumb background (the draggable part)
+        UIManager.put("ScrollBar.thumbForeground", Color.WHITE); // Scroll bar thumb text color (optional)
+        UIManager.put("ScrollBar.trackBackground", Color.BLACK); // Track background (the part where the thumb slides)
+        UIManager.put("ScrollBar.trackForeground", Color.DARK_GRAY); // Track foreground (optional for better visibility)
     }
 
     /**

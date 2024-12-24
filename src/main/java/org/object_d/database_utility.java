@@ -147,7 +147,7 @@ public class database_utility extends JFrame {
         // Setup the delete panel
         // Add status label for delete operations
         delete_status = new JLabel("Here appear updates on the delete status");
-        delete_status.setForeground(Color.BLUE); // Set text color to blue for visibility
+        delete_status.setForeground(Color.white); // Set text color to blue for visibility
         right_panel.add(delete_status); // Add status label to the delete panel
 
         // Add a button to reset the entire database
