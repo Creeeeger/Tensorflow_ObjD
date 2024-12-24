@@ -14,6 +14,15 @@ import java.util.Comparator;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class coreML_converter {
+
+    /**
+     * Organizes files from a source folder by copying them to a target directory,
+     * moving image files to the top-level directory, and removing non-image files.
+     * It also renames the image files numerically.
+     *
+     * @param sourceFolderPath The path to the source folder that contains files to be organized.
+     * @throws RuntimeException if an error occurs during file operations.
+     */
     public static void organiseFiles(String sourceFolderPath) {
         try {
             // Create the target directory path for organized files
@@ -113,20 +122,36 @@ public class coreML_converter {
         }
     }
 
-    // Method to get the file extension from the given file name
+    /**
+     * Gets the file extension from a given file name.
+     *
+     * @param fileName The name of the file.
+     * @return The file extension, including the dot (e.g., ".jpg"). Returns an empty string if no extension is found.
+     */
     private static String getFileExtension(String fileName) {
         int lastIndexOfDot = fileName.lastIndexOf('.'); // Find the last index of the dot character
         return (lastIndexOfDot == -1) ? "" : fileName.substring(lastIndexOfDot); // Return the extension or empty string if no dot found
     }
 
-    // Method to check if the provided file name corresponds to an image file
+
+    /**
+     * Checks whether a file is an image file by inspecting its extension.
+     *
+     * @param fileName The name of the file.
+     * @return true if the file is an image ("jpg", ".jpeg", ".png"); false otherwise.
+     */
     private static boolean isImageFile(String fileName) {
         String fileExtension = getFileExtension(fileName).toLowerCase(); // Get the file extension in lowercase
         // Check if the extension matches supported image formats
         return fileExtension.equals(".jpg") || fileExtension.equals(".jpeg") || fileExtension.equals(".png");
     }
 
-    // Method to delete a directory and all its contents recursively
+    /**
+     * Deletes a directory and all of its contents recursively.
+     *
+     * @param path The path to the directory to be deleted.
+     * @throws IOException if an error occurs during the file deletion process.
+     */
     private static void deleteDirectory(Path path) throws IOException {
         // Walk the file tree, sorting paths in reverse order to ensure files are deleted before their directories
         Files.walk(path)
@@ -135,7 +160,12 @@ public class coreML_converter {
                 .forEach(File::delete); // Delete each file and directory
     }
 
-    // Method to label images using a specified model
+
+    /**
+     * Labels images by using a specified model.
+     *
+     * @param modelBundle_path The path to the model bundle to be used for labeling images.
+     */
     public static void labelImages(String modelBundle_path) {
         detector detector = new detector(); // Create an instance of the detector class
         // Call the label method of the detector, passing the output directory and model path
@@ -143,39 +173,87 @@ public class coreML_converter {
         prepareOutput(labels); // Prepare the output JSON based on the obtained labels
     }
 
-    // Method to prepare and write the output annotations to a JSON file
+    /**
+     * Prepares and writes the output annotations for labeled images to a JSON file.
+     *
+     * @param labels An array of labels for the images, where each label includes image file name and annotations.
+     */
     public static void prepareOutput(String[] labels) {
         JSONArray jsonArray = new JSONArray(); // Create a JSON array to hold all image annotations
 
         for (String label : labels) {
+            if (label == null || label.isEmpty()) {
+                continue; // Skip empty or null labels
+            }
+
             try {
                 // Extract the filename and the data related to the image
-                String filename = label.substring(0, label.indexOf(" ")).trim(); // Get the image filename
-                int label_amount = (int) label.chars().filter(ch -> ch == '[').count(); // Count how many annotations there are
-                String data = label.substring(label.indexOf("[")); // Get the substring starting from the first '['
+                int spaceIndex = label.indexOf(" ");
+                String filename = spaceIndex == -1 ? label : label.substring(0, spaceIndex).trim();
+
+                // Ensure there is a valid annotation section starting with "["
+                int openBracketIndex = label.indexOf("[");
+                if (openBracketIndex == -1) {
+                    continue; // No annotations found, skip this label
+                }
+
+                // Count how many annotations there are (i.e., how many "[" brackets there are)
+                int label_amount = (int) label.chars().filter(ch -> ch == '[').count();
+                if (label_amount == 0) {
+                    continue; // No annotations to process, skip this label
+                }
+
+                String data = label.substring(openBracketIndex); // Get the substring starting from the first '['
+
+                // Ensure there are enough annotations
+                if (data.length() < 2 || data.indexOf("]") == -1) {
+                    continue; // Skip if no valid annotation data is present
+                }
+
                 String[] obj = new String[label_amount]; // Array to hold the parsed annotation objects
 
                 int startIndex = 0;
                 int endIndex = data.indexOf("]"); // Find the first closing bracket
 
-                // Extract annotation data
+                // Extract annotation data with bounds checking
                 for (int j = 0; j < label_amount; j++) {
+                    // Check if the indices are valid before performing the substring operation
+                    if (startIndex < 0 || endIndex < 0 || endIndex > data.length()) {
+                        continue; // Skip invalid annotation data
+                    }
+
                     obj[j] = data.substring(startIndex, endIndex + 1); // Get the current annotation
-                    startIndex = endIndex + 1; // Move start index to the next character
+
+                    // Move start index to the next character after the closing bracket
+                    startIndex = endIndex + 1;
+
+                    // If there are more annotations, find the next closing bracket
                     if (startIndex < data.length()) {
                         endIndex = data.indexOf("]", startIndex); // Find the next closing bracket
                         if (endIndex == -1) {
-                            endIndex = data.length(); // If no closing bracket is found, go to end of data
+                            endIndex = data.length(); // If no closing bracket is found, go to the end of data
                         }
                     }
                 }
 
+                // After this, we can proceed to further processing like extracting coordinates or labels from the annotations
                 JSONArray annotations = new JSONArray(); // Create a new JSON array for the current image's annotations
                 for (String s : obj) { // Loop through each annotation object
                     String[] parts = s.split(","); // Split the string by commas
 
+                    if (parts.length < 5) {
+                        // Handle case where there are not enough parts in the annotation
+                        continue;
+                    }
+
                     // Extract label and coordinates
                     String labelName = parts[0].substring(1); // Get the label name, removing the leading quote
+
+                    if (labelName.isEmpty()) {
+                        // Handle invalid label name
+                        continue;
+                    }
+
                     int yMin = (int) Double.parseDouble(parts[1]);
                     int yMax = (int) Double.parseDouble(parts[2]);
                     int xMin = (int) Double.parseDouble(parts[3]);
@@ -201,8 +279,10 @@ public class coreML_converter {
 
                 // Create a JSON object to represent the current image and its annotations
                 JSONObject jsonObject = new JSONObject();
-                jsonObject.put("imagefilename", filename); // Add the image filename
-                jsonObject.put("annotation", annotations); // Add annotations
+                if (!filename.isEmpty()) {
+                    jsonObject.put("imagefilename", filename);
+                }
+                jsonObject.put("annotation", annotations);
                 jsonArray.put(jsonObject); // Add the image object to the main JSON array
 
             } catch (StringIndexOutOfBoundsException e) {

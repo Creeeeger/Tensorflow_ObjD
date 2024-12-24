@@ -1,11 +1,11 @@
 package org.object_d;
 
-import org.tensorflow.*; // Import TensorFlow core classes
-import org.tensorflow.ndarray.StdArrays; // For creating TensorFlow-compatible multidimensional arrays
-import org.tensorflow.proto.DataType; // To specify data types in TensorFlow graph operations
-import org.tensorflow.types.TFloat32; // TensorFlow's 32-bit floating-point tensor type
+import org.tensorflow.*;
+import org.tensorflow.ndarray.StdArrays;
+import org.tensorflow.proto.DataType;
+import org.tensorflow.types.TFloat32;
 
-import java.io.IOException; // To handle IOExceptions during file operations
+import java.io.IOException;
 import java.nio.file.Paths;
 
 // Class that demonstrates saving a TensorFlow model with a placeholder and a constant
@@ -17,7 +17,6 @@ public class StageTwoExporter {
 
     /**
      * Creates a TensorFlow graph with a constant, a placeholder, and an addition operation.
-     * The graph is saved to disk as a model.
      *
      * @param modelPath Path where the model will be saved
      * @param intVal    An integer value to test the model during inference
@@ -66,9 +65,9 @@ public class StageTwoExporter {
     }
 
     /**
-     * Loads the saved TensorFlow model and performs inference using a provided input value.
+     * Loads the saved TensorFlow model and performs inference
      *
-     * @param modelPath Path to the saved TensorFlow model
+     * @param modelPath  Path to the saved TensorFlow model
      * @param inputValue The integer input value for the model's placeholder
      */
     public static void detect(String modelPath, int inputValue) {

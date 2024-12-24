@@ -34,12 +34,12 @@ import java.util.*;
 import java.util.stream.IntStream;
 
 public class tensorTrainerCNN extends JFrame {
-    static int numberClasses, epochs; // Declare variables for the number of classes and epochs (training iterations)
-    static float maxLoss = Main_UI.learning_rate; // Initialize maxLoss with the learning rate value from the Main_UI class
-    static List<Float> classLossValues = new ArrayList<>();  // List to store loss values for class predictions
-    static List<Float> totalLossValues = new ArrayList<>();  // List to store total loss values (combined)
-    static JTextArea textArea; // Declare a text area for displaying output as well as the matrix
-    static JLabel accuracy_label; // Label to display the accuracy of the model
+    static int numberClasses, epochs;                           // Declare variables for the number of classes and epochs (training iterations)
+    static float maxLoss = Main_UI.learning_rate;               // Initialize maxLoss with the learning rate value from the Main_UI class
+    static List<Float> classLossValues = new ArrayList<>();     // List to store loss values for class predictions
+    static List<Float> totalLossValues = new ArrayList<>();     // List to store total loss values
+    static JTextArea textArea;                                  // Declare a text area for displaying output as well as the matrix
+    static JLabel accuracy_label;                               // Label to display the accuracy of the model
 
     public tensorTrainerCNN() {
         setLayout(new GridLayout(4, 1, 10, 10)); // Set layout for the panel, a 4-row grid with spacing between elements
@@ -77,9 +77,15 @@ public class tensorTrainerCNN extends JFrame {
         confusion_matrix_panel.add(textArea);
     }
 
-    // Method to access the program for training a model using the specified folder
-    // variable for CNN Playground
-    // layers for the layers which are used
+    /**
+     * Accesses and trains a model using a specified folder containing image data
+     * The folder should contain subdirectories representing different classes, each containing image files.
+     *
+     * @param folder   The path to the folder containing the image data organized into class subdirectories.
+     * @param variable A boolean flag to enable or disable variable layer training.
+     * @param layers   An ArrayList of layerEntry objects representing the layers used in the CNN (if variable training is enabled).
+     * @throws IOException If there is an error while loading the dataset or processing the images.
+     */
     public static void access(String folder, Boolean variable, ArrayList<CNNPlayground.layerEntry> layers) throws IOException {
         // Load the OpenCV library locally this is the new method since the native library method doesn't work anymore
         nu.pattern.OpenCV.loadLocally();
@@ -97,6 +103,10 @@ public class tensorTrainerCNN extends JFrame {
         epochs = Main_UI.epochs; // Get the number of training epochs
         int batchSize = Main_UI.batch_size; // Get the batch size for training
 
+        if (batchSize < 1) {
+            throw new RuntimeException("Must have a greater batch size than 1");
+        }
+
         // Check if the folder contains no subdirectories (i.e., no grouped images)
         if (numberClasses == 0) {
             throw new RuntimeException("You can't use a folder without grouped images!"); // Throw an error if no classes found
@@ -110,13 +120,24 @@ public class tensorTrainerCNN extends JFrame {
         // Train the model with the loaded dataset, number of classes, epochs, and image size
         // create switch for variable layer training and normal training
         if (variable) {
-            trainModel(images, labels, numberClasses, epochs, imageSize, true, layers);
+            trainModel(images, labels, numberClasses, tensorTrainerCNN.epochs, imageSize, true, layers);
         } else {
-            trainModel(images, labels, numberClasses, epochs, imageSize, false, null);
+            trainModel(images, labels, numberClasses, tensorTrainerCNN.epochs, imageSize, false, null);
         }
     }
 
-    // Method to load a dataset from a specified directory, preprocess images, and prepare them for training
+    /**
+     * Loads and preprocesses the dataset from the specified directory, generating batches of images and their corresponding labels.
+     *
+     * @param dataDir     The path to the directory containing class subdirectories with image files.
+     * @param batchSize   The number of images
+     * @param imageHeight The desired height of the images after resizing.
+     * @param imageWidth  The desired width of the images after resizing.
+     * @param numChannels The number of color channels in the images (e.g., 3 for RGB images).
+     * @param numClasses  The total number of classes
+     * @return An array containing two TFloat32 tensors: one for the images and one for the labels.
+     * @throws IOException If there is an error while loading the images or creating the tensors.
+     */
     public static TFloat32[] loadDataset(String dataDir, int batchSize, int imageHeight, int imageWidth, int numChannels, int numClasses) throws IOException {
         // Get all class directories from the specified data directory
         File[] classDirs = new File(dataDir).listFiles(File::isDirectory);
@@ -196,7 +217,15 @@ public class tensorTrainerCNN extends JFrame {
         return new TFloat32[]{imageTensor, labelTensor};  // Return both images and labels
     }
 
-    // Method to preprocess an image by resizing it and converting it to a normalized float array
+    /**
+     * Preprocesses an image by resizing it to the target dimensions and converting it to a normalized float array.
+     * The image is resized to the specified height and width, and each pixel's RGB value is normalized to the range [0, 1].
+     *
+     * @param img          The input BufferedImage to be processed.
+     * @param targetHeight The target height of the resized image.
+     * @param targetWidth  The target width of the resized image.
+     * @return A 3D float array representing the resized and normalized image, with dimensions [height][width][channels].
+     */
     public static float[][][] preprocessImage(BufferedImage img, int targetHeight, int targetWidth) {
         // Resize the input image to the target dimensions
         BufferedImage resizedImage = resizeImage(img, targetHeight, targetWidth);
@@ -227,7 +256,13 @@ public class tensorTrainerCNN extends JFrame {
         return imageArray;
     }
 
-    // Method to preprocess a label for a given class label and total number of classes
+    /**
+     * Preprocesses a label for a given class label by converting it into a one-hot encoded array.
+     *
+     * @param classLabel The integer representing the class label to be encoded.
+     * @param numClasses The total number of classes
+     * @return A one-hot encoded label array of length `numClasses`, with 1.0 at the position of the class label and 0.0 elsewhere.
+     */
     public static float[] preprocessLabel(int classLabel, int numClasses) {
         // Create an array to hold the one-hot encoded label, initialized to zero
         float[] labelArray = new float[numClasses];
@@ -239,7 +274,14 @@ public class tensorTrainerCNN extends JFrame {
         return labelArray;
     }
 
-    // Method to resize a given image to specified dimensions
+    /**
+     * Resizes a given image to the specified dimensions (height and width).
+     *
+     * @param img          The input BufferedImage to be resized.
+     * @param targetHeight The target height of the resized image.
+     * @param targetWidth  The target width of the resized image.
+     * @return A new BufferedImage that represents the resized image.
+     */
     public static BufferedImage resizeImage(BufferedImage img, int targetHeight, int targetWidth) {
         // Create a new BufferedImage with the target dimensions and RGB color model
         BufferedImage resizedImage = new BufferedImage(targetWidth, targetHeight, BufferedImage.TYPE_INT_RGB);
@@ -251,6 +293,15 @@ public class tensorTrainerCNN extends JFrame {
         return resizedImage;
     }
 
+    /**
+     * Constructs a computational graph for building and training a Convolutional Neural Network (CNN).
+     *
+     * @param numClasses The number of output classes for classification
+     * @param imageSize  The height and width of the input images
+     * @param layers     A list of layers to be used in the network, or null if no dynamic layers are used. If non-null, this list contains layer configurations for constructing the network dynamically.
+     * @return A TensorFlow computational graph representing the CNN model, including layers, loss, and optimizer.
+     * @throws IllegalArgumentException If the `layers` list contains unsupported layer types or invalid parameters.
+     */
     public static Graph Graph(int numClasses, int imageSize, ArrayList<CNNPlayground.layerEntry> layers) {
         // Define constants for the number of channels and random seed for initialization
         final int NUM_CHANNELS = 3; // RGB image
@@ -311,98 +362,124 @@ public class tensorTrainerCNN extends JFrame {
             // Optimizer (Adam) for minimizing the total loss
             Optimizer optimizer = new Adam(graph, 0.001f, 0.9f, 0.999f, 1e-6f); // Create an Adam optimizer
             optimizer.minimize(totalLoss, "train"); // Add minimization operation to the optimizer
-        } else { // Layers
+        } else { // Dynamic layers
+            // Initialize the current layer with the scaled input image
             Operand<TFloat32> currentLayer = scaledInput;
+
+            // Set the number of input channels to 3 (RGB) and the number of output channels for the first convolution layer to 32
             int localChannelsIn = NUM_CHANNELS;
             int channelsOut = 32;
 
-            // Iterate over the layers and dynamically add them to the graph
+            // Iterate over the layers in the provided list and dynamically add them to the graph
             for (CNNPlayground.layerEntry layer : layers) {
-                String layerType = layer.getLayer();
-                ArrayList<Double> params = layer.getList();
+                String layerType = layer.getLayer();  // Get the type of the current layer
+                ArrayList<Double> params = layer.getList();  // Get the parameters for the current layer
 
                 switch (layerType) {
                     case "Convolutional Layer":
+                        // Extract the kernel size, stride, weight scaling factor, and seed from the layer's parameters
                         double kernelSize = params.get(0);
                         double stride = params.get(1);
                         double weightScale = params.get(2);
                         double seed = params.get(3);
+
+                        // Build the convolutional layer and update the current layer
+                        // The number of output channels will increase after each convolution layer
                         currentLayer = buildVariableConvLayer(tf, currentLayer, (int) kernelSize, localChannelsIn, channelsOut, (long) stride, (float) weightScale, (long) seed);
 
-                        // Update the channel variables for the next iteration
-                        localChannelsIn = channelsOut;  // Input channels for the next layer = Output channels of current layer
-                        channelsOut *= 2;               // Double the output channels for the next layer
+                        // Update the input and output channels for the next layer
+                        localChannelsIn = channelsOut;  // The input channels for the next layer is the output channels of the current layer
+                        channelsOut *= 2;               // Double the output channels for the next convolution layer
                         break;
 
                     case "Pooling Layer":
+                        // Extract the kernel size and padding parameter for the pooling layer
                         double kernelSizeP = params.get(0);
 
+                        // Validate the padding parameter (0 for VALID, 1 for SAME)
                         if (params.get(1) == null || (params.get(1) != 0 && params.get(1) != 1)) {
                             throw new IllegalArgumentException("Invalid padding parameter for pooling layer.");
                         }
 
+                        // Convert the padding value to a string ("VALID" or "SAME")
                         String paddingConverted = (params.get(1) == 0) ? "VALID" : "SAME";
+
+                        // Build the max pooling layer and update the current layer
                         currentLayer = buildVariableMaxPoolLayer(tf, currentLayer, (int) kernelSizeP, paddingConverted);
                         break;
 
                     case "Fully Connected Layer":
+                        // Extract parameters for the fully connected layer: weight initialization scale, bias initialization scale, and seed
                         double weightInitScale = params.get(0);
                         double biasInitScale = params.get(1);
                         double seedFC = params.get(2);
 
-                        // Extract the height, width, and channels before flattening
+                        // Get the height, width, and channels of the current layer's output
                         int height = (int) currentLayer.shape().get(1);  // Height of the feature map
                         int width = (int) currentLayer.shape().get(2);   // Width of the feature map
                         int channels = (int) currentLayer.shape().get(3); // Number of channels
-                        int units = height * width * channels;
+                        int units = height * width * channels;           // Flattened size of the feature map (total units)
 
                         // Flatten the output of the previous layer to prepare for the fully connected layer
                         currentLayer = tf.reshape(currentLayer, tf.concat(Arrays.asList(
                                 tf.slice(tf.shape(currentLayer), tf.array(0), tf.array(1)), // Keep batch size
-                                tf.array(-1)), tf.constant(0))); // Flatten other dimensions
+                                tf.array(-1)), tf.constant(0))); // Flatten the remaining dimensions
 
+                        // Build the fully connected layer and update the current layer
                         currentLayer = buildVariableFullyConnectedLayer(tf, currentLayer, units, units, (float) weightInitScale, (float) biasInitScale, (long) seedFC);
 
-                        // Un-flatten back to 4D tensor (after fully connected layer)
+                        // Un-flatten the output back into a 4D tensor after the fully connected layer
                         currentLayer = tf.reshape(currentLayer, tf.concat(Arrays.asList(
                                 tf.slice(tf.shape(currentLayer), tf.array(0), tf.array(1)), // Keep batch size
-                                tf.array(height, width, channels) // Un-flatten back to 4D tensor
+                                tf.array(height, width, channels) // Un-flatten to the original dimensions
                         ), tf.constant(0)));
                         break;
 
                     default:
+                        // If the layer type is not supported, throw an exception
                         throw new IllegalArgumentException("Unsupported layer type: " + layerType);
                 }
             }
 
-            // Flatten the tensor before the classification output
+            // Flatten the tensor before feeding it into the classification output layer
             int inputs = (int) (currentLayer.shape().get(1) * currentLayer.shape().get(2) * currentLayer.shape().get(3));
             currentLayer = tf.reshape(currentLayer, tf.concat(Arrays.asList(
                     tf.slice(tf.shape(currentLayer), tf.array(0), tf.array(1)), // Keep batch size
-                    tf.array(-1)), tf.constant(0))); // Flatten other dimensions
+                    tf.array(-1)), tf.constant(0))); // Flatten the remaining dimensions
 
+            // Build the final fully connected layer that outputs logits (unnormalized class scores)
             Operand<TFloat32> logits = buildFullyConnectedLayer(tf, currentLayer, inputs, numClasses);
 
-            tf.withName("class_output").nn.softmax(logits); // Apply softmax to logits for class probabilities
+            // Apply the softmax function to the logits to convert them into class probabilities
+            tf.withName("class_output").nn.softmax(logits);
 
-            // Compute softmax cross-entropy loss for classification
+            // Compute the softmax cross-entropy loss for the classification task
             Mean<TFloat32> classLoss = tf.math.mean(tf.nn.softmaxCrossEntropyWithLogits(logits, classLabels).loss(), tf.constant(0));
 
-            // Regularization (L2 Loss) to prevent overfitting
+            // Regularization (L2 Loss) to prevent overfitting by penalizing large weights
             Add<TFloat32> regularizers = tf.math.add(tf.nn.l2Loss(currentLayer), tf.nn.l2Loss(logits));
 
-            // Compute total loss as the sum of class loss and regularization
+            // Compute the total loss as the sum of class loss and regularization term
             Add<TFloat32> totalLoss = tf.withName("totalLoss").math.add(classLoss, tf.math.mul(regularizers, tf.constant(5e-4f)));
 
-            // Optimizer (Adam) for minimizing the total loss
-            Optimizer optimizer = new Adam(graph, 0.001f, 0.9f, 0.999f, 1e-6f); // Create an Adam optimizer
-            optimizer.minimize(totalLoss, "train"); // Add minimization operation to the optimizer
+            // Create an Adam optimizer to minimize the total loss during training
+            Optimizer optimizer = new Adam(graph, 0.001f, 0.9f, 0.999f, 1e-6f); // Adam optimizer with specified parameters
+            optimizer.minimize(totalLoss, "train"); // Add the minimization operation to the optimizer
         }
 
         return graph; // Return the constructed computation graph
     }
 
-    // Method to build a Convolutional Layer followed by ReLU activation
+    /**
+     * Builds a Convolutional Layer followed by a ReLU activation.
+     *
+     * @param tf             The TensorFlow operations (Ops) object, used to create and manipulate tensors.
+     * @param input          The input tensor to the convolutional layer, representing an image or feature map.
+     * @param inputChannels  The number of channels in the input tensor (e.g., 3 for RGB).
+     * @param outputChannels The number of output channels (i.e., number of filters for the convolution).
+     * @return The result of applying the convolutional operation, bias addition, and ReLU activation.
+     * @throws IllegalArgumentException If inputChannels or outputChannels are non-positive.
+     */
     private static Operand<TFloat32> buildConvLayer(Ops tf, Operand<TFloat32> input, int inputChannels, int outputChannels) {
         // Create the filter with a 5x5 kernel, inputChannels -> depth, and outputChannels -> number of filters
         // Truncated normal distribution is used -> limiting extreme values
@@ -425,7 +502,14 @@ public class tensorTrainerCNN extends JFrame {
         return tf.nn.relu(biasAdd); // -> learn more complex patterns
     }
 
-    // Method to build a Max Pooling Layer for scaling image down
+    /**
+     * Builds a Max Pooling Layer for down sampling the input tensor.
+     *
+     * @param tf    The TensorFlow operations (Ops) object, used to create and manipulate tensors.
+     * @param input The input tensor to the max pooling layer, representing an image or feature map.
+     * @return The result of applying the max pooling operation.
+     * @throws IllegalArgumentException If the input tensor is not compatible with max pooling.
+     */
     private static Operand<TFloat32> buildMaxPoolLayer(Ops tf, Operand<TFloat32> input) {
         // Apply max pooling with a 2x2 filter which halves the height and width of the input
         // "SAME" padding ensures that the output size is reduced evenly
@@ -433,7 +517,16 @@ public class tensorTrainerCNN extends JFrame {
         // Max Pooling helps keeping important features while reducing computational complexity
     }
 
-    // Method to build a Fully Connected Layer + ReLU
+    /**
+     * Builds a Fully Connected Layer followed by a ReLU activation.
+     *
+     * @param tf          The TensorFlow operations (Ops) object, used to create and manipulate tensors.
+     * @param input       The input tensor to the fully connected layer, representing a flattened feature map.
+     * @param inputUnits  The number of input units (features) to the fully connected layer.
+     * @param outputUnits The number of output units (neurons) in the fully connected layer.
+     * @return The result of applying matrix multiplication, bias addition, and ReLU activation.
+     * @throws IllegalArgumentException If inputUnits or outputUnits are non-positive.
+     */
     private static Operand<TFloat32> buildFullyConnectedLayer(Ops tf, Operand<TFloat32> input, int inputUnits, int outputUnits) {
         // Initialize the weights matrix for the fully connected layer with inputUnits (number of input features) and outputUnits (number of neurons)
         Operand<TFloat32> weights = tf.variable(tf.math.mul(
@@ -504,6 +597,7 @@ public class tensorTrainerCNN extends JFrame {
      * @param tf              TensorFlow Ops object for building graph.
      * @param input           The input tensor to the fully connected layer (shape: [batchSize, inputUnits]).
      * @param inputUnits      Number of input features (units).
+     * @param OutputUnits     Number of output features (neurons in the layer).
      * @param weightInitScale Scale factor for initializing weights.
      * @param biasInitValue   Initial value for biases (e.g., 0.1 to avoid "dead neurons").
      * @param seed            Seed value for random initialization of weights.
@@ -527,6 +621,18 @@ public class tensorTrainerCNN extends JFrame {
         return tf.nn.relu(dense);
     }
 
+    /**
+     * Trains a CNN model using the provided images and labels for the specified number of epochs.
+     *
+     * @param images     The input images as a tensor (of type TFloat32), used for training the model.
+     * @param labels     The correct labels as a tensor (of type TFloat32), used for supervised training.
+     * @param numClasses The number of output classes for the classification task.
+     * @param epochs     The number of epochs to train the model for.
+     * @param imageSize  The size of the images
+     * @param variable   Boolean flag for activation of variable layers
+     * @param layers     A list of layer configurations (layerEntry objects), defining the layers of the CNN when variable layers are activated
+     * @throws RuntimeException If an error occurs during model training or saving.
+     */
     public static void trainModel(TFloat32 images, TFloat32 labels, int numClasses, int epochs, int imageSize, Boolean variable, ArrayList<CNNPlayground.layerEntry> layers) {
         // Initialize and display the live training analysis GUI window
         tensorTrainerCNN gui = new tensorTrainerCNN();
@@ -535,6 +641,10 @@ public class tensorTrainerCNN extends JFrame {
         gui.setVisible(true); // Make the window visible
         gui.setLocation(100, 10); // Position the window on the screen
         gui.pack(); // Adjust the window to fit its content
+
+        if (!(epochs > 0)) {
+            throw new RuntimeException("Must have more than 1 epoch");
+        }
 
         // Create a new computation graph and session
         try {
@@ -615,9 +725,14 @@ public class tensorTrainerCNN extends JFrame {
         }
     }
 
-    // Method to test the model and compute accuracy and confusion matrix
-    // This method validates the model's predictions against true labels, calculates accuracy,
-    // and generates a confusion matrix to evaluate model performance.
+    /**
+     * Validates the model by comparing its predictions against the true labels.
+     * It calculates the model's accuracy and generates a confusion matrix
+     *
+     * @param label      The true labels for the batch of images
+     * @param numClasses The number of possible output classes
+     * @param outputs    The model's prediction outputs, which contain the softmax probabilities for each class.
+     */
     public static void validate(TFloat32 label, int numClasses, Result outputs) {
         int correctCount = 0; // Variable to track the number of correct predictions
         int[][] confusionMatrix = new int[numClasses][numClasses]; // Initialize confusion matrix with size [numClasses x numClasses]
@@ -638,8 +753,8 @@ public class tensorTrainerCNN extends JFrame {
         int[] predictedLabels = IntStream.range(0, batchSize) // Create a stream of image indices from 0 to batchSize-1
                 .parallel() // Enable parallel processing for faster computation on larger batches
                 .map(i -> { // Map each index to its corresponding predicted label
-                    float maxProb = -1.0f; // Initialize a variable to track the maximum softmax probability
-                    int predictedLabel = -1; // Initialize the predicted class label
+                    float maxProb = 0; // Initialize a variable to track the maximum softmax probability
+                    int predictedLabel = 0; // Initialize the predicted class label
 
                     // Iterate over all classes to find the one with the highest probability
                     for (int j = 0; j < numClasses; j++) {
@@ -684,7 +799,13 @@ public class tensorTrainerCNN extends JFrame {
         accuracy_label.setText("Final accuracy: " + accuracy); // Display the final accuracy in the accuracy label
     }
 
-    // Method to get the index of the maximum value (class label) in the tensor for a given iteration
+    /**
+     * Retrieves the index of the class with the maximum value from the tensor for a given iteration.
+     *
+     * @param tensor    The tensor containing the one-hot encoded labels, of type TFloat32.
+     * @param iteration The index (iteration) for which the maximum value is to be found.
+     * @return The index of the class with the maximum value (1.0 in a one-hot encoded label).
+     */
     public static int argmaxLabel(TFloat32 tensor, int iteration) {
         // Extract the label for the specified iteration (slice of the tensor)
         FloatNdArray label = tensor.slice(Indices.at(iteration));
@@ -704,7 +825,12 @@ public class tensorTrainerCNN extends JFrame {
         return classIndex;
     }
 
-    // Method to build the confusion matrix as a formatted string
+    /**
+     * Builds and formats the confusion matrix into a string representation for display.
+     *
+     * @param confusionMatrix The confusion matrix as a 2D array of integers, representing true vs. predicted labels.
+     * @return A StringBuilder containing the formatted string representation of the confusion matrix.
+     */
     private static StringBuilder getStringBuilder(int[][] confusionMatrix) {
         StringBuilder sb = new StringBuilder();  // StringBuilder to hold the formatted confusion matrix string
 
@@ -728,7 +854,12 @@ public class tensorTrainerCNN extends JFrame {
         return sb;  // Return the formatted confusion matrix as a StringBuilder
     }
 
-    // Method to update the loss values for class and total losses, and refresh the graph
+    /**
+     * Updates the loss values for class loss and total loss, and refreshes the graph to visualize the training progress.
+     *
+     * @param class_l The class loss value for the current epoch.
+     * @param total_l The total loss value for the current epoch.
+     */
     public void updateLossValues(float class_l, float total_l) {
         // Add the new class loss value for the current epoch
         classLossValues.add(class_l);

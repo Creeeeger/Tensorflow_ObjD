@@ -157,6 +157,11 @@ public class Trainer extends JFrame {
         model.addActionListener(new event_load_tensor()); // Action for tensor file button
     }
 
+    /**
+     * Checks if the environment directory "stable_diff_env" exists and contains any files or directories.
+     *
+     * @return true if the "stable_diff_env" directory exists and contains at least one file or directory, false otherwise.
+     */
     public static boolean check_if_env_exists() {
         boolean does_exist = false; // Initialize a boolean to track if the environment exists
         Path path = Paths.get(System.getProperty("user.dir"), "stable_diff_env"); // Define the path to the environment directory
@@ -175,6 +180,9 @@ public class Trainer extends JFrame {
         return does_exist; // Return the result indicating whether the environment exists or not
     }
 
+    /**
+     * Creates the environment by installing necessary dependencies using Homebrew and cloning the Stable Diffusion web UI repository.
+     */
     public void create_env() {
         try {
             // Update the label to inform the user that the environment setup is starting

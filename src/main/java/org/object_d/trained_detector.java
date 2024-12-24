@@ -23,9 +23,9 @@ public class trained_detector extends JFrame {
     static JLabel Tensor_name;       // Tensor_name label to display the name of the tensor file
     static JLabel image_name;        // image_name label to show the name of the selected image file
     static JLabel output_name;       // output_name label to display the name of the output
-    static JButton image_select;     // JButton for selecting an image file. This button will trigger a file chooser dialog to select an image.
-    static JButton predict;          // JButton to initiate the prediction process. This button will call the method to make predictions based on the selected image and tensor.
-    static File image_file;          // File object to store the selected image file. This will be updated when the user selects an image.
+    static JButton image_select;     // JButton for selecting an image file
+    static JButton predict;          // JButton to initiate the prediction process
+    static File image_file;          // File object to store the selected image file
 
     public trained_detector() {
         // Create the layout using BorderLayout with 10px spacing
@@ -47,7 +47,7 @@ public class trained_detector extends JFrame {
         image_select.setEnabled(false); // Initially disabled since tensor file is selected first
 
         // Label for displaying the predicted class
-        output_name = new JLabel("Predicted class: "); // No, I solved the issue that stuff works now
+        output_name = new JLabel("Predicted class: ");
 
         // Initialize the predict button, but keep it disabled initially
         predict = new JButton("Predict");
@@ -89,6 +89,13 @@ public class trained_detector extends JFrame {
         add(detectorPanel, BorderLayout.CENTER);
     }
 
+    /**
+     * Prepares the input image by resizing it to a fixed size and normalizing its RGB values.
+     *
+     * @param ImageFile The image file to be prepared.
+     * @return A tensor (TFloat32) representing the image data in a normalized format suitable for model prediction.
+     * @throws IOException If an error occurs while reading the image file.
+     */
     public static TFloat32 image_preparation(File ImageFile) throws IOException {
         // Load OpenCV library locally to handle image manipulation
         OpenCV.loadLocally();
@@ -131,9 +138,14 @@ public class trained_detector extends JFrame {
         return (TFloat32.tensorOf(imageData));
     }
 
+    /**
+     * Executes the image detection process by loading a trained model and running inference on the prepared image.
+     *
+     * @throws IOException If an error occurs during the loading of the image or model, or while performing detection.
+     */
     public static void detect() throws IOException { // Detection logic is now in the format required for doing its job
         // This is a known fact, since the StageTwoExporter has proven that the loading works properly by this code
-        // --> The exporter logic in the TrainerCNN code is Sh!t <<Time to fix it>>
+        // --> The exporter logic in the TrainerCNN code was bad -> fixed now
         // -> fixed the logic in there - detection works now
 
         // Load the trained model from the directory specified by tensor_file, using the 'serve' tag.

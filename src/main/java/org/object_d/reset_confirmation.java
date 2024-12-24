@@ -6,7 +6,10 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 
 public class reset_confirmation extends JFrame {
-    // Constructor for the reset confirmation dialog
+
+    /**
+     * Constructor for the reset_confirmation dialog.
+     */
     public reset_confirmation() {
         // Set the layout of the frame to a grid layout with 1 row and 1 column
         // The grid has horizontal and vertical gaps of 10 pixels
@@ -29,7 +32,9 @@ public class reset_confirmation extends JFrame {
         yes.addActionListener(new event_yes()); // Listener for the "Yes" button
     }
 
-    // Inner class for handling the action when the "Yes" button is clicked
+    /**
+     * Inner class for handling the action when the "Yes" button is clicked.
+     */
     public class event_yes implements ActionListener {
         @Override
         public void actionPerformed(ActionEvent e) {
@@ -44,7 +49,9 @@ public class reset_confirmation extends JFrame {
         }
     }
 
-    // Inner class for handling the action when the "No" button is clicked
+    /**
+     * Inner class for handling the action when the "No" button is clicked.
+     */
     public class event_no implements ActionListener {
         @Override
         public void actionPerformed(ActionEvent e) {

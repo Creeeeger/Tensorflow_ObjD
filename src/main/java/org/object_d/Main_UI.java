@@ -18,8 +18,8 @@ import static org.object_d.config_handler.load_config;
 public class Main_UI extends JFrame {
     // Static variables for training parameters
     public static int resolution; // Variable for image resolution
-    public static int epochs; // Variable for number of training epochs
-    public static int batch_size; // Variable for batch size during training
+    public static int batch_size; // Variable for  batch size
+    public static int epochs; // Variable for epochs
     public static float learning_rate; // Variable for learning rate
     // Static JLabel components for displaying various information and results
     static JLabel label; // Label for general display
@@ -190,6 +190,11 @@ public class Main_UI extends JFrame {
         gui.setTitle("Object Detector UI"); // Set window title
     }
 
+    /**
+     * Sets the values for various configurations based on the input values array.
+     *
+     * @param values_load A 2D array containing key-value pairs representing configuration values.
+     */
     public static void setValues(String[][] values_load) {
         for (String[] value : Objects.requireNonNull(values_load)) { // Iterate over each value
             System.out.println(value[0] + " " + value[1]); // Print key-value pairs
@@ -234,11 +239,11 @@ public class Main_UI extends JFrame {
                     break;
 
                 case "batch": // Set batch size
-                    epochs = Integer.parseInt(value[1]); // Parse and set epochs
+                    batch_size = Integer.parseInt(value[1]); // Parse and set batch size
                     break;
 
                 case "epochs": // Set epochs value
-                    batch_size = Integer.parseInt(value[1]); // Parse and set batch size
+                    epochs = Integer.parseInt(value[1]); // Parse and set epochs
                     break;
 
                 case "learning": // Set learning rate
@@ -252,14 +257,24 @@ public class Main_UI extends JFrame {
         }
     }
 
+    /**
+     * Saves the configuration settings and reloads them from a configuration file.
+     *
+     * @param res Resolution value for the configuration.
+     * @param epo Number of epochs for the configuration.
+     * @param bat Batch size for the configuration.
+     * @param lea Learning rate for the configuration.
+     * @param pic Image path for the configuration.
+     * @param ten Tensor model path for the configuration.
+     */
     public void save_reload_config(int res, int epo, int bat, float lea, String pic, String ten) {
         System.out.println(res); // Output resolution for debugging
         String[][] values = { // Create values array for saving config
                 {"img_path", pic}, // Image path
                 {"ts_path", ten}, // Tensor model path
                 {"resolution", String.valueOf(res)}, // Resolution
-                {"batch", String.valueOf(epo)}, // Epochs
-                {"epochs", String.valueOf(bat)}, // Batch size
+                {"batch", String.valueOf(bat)}, // Batch size
+                {"epochs", String.valueOf(epo)}, // Epochs
                 {"learning", String.valueOf(lea)} // Learning rate
         };
         config_handler.save_config(values); // Save configuration
@@ -275,8 +290,8 @@ public class Main_UI extends JFrame {
                     {"img_path", prev_picture.getPath()}, // Image path
                     {"ts_path", tensor_file.getPath()}, // Tensor model path
                     {"resolution", String.valueOf(resolution)}, // Resolution
-                    {"batch", String.valueOf(epochs)}, // Epochs
-                    {"epochs", String.valueOf(batch_size)}, // Batch size
+                    {"batch", String.valueOf(batch_size)}, // Batch size
+                    {"epochs", String.valueOf(epochs)}, // epochs
                     {"learning", String.valueOf(learning_rate)} // Learning rate
             };
 
@@ -324,15 +339,16 @@ public class Main_UI extends JFrame {
         @Override
         public void actionPerformed(ActionEvent e) { // Handle action event
             model_param gui = new model_param( // Create new model parameter settings window
+                    (Main_UI) SwingUtilities.getWindowAncestor(detect_objects), // Pass the current instance of Main_UI
                     prev_picture.getPath(), // Pass previous picture path
                     tensor_file.getPath(), // Pass tensor model path
                     resolution, // Pass current resolution
-                    epochs, // Pass current epochs
                     batch_size, // Pass current batch size
+                    epochs, // Pass current epochs
                     learning_rate // Pass current learning rate
             );
 
-            gui.setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE); // Set close operation
+            gui.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE); // Set close operation
             gui.setVisible(true); // Make window visible
             gui.setSize(1100, 550); // Set window size
             gui.setLocation(100, 100); // Set window location
@@ -347,8 +363,8 @@ public class Main_UI extends JFrame {
                     {"img_path", prev_picture.getPath()}, // Store previous picture path
                     {"ts_path", tensor_file.getPath()}, // Store tensor model path
                     {"resolution", String.valueOf(resolution)}, // Store resolution
-                    {"batch", String.valueOf(epochs)}, // Store batch size
-                    {"epochs", String.valueOf(batch_size)}, // Store epochs
+                    {"batch", String.valueOf(batch_size)}, // Store batch size
+                    {"epochs", String.valueOf(epochs)}, // Store epochs
                     {"learning", String.valueOf(learning_rate)} // Store learning rate
             };
 

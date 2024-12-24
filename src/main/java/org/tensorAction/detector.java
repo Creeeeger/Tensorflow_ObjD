@@ -39,6 +39,14 @@ public class detector { // Class for detecting objects and labeling them as well
             "hair brush"
     }; // Array of the labels used for identifying objects
 
+    /**
+     * Classifies objects in a given image using a TensorFlow model and annotates the image with bounding boxes.
+     *
+     * @param imagePath   The path to the image to be processed.
+     * @param ModelBundle A TensorFlow SavedModelBundle to be used for inference.
+     * @return A list of entries containing detected labels, their confidence scores, and annotated image path.
+     * @throws RuntimeException If an error occurs during model execution or image processing.
+     */
     public static ArrayList<entry> classify(String imagePath, SavedModelBundle ModelBundle) {
         // Base logic for returning image path and associated labels
         ArrayList<entry> data = new ArrayList<>();
@@ -52,9 +60,8 @@ public class detector { // Class for detecting objects and labeling them as well
         // Load OpenCV library to allow drawing of bounding boxes on the images
         nu.pattern.OpenCV.loadLocally();
 
+        // Initialize/Load the TensorFlow model bundle
         try (ModelBundle) {
-            // Initialize the TensorFlow model bundle
-
             // Set up the TensorFlow graph and session for image processing
             try (Graph graph = new Graph()) {
                 try (Session session = new Session(graph)) {
@@ -189,6 +196,15 @@ public class detector { // Class for detecting objects and labeling them as well
         return data; // Return the list of entries
     }
 
+    /**
+     * Labels images in a given directory by running a TensorFlow model on each image and returning the detected
+     * object labels and their bounding box coordinates.
+     *
+     * @param imagePath  The directory containing images to be processed.
+     * @param TensorPath The path to the TensorFlow SavedModel.
+     * @return An array of strings
+     * @throws RuntimeException If an error occurs during model execution or image processing.
+     */
     public String[] label(String imagePath, String TensorPath) {
         try (Stream<Path> paths = Files.walk(Paths.get(imagePath))) {
             // get all the files and paths

@@ -122,6 +122,12 @@ public class database_handler {
         }
     }
 
+    /**
+     * Adds data entries from an ArrayList of 'detector.entry' into the database.
+     * Updates existing entries or inserts new ones into 'd_object', 'link_obj', and 'obj_amt' tables.
+     *
+     * @param data The list of 'detector.entry' objects to be added to the database.
+     */
     public static void addData(ArrayList<detector.entry> data) {
         // Method to add entries from an ArrayList into the database, updating or inserting as needed
 
@@ -133,9 +139,9 @@ public class database_handler {
             connection = DriverManager.getConnection("jdbc:sqlite:results.db");
 
             // Loop through each entry in the provided ArrayList
-            for (int i = 0; i < data.size(); i++) {
-                String objName = data.get(i).getLabel().replace(" ", "");  // Get the label, remove spaces to normalize
-                Date date = data.get(i).getDate();                         // Get the date associated with the data entry
+            for (detector.entry entry : data) {
+                String objName = entry.getLabel().replace(" ", "");  // Get the label, remove spaces to normalize
+                Date date = entry.getDate();                         // Get the date associated with the data entry
                 int dateId = UUID.randomUUID().hashCode();                 // Generate a unique identifier for the date
 
                 // Create a new statement for executing SQL commands
@@ -211,6 +217,11 @@ public class database_handler {
         }
     }
 
+    /**
+     * Reads the data from the SQLite database and returns it as a 2D String array.
+     *
+     * @return A 2D String array containing the object names, dates, and amounts.
+     */
     public static String[][] readDatabase() {
         // Method to read the database and return the data as a 2D String array.
         // This is intended for simple load actions, with more complex actions handled in other methods.
@@ -278,6 +289,13 @@ public class database_handler {
         }
     }
 
+    /**
+     * Deletes an entry from the database based on the provided name, date, and amount.
+     *
+     * @param name   The name of the object to delete.
+     * @param date   The date of the entry to delete (used for filtering).
+     * @param amount The amount associated with the entry to delete (used for filtering).
+     */
     public static void delete_entry(String name, String date, String amount) {
         // Method to delete a record based on provided object name, date, and amount.
 
@@ -384,6 +402,14 @@ public class database_handler {
         }
     }
 
+    /**
+     * Searches the database for entries matching the provided name, date, and amount.
+     *
+     * @param name   The name of the object to search for (can be partial match).
+     * @param date   The date of the entry to search for (can be partial match).
+     * @param amount The amount to search for (can be partial match).
+     * @return A 2D array where each row contains the name, date, and amount of a matching entry.
+     */
     public static String[][] searchData(String name, String date, String amount) {
         // Method for searching data in the database based on provided parameters
 
@@ -464,6 +490,11 @@ public class database_handler {
         }
     }
 
+    /**
+     * Exports the contents of the database to a CSV file.
+     *
+     * @param filePath The path to the CSV file
+     */
     public static void exportToCSV(String filePath) {
         // Method to export the database contents to a CSV file
         Connection connection = null; // Connection object for the database
@@ -520,6 +551,13 @@ public class database_handler {
         }
     }
 
+    /**
+     * Escapes special characters (commas, quotes, newlines) in the provided string to ensure
+     * proper CSV formatting.
+     *
+     * @param data The data to escape for CSV formatting.
+     * @return The escaped string that can be safely written to a CSV file.
+     */
     private static String escapeCSV(String data) {
         // Escape special characters for CSV (e.g., commas, quotes, newlines)
         if (data == null) {

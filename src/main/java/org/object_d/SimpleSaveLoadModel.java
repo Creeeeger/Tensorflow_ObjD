@@ -17,8 +17,7 @@ public class SimpleSaveLoadModel {
     }
 
     /**
-     * Creates a simple TensorFlow graph, saves it to disk as a model,
-     * and calls a detection method to validate the saved model.
+     * Creates a simple TensorFlow graph, saves it to disk as a model
      *
      * @param modelPath Path to save the TensorFlow model
      */
@@ -45,7 +44,7 @@ public class SimpleSaveLoadModel {
             try {
                 // Export the model as a "serve" tag for inference purposes
                 SavedModelBundle.exporter(modelPath)
-                        .withTags("serve") // Define the tag for serving/inference
+                        .withTags("serve") // Define the tag for serving
                         .withFunction(function) // Include the session function in the model
                         .export(); // Save the model to the specified path
 
@@ -59,7 +58,7 @@ public class SimpleSaveLoadModel {
     }
 
     /**
-     * Loads a saved TensorFlow model from disk and performs inference to fetch a constant value.
+     * Loads a saved TensorFlow model from disk and fetch a constant value.
      *
      * @param modelPath Path where the TensorFlow model is saved
      */

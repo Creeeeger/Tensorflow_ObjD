@@ -44,7 +44,8 @@ public class database_utility extends JFrame {
     static JTextField dateField_search; // Text field for entering search queries related to dates
     static JTextField amountField_search; // Text field for entering search queries related to amounts
 
-    public database_utility() { // Constructor to create the design for the main window
+    // Constructor to create the design for the main window
+    public database_utility() {
 
         // Initial database access to fill tables during construction
         data = database_handler.readDatabase();
@@ -185,7 +186,14 @@ public class database_utility extends JFrame {
         csvExport.addActionListener(new event_export_csv()); // Listen for CSV export button clicks
     }
 
-    public static void searchOP(String name, String date, String amount) { // Method for searching data
+    /**
+     * Searches the database for entries that match the provided search criteria.
+     *
+     * @param name   The name to search for.
+     * @param date   The date to search for.
+     * @param amount The amount to search for.
+     */
+    public static void searchOP(String name, String date, String amount) {
         // Fetch the updated data from the database using the provided search criteria
         data = database_handler.searchData(name, date, amount);
 
@@ -236,7 +244,9 @@ public class database_utility extends JFrame {
         }
     }
 
-    // ListSelectionListener for selecting a row in the right table (delete operations)
+    /**
+     * ListSelectionListener for selecting a row in the right table.
+     */
     public static class event_delete_select_raw implements ListSelectionListener {
         @Override
         public void valueChanged(ListSelectionEvent e) {
@@ -261,7 +271,10 @@ public class database_utility extends JFrame {
         }
     }
 
-    // DocumentListener for handling changes in the search fields
+    /**
+     * DocumentListener for handling changes in the search fields (Name, Date, Amount).
+     * Triggers search operation each time the content of any search field is modified.
+     */
     public static class event_change_search implements DocumentListener {
         @Override
         public void insertUpdate(DocumentEvent e) {
@@ -321,7 +334,9 @@ public class database_utility extends JFrame {
         }
     }
 
-    // ActionListener for exporting data to a CSV file
+    /**
+     * ActionListener for exporting data to a CSV file.
+     */
     public static class event_export_csv implements ActionListener {
         @Override
         public void actionPerformed(ActionEvent e) {
@@ -336,7 +351,9 @@ public class database_utility extends JFrame {
         }
     }
 
-    // ActionListener for deleting an entry from the database
+    /**
+     * ActionListener for deleting an entry from the database.
+     */
     public static class event_delete_entry implements ActionListener {
         @Override
         public void actionPerformed(ActionEvent e) {
@@ -362,7 +379,9 @@ public class database_utility extends JFrame {
         }
     }
 
-    // ActionListener for writing modified data to the database
+    /**
+     * ActionListener for writing modified data to the database.
+     */
     public static class event_write_to_db implements ActionListener {
         @Override
         public void actionPerformed(ActionEvent e) {

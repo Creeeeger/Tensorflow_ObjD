@@ -12,6 +12,17 @@ public final class CLIApp {
         // Private constructor to prevent instantiation of the utility class
     }
 
+    /**
+     * Generates an image based on a given text prompt using the Stable Diffusion for Java (SD4J) library.
+     *
+     * @param args        Command-line arguments
+     * @param steps       Number of steps
+     * @param prompt      The text prompt
+     * @param B_size      Batch size
+     * @param output_path The path to save the generated images.
+     * @throws OrtException If an error occurs while interacting with the ONNX Runtime.
+     * @throws IOException  If an error occurs during file I/O operations (e.g., saving the generated image).
+     */
     public static void gen(String[] args, int steps, String prompt, int B_size, String output_path) throws OrtException, IOException {
         // Generates an image based on a given prompt using SD4J
 

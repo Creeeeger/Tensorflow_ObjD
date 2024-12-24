@@ -11,6 +11,7 @@ public class model_param extends JFrame {
     int epo; // Variable to hold the number of training epochs
     int bat; // Variable to hold the batch size for training
     float lea; // Variable to hold the learning rate for the model
+    Main_UI mainUI;
 
     // JTextField components for user input
     JTextField resolution; // Text field for the user to input the desired resolution
@@ -25,10 +26,23 @@ public class model_param extends JFrame {
     String pic; // Variable to hold the picture file path or name
     String ten; // Variable to hold the tensor file path or name
 
-    // Constructor for the model_param class to set up the user interface for model parameter configuration
-    public model_param(String pic, String ten, int res, int epo, int bat, float lea) {
+    /**
+     * Constructor for the model_param class to set up the user interface for model parameter configuration.
+     *
+     * @param mainUI mainUI reference
+     * @param pic    picture used
+     * @param ten    tensor used
+     * @param res    The resolution for image processing.
+     * @param epo    The number of epochs for training.
+     * @param bat    The batch size for training.
+     * @param lea    The learning rate for the model.
+     */
+    public model_param(Main_UI mainUI, String pic, String ten, int res, int bat, int epo, float lea) {
         // Set the layout manager for the frame to BorderLayout with specified horizontal and vertical gaps
         setLayout(new BorderLayout(10, 10));
+
+        this.mainUI = mainUI; // Store the reference to the Main_UI instance
+
 
         // Initialize instance variables with the parameters passed to the constructor so that we can access the variables in the class for passing them back later
         this.pic = pic;  // The picture path or name
@@ -114,9 +128,7 @@ public class model_param extends JFrame {
                 int bat = Integer.parseInt(batch.getText());        // Parse batch size as an integer
                 float lea = Float.parseFloat(display_scale.getText()); // Parse learning rate as a float
 
-                // Create an instance of the main UI class to call the method that saves and reloads the configuration
-                Main_UI mainUI = new Main_UI();
-                // Save the configuration and reload it with the new settings
+                // call the method that saves and reloads the configuration
                 mainUI.save_reload_config(res, epo, bat, lea, pic, ten);
 
                 // Close the settings window by setting its visibility to false

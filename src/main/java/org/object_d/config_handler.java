@@ -15,6 +15,15 @@ import javax.xml.transform.stream.StreamResult;
 import java.io.File;
 
 public class config_handler {
+
+    /**
+     * Loads the configuration data from the `config.xml` file.
+     *
+     * @return a 2D array where each entry contains a key-value pair from the configuration:
+     * - `values[index][0]`: The key (XML element name).
+     * - `values[index][1]`: The value (XML element content).
+     * @throws RuntimeException if the configuration file cannot be processed or is missing.
+     */
     public static String[][] load_config() {
         // Method for loading the configuration data from the config.xml file
         // It returns a 2D array where [index][0] is the key and [index][1] is the value
@@ -75,6 +84,14 @@ public class config_handler {
         }
     }
 
+    /**
+     * Saves the provided configuration data to the `config.xml` file.
+     *
+     * @param values a 2D array where each entry contains a key-value pair to be saved:
+     *               - `values[index][0]`: The key (XML element name).
+     *               - `values[index][1]`: The value (XML element content).
+     * @throws RuntimeException if there is an error during the saving process.
+     */
     public static void save_config(String[][] values) {
         try {
             // Create an instance of DocumentBuilderFactory, which provides a way to obtain a DocumentBuilder
@@ -128,6 +145,12 @@ public class config_handler {
         }
     }
 
+
+    /**
+     * Creates a new default configuration file named `config.xml`.
+     *
+     * @throws RuntimeException if there is an error during the creation process.
+     */
     public static void create_config() { //method for creating a new config file
         try {
             // Create a DocumentBuilderFactory instance to produce a DocumentBuilder
@@ -172,8 +195,6 @@ public class config_handler {
             Element learning = doc.createElement("learning");
             learning.appendChild(doc.createTextNode("1.0"));
             root.appendChild(learning);
-
-            // Additional elements can be added here as needed (by creating new tags and appending to root)
 
             // Use TransformerFactory to create a Transformer instance for converting the Document to XML format
             TransformerFactory transformerFactory = TransformerFactory.newInstance();
