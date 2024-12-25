@@ -114,37 +114,58 @@ public class tensorTrainerCNN extends JFrame {
         }
     }
 
+    /**
+     * Saves a batch of images from a given tensor as individual image files. Each image reassembled as a png file and saved to disk
+     *
+     * @param images A tensor (TFloat32) containing a batch of images in the shape [batch_size, height, width, channels].
+     * @throws IOException If an error occurs while writing the image files to disk.
+     */
     public static void saveTensorImages(TFloat32 images) throws IOException {
-        int batchSize = (int) images.shape().get(0);
-        int imageHeight = (int) images.shape().get(1);
-        int imageWidth = (int) images.shape().get(2);
-        int numChannels = (int) images.shape().get(3);
+        // Get the dimensions of the tensor (batch size, image height, image width, number of channels)
+        int batchSize = (int) images.shape().get(0); // Number of images in the batch
+        int imageHeight = (int) images.shape().get(1); // Height of each image
+        int imageWidth = (int) images.shape().get(2); // Width of each image
+        int numChannels = (int) images.shape().get(3); // Number of channels
+
+        // Initialize a 4D array to hold the image data
         float[][][][] imageData = new float[batchSize][imageHeight][imageWidth][numChannels];
 
+        // Extract the image data from the tensor and store it in the 4D array
         for (int i = 0; i < batchSize; i++) {
             for (int h = 0; h < imageHeight; h++) {
                 for (int w = 0; w < imageWidth; w++) {
                     for (int c = 0; c < numChannels; c++) {
-                        imageData[i][h][w][c] = images.getFloat(i, h, w, c);
+                        imageData[i][h][w][c] = images.getFloat(i, h, w, c); // Get pixel values for each channel
                     }
                 }
             }
         }
 
-        // Save each image as a file
+        // Loop through each image in the batch and save it as a PNG file
         for (int i = 0; i < batchSize; i++) {
+            // Create a new BufferedImage to hold the current image
             BufferedImage img = new BufferedImage(imageWidth, imageHeight, BufferedImage.TYPE_INT_RGB);
+
+            // Loop through each pixel in the image and set the RGB value
             for (int h = 0; h < imageHeight; h++) {
                 for (int w = 0; w < imageWidth; w++) {
-                    int r = (int) (imageData[i][h][w][0] * 255); // Scale back to 0-255
-                    int g = (int) (imageData[i][h][w][1] * 255);
-                    int b = (int) (imageData[i][h][w][2] * 255);
+                    // Scale the pixel values back to the range of 0-255
+                    int r = (int) (imageData[i][h][w][0] * 255); // Red channel
+                    int g = (int) (imageData[i][h][w][1] * 255); // Green channel
+                    int b = (int) (imageData[i][h][w][2] * 255); // Blue channel
+
+                    // Combine the RGB values into a single integer
                     int rgb = (r << 16) | (g << 8) | b;
+
+                    // Set the RGB value of the pixel in the BufferedImage
                     img.setRGB(w, h, rgb);
                 }
             }
-            // Save or display the image
+
+            // Generate a random file name for the image to avoid duplication and overwriting
             File output = new File("image_" + Math.random() + ".png");
+
+            // Write the image to the disk as a PNG file
             ImageIO.write(img, "png", output);
         }
     }
@@ -343,7 +364,7 @@ public class tensorTrainerCNN extends JFrame {
         float[] labelArray = new float[numClasses];
 
         // Check if the class label exceeds the total number of classes available
-        if (classLabel >= numberClasses) {
+        if (classLabel >= numberClasses) { // In theory this should never happen by now but in case it does it got a fallback method to handle the error (un-properly)
             // Print an error message indicating that the class label is invalid
             System.out.println("Class label " + classLabel + " exceeds total number of classes " + numberClasses);
 
