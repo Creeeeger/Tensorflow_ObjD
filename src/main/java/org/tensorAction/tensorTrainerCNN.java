@@ -294,12 +294,12 @@ public class tensorTrainerCNN extends JFrame {
     }
 
     /**
-     * Constructs a computational graph for building and training a Convolutional Neural Network (CNN).
+     * Constructs a computational graph for building and training a Convolutional Neural Network
      *
      * @param numClasses The number of output classes for classification
      * @param imageSize  The height and width of the input images
-     * @param layers     A list of layers to be used in the network, or null if no dynamic layers are used. If non-null, this list contains layer configurations for constructing the network dynamically.
-     * @return A TensorFlow computational graph representing the CNN model, including layers, loss, and optimizer.
+     * @param layers     list of layers - null if no dynamic layers otherwise list contains layer configurations
+     * @return A TensorFlow computational graph
      * @throws IllegalArgumentException If the `layers` list contains unsupported layer types or invalid parameters.
      */
     public static Graph Graph(int numClasses, int imageSize, ArrayList<CNNPlayground.layerEntry> layers) {
@@ -313,16 +313,65 @@ public class tensorTrainerCNN extends JFrame {
 
         // Input placeholders
         // Input tensor for image data, shape: [batch_size, imageSize, imageSize, NUM_CHANNELS]
-        Placeholder<TFloat32> input = tf.withName("input").placeholder(TFloat32.class, Placeholder.shape(Shape.of(-1, imageSize, imageSize, NUM_CHANNELS)));
+        Placeholder<TFloat32> input = tf.withName("input").placeholder(
+                TFloat32.class,
+                Placeholder.shape(
+                        Shape.of(
+                                -1,
+                                imageSize,
+                                imageSize,
+                                NUM_CHANNELS
+                        )
+                )
+        );
+
         // Reshape input tensor if necessary
-        Reshape<TFloat32> inputReshaped = tf.reshape(input, tf.array(-1, imageSize, imageSize, NUM_CHANNELS));
+        Reshape<TFloat32> inputReshaped = tf.reshape(
+                input,
+                tf.array(
+                        -1,
+                        imageSize,
+                        imageSize,
+                        NUM_CHANNELS
+                )
+        );
 
         // Placeholder for class labels
-        Placeholder<TFloat32> classLabels = tf.withName("labels").placeholder(TFloat32.class, Placeholder.shape(Shape.of(-1, numClasses))); // shape for class labels
+        Placeholder<TFloat32> classLabels = tf.withName("labels").placeholder(
+                TFloat32.class,
+                Placeholder.shape(
+                        Shape.of(
+                                -1,
+                                numClasses
+                        )
+                )
+        ); // shape for class labels
 
         // Input normalization (feature scaling)
-        // Scale pixel values from [0, 255] to [-1, 1] for better training convergence
-        Operand<TFloat32> scaledInput = tf.math.div(tf.math.sub(tf.dtypes.cast(inputReshaped, TFloat32.class), tf.constant(127.5f)), tf.constant(255.0f));
+        // Scale pixel values from [0, 255] to [-0.5, 0.5] for better training convergence
+        Operand<TFloat32> scaledInput = tf.math.div(
+                tf.math.sub(
+                        tf.dtypes.cast(
+                                inputReshaped,
+                                TFloat32.class
+                        ),
+                        tf.constant(127.5f)),
+                tf.constant(255.0f)
+        );
+        /*
+        Casting Input to TFloat32 and subtracting 127.5 so:
+         tf.math.sub(
+             tf.dtypes.cast(inputReshaped, TFloat32.class),
+             tf.constant(127.5f)
+         )
+        •	Original range: [0, 255].
+	    •	After subtraction: [-127.5, 127.5].
+
+	    Dividing by a Constant tf.math.div(..., tf.constant(255.0f))
+	    •	range [-127.5, 127.5] to [-0.5, 0.5].
+        •	Minimum value: -127.5 / 255.0 = -0.5.
+        •	Maximum value: 127.5 / 255.0 = 0.5.
+         */
 
         if (variable) { // no dynamic layers
             // Build Convolutional Layers followed by Max Pooling layers
@@ -336,9 +385,37 @@ public class tensorTrainerCNN extends JFrame {
             Operand<TFloat32> pool3 = buildMaxPoolLayer(tf, conv3); // Third max pooling layer
 
             // Flatten the output from the last pooling layer to feed into fully connected layers
-            Operand<TFloat32> flatten = tf.reshape(pool3, tf.concat(Arrays.asList(
-                    tf.slice(tf.shape(pool3), tf.array(0), tf.array(1)), // Keep batch size
-                    tf.array(-1)), tf.constant(0))); // Flatten other dimensions
+            Operand<TFloat32> flatten = tf.reshape(pool3,
+                    tf.concat(
+                            Arrays.asList(
+                                    tf.slice(tf.shape(pool3), tf.array(0), tf.array(1)), // Keep the batch size
+                                    tf.array(-1)
+                            ),
+                            tf.constant(0)
+                    )
+            ); // Flatten other dimensions
+            /*
+             tf.slice(tf.shape(pool3), tf.array(0), tf.array(1))
+                •	tf.shape(pool3): data (shape of tensor)
+	            •	tf.array(0): Starting index of the slice (0th index = batch size).
+	            •	tf.array(1): Number of elements to slice (just the batch size).
+	            so return the batch size
+
+	         tf.array(-1)
+	            •	dimension size for the flattened portion (-1 to keep it dynamic)
+	            size will be height*width*channels
+
+	         Arrays.asList(...)
+	            combine batch size and dynamic flatten part into a list
+
+	         tf.concat(..., tf.constant(0))
+	            •	Concatenates the batch size and flattened dimension into a single tensor along a specified axis.
+            	•	tf.constant(0): Specifies axis 0 (concatenating along the same dimension).
+
+             tf.reshape(pool3, ...)
+                •	Reshapes the tensor pool3 into new shape [batch_size, -1].
+                •	Transforms the 4D tensor into a 2D tensor:
+             */
 
             int inputs = (int) (pool3.shape().get(1) * pool3.shape().get(2) * pool3.shape().get(3)); //fix amount of inputs for avoiding errors and improving performance
 
@@ -354,10 +431,19 @@ public class tensorTrainerCNN extends JFrame {
             Mean<TFloat32> classLoss = tf.math.mean(crossEntropy.loss(), tf.constant(0)); // Mean cross-entropy loss
 
             // Regularization (L2 Loss) to prevent overfitting
-            Add<TFloat32> regularizers = tf.math.add(tf.nn.l2Loss(fc1), tf.nn.l2Loss(logits)); // L2 loss for fully connected layer and logits
+            Add<TFloat32> regularizers = tf.math.add(
+                    tf.nn.l2Loss(fc1),
+                    tf.nn.l2Loss(logits)
+            ); // L2 loss for fully connected layer and logits
 
             // Compute total loss as the sum of class loss and regularization
-            Add<TFloat32> totalLoss = tf.withName("totalLoss").math.add(classLoss, tf.math.mul(regularizers, tf.constant(5e-4f))); // Scale regularization term
+            Add<TFloat32> totalLoss = tf.withName("totalLoss").math.add(
+                    classLoss,
+                    tf.math.mul(
+                            regularizers,
+                            tf.constant(5e-4f)
+                    )
+            ); // Scale regularization term
 
             // Optimizer (Adam) for minimizing the total loss
             Optimizer optimizer = new Adam(graph, 0.001f, 0.9f, 0.999f, 1e-6f); // Create an Adam optimizer
@@ -433,10 +519,17 @@ public class tensorTrainerCNN extends JFrame {
                                 tf.slice(tf.shape(currentLayer), tf.array(0), tf.array(1)), // Keep batch size
                                 tf.array(height, width, channels) // Un-flatten to the original dimensions
                         ), tf.constant(0)));
+                        /*
+                        extract the batch size      tf.slice(tf.shape(currentLayer), tf.array(0), tf.array(1)), // Keep batch size
+                        create new array with previously saved dimensions   tf.array(height, width, channels) // Un-flatten to the original dimensions
+                        put them together as a list     Arrays.asList(
+                        concat them along the same axis tf.concat(..., tf.constant(0))
+                        reshape data
+                         */
                         break;
 
                     default:
-                        // If the layer type is not supported, throw an exception
+                        // If the layer type is not supported, throw exception
                         throw new IllegalArgumentException("Unsupported layer type: " + layerType);
                 }
             }
@@ -447,14 +540,20 @@ public class tensorTrainerCNN extends JFrame {
                     tf.slice(tf.shape(currentLayer), tf.array(0), tf.array(1)), // Keep batch size
                     tf.array(-1)), tf.constant(0))); // Flatten the remaining dimensions
 
-            // Build the final fully connected layer that outputs logits (unnormalized class scores)
+            // Build the final fully connected layer that outputs logits (un-normalized class scores)
             Operand<TFloat32> logits = buildFullyConnectedLayer(tf, currentLayer, inputs, numClasses);
 
             // Apply the softmax function to the logits to convert them into class probabilities
             tf.withName("class_output").nn.softmax(logits);
 
             // Compute the softmax cross-entropy loss for the classification task
-            Mean<TFloat32> classLoss = tf.math.mean(tf.nn.softmaxCrossEntropyWithLogits(logits, classLabels).loss(), tf.constant(0));
+            Mean<TFloat32> classLoss = tf.math.mean(
+                    tf.nn.softmaxCrossEntropyWithLogits(
+                            logits,
+                            classLabels
+                    ).loss(),
+                    tf.constant(0)
+            );
 
             // Regularization (L2 Loss) to prevent overfitting by penalizing large weights
             Add<TFloat32> regularizers = tf.math.add(tf.nn.l2Loss(currentLayer), tf.nn.l2Loss(logits));
@@ -463,7 +562,7 @@ public class tensorTrainerCNN extends JFrame {
             Add<TFloat32> totalLoss = tf.withName("totalLoss").math.add(classLoss, tf.math.mul(regularizers, tf.constant(5e-4f)));
 
             // Create an Adam optimizer to minimize the total loss during training
-            Optimizer optimizer = new Adam(graph, 0.001f, 0.9f, 0.999f, 1e-6f); // Adam optimizer with specified parameters
+            Optimizer optimizer = new Adam(graph, 0.005f, 0.9f, 0.999f, 1e-6f); // Adam optimizer with specified parameters
             optimizer.minimize(totalLoss, "train"); // Add the minimization operation to the optimizer
         }
 
@@ -481,25 +580,94 @@ public class tensorTrainerCNN extends JFrame {
      * @throws IllegalArgumentException If inputChannels or outputChannels are non-positive.
      */
     private static Operand<TFloat32> buildConvLayer(Ops tf, Operand<TFloat32> input, int inputChannels, int outputChannels) {
-        // Create the filter with a 5x5 kernel, inputChannels -> depth, and outputChannels -> number of filters
+        // Create the filter of a 5x5 kernel
+        // inputChannels -> depth
+        // outputChannels -> number of filters
         // Truncated normal distribution is used -> limiting extreme values
-        Operand<TFloat32> convWeights = tf.variable(tf.math.mul(
-                tf.random.truncatedNormal(tf.array(5, 5, inputChannels, outputChannels),
-                        TFloat32.class, TruncatedNormal.seed(12345L)), // Ensure reproducibility with a fixed seed
-                tf.constant(0.1f))); // Scale the randomly initialized weights by 0.1
+        Operand<TFloat32> convWeights = tf.variable(
+                tf.math.mul(
+                        tf.random.truncatedNormal(
+                                tf.array( // Shape of the filter
+                                        5,
+                                        5,
+                                        inputChannels,
+                                        outputChannels
+                                ),
+                                TFloat32.class, // Data type
+                                TruncatedNormal.seed(12345L) // Fixed seed for reproducibility
+                        ),
+                        tf.constant(0.1f) // Constant to multiply weight by
+                )
+        ); // Scale the randomly initialized weights by 0.1
+        /*
+        Filter (Weights) Initialization:
+            Weights decide how features are extracted from data
+            Random Initialization of Weights:
+            kernel array is filled with random normalized truncated values
+            Shape of Weights: tf.array(5, 5, inputChannels, outputChannels)
+            5, 5: The filter size (kernel is 5*5)
+            inputChannels: The depth of the input feature map (so for an RGB image we have 3 Channels so a depth of 3. so each filter has 3 layers for each channel)
+            outputChannels: Number of Filters and input for the next layer
+
+            Truncated Normal Distribution:
+            tf.random.truncatedNormal(...)
+            Generates random numbers which form a normal distribution, values are truncated to prevent extremes values
+            seed(12345L): Ensures reproducibility. same input - same output
+
+            Scaling the Weights:
+            tf.math.mul(..., tf.constant(0.1f))
+            Multiplies each weight by 0.1
+            prevent large gradients, keep weights small -> better training
+
+            Defining the Variable:
+            tf.variable(...)
+            forms data into a trainable variable
+         */
 
         // Create a bias for the operation, initialized to 0 for each output channel
         Operand<TFloat32> convBiases = tf.variable(tf.fill(tf.array(outputChannels), tf.constant(0.0f)));
+        /*
+         Bias Initialization
+         create an array with as many slots as output channels and set each slot (bias) to 0.0
+         so there are no value shifts
+         */
 
         // Perform the 2D convolution operation
         // "SAME" padding ensures that the output has the same dimensions as the input
-        Conv2d<TFloat32> conv = tf.nn.conv2d(input, convWeights, Arrays.asList(1L, 1L, 1L, 1L), "SAME");
+        Conv2d<TFloat32> conv = tf.nn.conv2d(
+                input,
+                convWeights,
+                Arrays.asList(1L, 1L, 1L, 1L),
+                "SAME"
+        );
+        /*
+        Convolution Operation:
+        Applies filters (convWeights) to input tensor using a 2D convolution operation.
+	    Input: input 4D tensor, shape [batchSize, height, width, Channels].
+	    Filters: convWeights are filters for extracting features
+	    Strides: Arrays.asList(1L, 1L, 1L, 1L) shifting of filter (no skipping of pixels, moves 1 pixel a time)
+	    Padding: "SAME" -> output tensor has same dimensions as the input one;
+         */
 
         // Add the biases to the convolution result, shifting the values for each output channel
-        BiasAdd<TFloat32> biasAdd = tf.nn.biasAdd(conv, convBiases);
+        BiasAdd<TFloat32> biasAdd = tf.nn.biasAdd(
+                conv,
+                convBiases
+        );
+        /*
+        Bias Addition:
+        biasAdd = conv + convBiases
+        add the bias to the convolutional operations
+         */
 
         // Apply the ReLU activation function to introduce non-linearity. ReLU sets negative values to 0 and keeps positive values as they are
         return tf.nn.relu(biasAdd); // -> learn more complex patterns
+        /*
+         Activation Function (ReLU):
+         f(x) = max(0, x)
+         negative values to 0
+         keep positive ones the same
+         */
     }
 
     /**
@@ -513,35 +681,99 @@ public class tensorTrainerCNN extends JFrame {
     private static Operand<TFloat32> buildMaxPoolLayer(Ops tf, Operand<TFloat32> input) {
         // Apply max pooling with a 2x2 filter which halves the height and width of the input
         // "SAME" padding ensures that the output size is reduced evenly
-        return tf.nn.maxPool(input, tf.array(1, 2, 2, 1), tf.array(1, 2, 2, 1), "SAME");
-        // Max Pooling helps keeping important features while reducing computational complexity
+        return tf.nn.maxPool(
+                input,
+                tf.array(1, 2, 2, 1),
+                tf.array(1, 2, 2, 1),
+                "SAME"
+        );
+        /*
+        input
+        Filter Size:
+        	•	Dimensions:
+	            •	1: Batch dimension (no pooling across batches).
+	            •	2: Height of the filter (2 pixels).
+            	•	2: Width of the filter (2 pixels).
+	            •	1: Channels (no pooling across channels).
+
+	    Strides:
+	    	•	Dimensions:
+	            •	1: Batch dimension (no stride across batches).
+	            •	2: Vertical stride (moves 2 pixels vertically).
+	            •	2: Horizontal stride (moves 2 pixels horizontally).
+	            •	1: Channels (no stride across channels).
+
+	     Padding:
+	     	•	Padding Mode:
+	            •	"SAME" dimensions reduced evenly
+         */
+
+        // Max Pooling --> keep important features while reducing complexity and size
     }
 
     /**
-     * Builds a Fully Connected Layer followed by a ReLU activation.
+     * Builds a Fully Connected Layer / Dense layer + ReLU activation.
      *
      * @param tf          The TensorFlow operations (Ops) object, used to create and manipulate tensors.
      * @param input       The input tensor to the fully connected layer, representing a flattened feature map.
-     * @param inputUnits  The number of input units (features) to the fully connected layer.
-     * @param outputUnits The number of output units (neurons) in the fully connected layer.
+     * @param inputUnits  The number of input units (features)
+     * @param outputUnits The number of output units (neurons)
      * @return The result of applying matrix multiplication, bias addition, and ReLU activation.
      * @throws IllegalArgumentException If inputUnits or outputUnits are non-positive.
      */
     private static Operand<TFloat32> buildFullyConnectedLayer(Ops tf, Operand<TFloat32> input, int inputUnits, int outputUnits) {
         // Initialize the weights matrix for the fully connected layer with inputUnits (number of input features) and outputUnits (number of neurons)
-        Operand<TFloat32> weights = tf.variable(tf.math.mul(
-                tf.random.truncatedNormal(tf.array(inputUnits, outputUnits), TFloat32.class, TruncatedNormal.seed(12345L)),
-                tf.constant(0.1f)));
+        Operand<TFloat32> weights = tf.variable(
+                tf.math.mul(
+                        tf.random.truncatedNormal(
+                                tf.array(inputUnits, outputUnits),
+                                TFloat32.class,
+                                TruncatedNormal.seed(12345L)
+                        ),
+                        tf.constant(0.1f)
+                )
+        );
+        /*
+	        •	Weights Matrix:
+            tf.random.truncatedNormal(tf.array(inputUnits, outputUnits), TFloat32.class, TruncatedNormal.seed(12345L))
+                tf.array(inputUnits, outputUnits):
+            	•   shape of weight tensor
+	            •	inputUnits: Number of input features (columns in the weight matrix).
+            	•	outputUnits: Number of output neurons (rows in the weight matrix).
+
+            	TFloat32.class:
+	            •	data type -> 32-bit floating-point numbers
+
+	            TruncatedNormal.seed(12345L):
+	            •	reproducibility -> same random values will generate every time code runs
+
+            tf.math.mul(..., tf.constant(0.1f)) - Multiplies all values by 0.1 to scale down
+
+	        tf.variable(...) - create a trainable variable used later
+         */
 
         // Initialize biases for each output unit (neuron), set to a small positive value (0.1) to avoid "dead neurons"
         Operand<TFloat32> biases = tf.variable(tf.fill(tf.array(outputUnits), tf.constant(0.1f)));
+        /*
+            Bias Vector:
+        	    array with slots as many as output elements and every element has the value of 0.1
+         */
 
-        // Perform matrix multiplication between the input and weights, which combines features across neurons
+        // Perform matrix multiplication between the input and weights, combines features across neurons
         // Add biases to the result of the matrix multiplication, shifting the values before applying activation
         Operand<TFloat32> dense = tf.math.add(tf.linalg.matMul(input, weights), biases);
+        /*
+            dense = (input * weights) + biases
+	        •	Matrix Multiplication: input * weights across neurons.
+	        •	Bias Addition: Shifts values for each neuron.
+         */
 
         // Apply the ReLU activation function to the result of the fully connected layer to introduce non-linearity
         return tf.nn.relu(dense);
+        /*
+            f(x) = max(0, x)
+	        •	Introduces non-linearity -> learn complex relationships
+         */
     }
 
     /**
