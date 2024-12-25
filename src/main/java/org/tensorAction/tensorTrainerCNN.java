@@ -90,14 +90,6 @@ public class tensorTrainerCNN extends JFrame {
         // Load the OpenCV library locally this is the new method since the native library method doesn't work anymore
         nu.pattern.OpenCV.loadLocally();
 
-        // Create a File object pointing to the provided folder directory
-        File folderDir = new File(folder);
-
-        // Count the number of subdirectories (representing different classes) in the folder images must be grouped for this in the folder depending on classes
-        numberClasses = (int) Arrays.stream(Objects.requireNonNull(folderDir.listFiles()))
-                .filter(File::isDirectory)
-                .count();
-
         // Retrieve training configuration from Main_UI settings
         int imageSize = Main_UI.resolution; // Get the image resolution
         epochs = Main_UI.epochs; // Get the number of training epochs
@@ -107,15 +99,11 @@ public class tensorTrainerCNN extends JFrame {
             throw new RuntimeException("Must have a greater batch size than 1");
         }
 
-        // Check if the folder contains no subdirectories (i.e., no grouped images)
-        if (numberClasses == 0) {
-            throw new RuntimeException("You can't use a folder without grouped images!"); // Throw an error if no classes found
-        }
-
         // Load the dataset into batches with specified parameters
-        TFloat32[] datasetBatch = loadDataset(folder, batchSize, imageSize, imageSize, 3, numberClasses);
+        TFloat32[] datasetBatch = loadDataset(folder, batchSize, imageSize, imageSize, 3);
         TFloat32 images = datasetBatch[0]; // Extract the image batch
         TFloat32 labels = datasetBatch[1]; // Extract the corresponding labels batch
+        // saveTensorImages(images); // Print out the images
 
         // Train the model with the loaded dataset, number of classes, epochs, and image size
         // create switch for variable layer training and normal training
@@ -126,19 +114,53 @@ public class tensorTrainerCNN extends JFrame {
         }
     }
 
+    public static void saveTensorImages(TFloat32 images) throws IOException {
+        int batchSize = (int) images.shape().get(0);
+        int imageHeight = (int) images.shape().get(1);
+        int imageWidth = (int) images.shape().get(2);
+        int numChannels = (int) images.shape().get(3);
+        float[][][][] imageData = new float[batchSize][imageHeight][imageWidth][numChannels];
+
+        for (int i = 0; i < batchSize; i++) {
+            for (int h = 0; h < imageHeight; h++) {
+                for (int w = 0; w < imageWidth; w++) {
+                    for (int c = 0; c < numChannels; c++) {
+                        imageData[i][h][w][c] = images.getFloat(i, h, w, c);
+                    }
+                }
+            }
+        }
+
+        // Save each image as a file
+        for (int i = 0; i < batchSize; i++) {
+            BufferedImage img = new BufferedImage(imageWidth, imageHeight, BufferedImage.TYPE_INT_RGB);
+            for (int h = 0; h < imageHeight; h++) {
+                for (int w = 0; w < imageWidth; w++) {
+                    int r = (int) (imageData[i][h][w][0] * 255); // Scale back to 0-255
+                    int g = (int) (imageData[i][h][w][1] * 255);
+                    int b = (int) (imageData[i][h][w][2] * 255);
+                    int rgb = (r << 16) | (g << 8) | b;
+                    img.setRGB(w, h, rgb);
+                }
+            }
+            // Save or display the image
+            File output = new File("image_" + Math.random() + ".png");
+            ImageIO.write(img, "png", output);
+        }
+    }
+
     /**
-     * Loads and preprocesses the dataset from the specified directory, generating batches of images and their corresponding labels.
+     * Loads and preprocesses the dataset from the specified directory
      *
      * @param dataDir     The path to the directory containing class subdirectories with image files.
      * @param batchSize   The number of images
      * @param imageHeight The desired height of the images after resizing.
      * @param imageWidth  The desired width of the images after resizing.
      * @param numChannels The number of color channels in the images (e.g., 3 for RGB images).
-     * @param numClasses  The total number of classes
      * @return An array containing two TFloat32 tensors: one for the images and one for the labels.
      * @throws IOException If there is an error while loading the images or creating the tensors.
      */
-    public static TFloat32[] loadDataset(String dataDir, int batchSize, int imageHeight, int imageWidth, int numChannels, int numClasses) throws IOException {
+    public static TFloat32[] loadDataset(String dataDir, int batchSize, int imageHeight, int imageWidth, int numChannels) throws IOException {
         // Get all class directories from the specified data directory
         File[] classDirs = new File(dataDir).listFiles(File::isDirectory);
 
@@ -155,56 +177,102 @@ public class tensorTrainerCNN extends JFrame {
 
         // Initialize arrays for holding image and label data
         FloatNdArray imageData = NdArrays.ofFloats(Shape.of(batchSize, imageHeight, imageWidth, numChannels)); // FloatNdArray for image data
-        FloatNdArray labelData = NdArrays.ofFloats(Shape.of(batchSize, numClasses)); // FloatNdArray for label data
 
         int index = 0;  // Index to track the number of images processed
 
-        // Loop through each class directory to process the images
+        // Initialize variables for batch preparation
+        List<File> selectedFolders = new ArrayList<>(); // List to store folders that contribute images to the batch
+        int remainingImages = batchSize; // Tracks the number of images still required to fill the batch
+        numberClasses = 0; // Counter for the number of contributing classes
+
+        // Iterate over class directories to identify folders with sufficient images
         for (File classDir : classDirs) {
+            // Retrieve all valid image files (JPG format) from the current directory
+            File[] imageFiles = classDir.listFiles((_, name) -> name.toLowerCase().endsWith(".jpg"));
+
+            // Skip the folder if it does not contain valid images
+            if (imageFiles == null || imageFiles.length == 0) {
+                continue; // Continue to the next folder
+            }
+
+            // Add the current folder to the list of selected folders
+            selectedFolders.add(classDir);
+
+            // Increment the count of classes contributing to the batch
+            numberClasses++;
+
+            // Reduce the number of remaining images by the count of images in this folder
+            remainingImages -= imageFiles.length;
+
+            // Stop processing further folders if we already have enough images to fill the batch
+            if (remainingImages <= 0) {
+                break; // Exit the loop early since the batch is complete
+            }
+        }
+
+        // Verify that we have enough images to fill the batch
+        if (remainingImages > 0) {
+            // Log the shortfall and throw an error
+            System.out.println(remainingImages + " too many image(s)"); // Prints the number of additional images needed
+            throw new RuntimeException("Not enough images to fill the batch."); // Throws an exception to indicate an error
+        }
+
+        // Ensure at least one class contributed to the batch
+        if (numberClasses == 0) {
+            // Throw an error if no folders with grouped images were found
+            throw new RuntimeException("You can't use a folder without grouped images!");
+        }
+
+        // Initialize the label data tensor
+        // The tensor shape is [batchSize, numberClasses] to store one-hot encoded labels for each image
+        FloatNdArray labelData = NdArrays.ofFloats(Shape.of(batchSize, numberClasses));
+
+        // Process images from the selected folders
+        for (File classDir : selectedFolders) {
             String className = classDir.getName();  // Get the current class name
             int classLabel = classLabelMap.get(className);  // Retrieve the corresponding class label
-            File[] imageFiles = classDir.listFiles((_, name) -> name.toLowerCase().endsWith(".jpg")); // Get all JPG images in the class directory and convert them into lower case
 
-            // Check if there are image files to process
-            if (imageFiles != null) {
-                // Loop through each image file in the current class directory
-                for (File imageFile : imageFiles) {
-                    // Stop processing if the batch size limit is reached
-                    if (index >= batchSize) {
-                        break;
-                    }
-                    try {
-                        // Read the image file into a BufferedImage object
-                        BufferedImage img = ImageIO.read(imageFile);
-                        if (img != null) {
-                            // Preprocess the image to resize and normalize it
-                            float[][][] imageArray = preprocessImage(img, imageHeight, imageWidth);
+            // Retrieve all valid JPG image files in the selected class directory
+            File[] imageFiles = classDir.listFiles((_, name) -> name.toLowerCase().endsWith(".jpg"));
 
-                            // Create the one-hot encoded label for the current class
-                            float[] labelArray = preprocessLabel(classLabel, numClasses);
+            // Ensure image files are not null before proceeding
+            for (File imageFile : Objects.requireNonNull(imageFiles)) {
+                // Stop processing if the batch size limit is reached
+                if (index >= batchSize) {
+                    break;
+                }
 
-                            // Fill the image tensor with pixel values from the preprocessed image array
-                            for (int i = 0; i < imageHeight; i++) { // Iterate over each row of the image
-                                for (int j = 0; j < imageWidth; j++) { // Iterate over each column of the image
-                                    for (int k = 0; k < numChannels; k++) { // Iterate over each color channel (e.g., R, G, B)
-                                        // Set the pixel value at the specified index in the image tensor
-                                        // imageArray[i][j][k] contains the normalized pixel value for the pixel at (i, j) for channel k
-                                        imageData.setFloat(imageArray[i][j][k], index, i, j, k);
-                                    }
+                try {
+                    // Read the image file into a BufferedImage object
+                    BufferedImage img = ImageIO.read(imageFile);
+                    if (img != null) {
+                        // Preprocess the image to resize and normalize it
+                        float[][][] imageArray = preprocessImage(img, imageHeight, imageWidth);
+
+                        // Create the one-hot encoded label for the current class
+                        float[] labelArray = preprocessLabel(classLabel, numberClasses);
+
+                        // Fill the image tensor with pixel values from the preprocessed image array
+                        for (int i = 0; i < imageHeight; i++) { // Iterate over each row of the image
+                            for (int j = 0; j < imageWidth; j++) { // Iterate over each column of the image
+                                for (int k = 0; k < numChannels; k++) { // Iterate over each color channel (e.g., R, G, B)
+                                    // Set the pixel value at the specified index in the image tensor
+                                    // imageArray[i][j][k] contains the normalized pixel value for the pixel at (i, j) for channel k
+                                    imageData.setFloat(imageArray[i][j][k], index, i, j, k);
                                 }
                             }
-
-                            // Fill the label tensor with the one-hot encoded label
-                            for (int l = 0; l < numClasses; l++) {
-                                labelData.setFloat(labelArray[l], index, l);
-                            }
-
-                            index++;  // Increment the index after processing an image
                         }
-                    } catch (IOException e) {
-                        // Handle potential IO exceptions and print an error message
-                        System.out.println("Error reading image file: " + imageFile.getName() + " - " + e.getMessage());
+
+                        // Fill the label tensor with the one-hot encoded label
+                        for (int l = 0; l < numberClasses; l++) {
+                            labelData.setFloat(labelArray[l], index, l);
+                        }
+
+                        index++;  // Increment the index after processing an image
                     }
+                } catch (IOException e) {
+                    // Handle potential IO exceptions and print an error message
+                    System.out.println("Error reading image file: " + imageFile.getName() + " - " + e.getMessage());
                 }
             }
         }
