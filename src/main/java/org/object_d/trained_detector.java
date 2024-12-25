@@ -3,6 +3,7 @@ package org.object_d;
 import nu.pattern.OpenCV;
 import org.tensorflow.SavedModelBundle;
 import org.tensorflow.Session;
+import org.tensorflow.exceptions.TFInvalidArgumentException;
 import org.tensorflow.ndarray.FloatNdArray;
 import org.tensorflow.ndarray.NdArrays;
 import org.tensorflow.ndarray.Shape;
@@ -16,6 +17,8 @@ import java.awt.event.ActionListener;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class trained_detector extends JFrame {
     // Create a File object to represent the path for a tensor file.
@@ -96,28 +99,24 @@ public class trained_detector extends JFrame {
      * @return A tensor (TFloat32) representing the image data in a normalized format suitable for model prediction.
      * @throws IOException If an error occurs while reading the image file.
      */
-    public static TFloat32 image_preparation(File ImageFile) throws IOException {
+    public static TFloat32 image_preparation(File ImageFile, int targetSize) throws IOException {
         // Load OpenCV library locally to handle image manipulation
         OpenCV.loadLocally();
-
-        // Set target dimensions for resizing the image
-        int targetWidth = 1024;
-        int targetHeight = 1024;
 
         // Read the image file from disk
         BufferedImage img = ImageIO.read(ImageFile);
 
         // Create a new BufferedImage for resizing the original image to the target dimensions
-        BufferedImage resizedImage = new BufferedImage(targetWidth, targetHeight, BufferedImage.TYPE_INT_RGB);
-        resizedImage.getGraphics().drawImage(img, 0, 0, targetWidth, targetHeight, null); // Draw the image scaled to the new size
+        BufferedImage resizedImage = new BufferedImage(targetSize, targetSize, BufferedImage.TYPE_INT_RGB);
+        resizedImage.getGraphics().drawImage(img, 0, 0, targetSize, targetSize, null); // Draw the image scaled to the new size
 
         // Create a tensor (NdArray) to hold the image data in the format [1, height, width, 3] (for RGB)
-        FloatNdArray imageData = NdArrays.ofFloats(Shape.of(1, targetHeight, targetWidth, 3));
+        FloatNdArray imageData = NdArrays.ofFloats(Shape.of(1, targetSize, targetSize, 3));
 
         // Convert the image pixel values to a 3D array representing RGB values normalized between 0 and 1
-        float[][][] imageArray = new float[targetHeight][targetWidth][3];
-        for (int x = 0; x < targetHeight; x++) {
-            for (int y = 0; y < targetWidth; y++) {
+        float[][][] imageArray = new float[targetSize][targetSize][3];
+        for (int x = 0; x < targetSize; x++) {
+            for (int y = 0; y < targetSize; y++) {
                 int rgb = resizedImage.getRGB(x, y); // Get the RGB value at each pixel
                 imageArray[x][y][0] = ((rgb >> 16) & 0xFF) / 255.0f;  // Extract and normalize red component
                 imageArray[x][y][1] = ((rgb >> 8) & 0xFF) / 255.0f;   // Extract and normalize green component
@@ -126,8 +125,8 @@ public class trained_detector extends JFrame {
         }
 
         // Fill the image tensor with the normalized RGB values from the array
-        for (int i = 0; i < targetHeight; i++) {
-            for (int j = 0; j < targetWidth; j++) {
+        for (int i = 0; i < targetSize; i++) {
+            for (int j = 0; j < targetSize; j++) {
                 for (int k = 0; k < 3; k++) {
                     imageData.setFloat(imageArray[i][j][k], 0, i, j, k); // Set the float values in the tensor
                 }
@@ -139,53 +138,96 @@ public class trained_detector extends JFrame {
     }
 
     /**
-     * Executes the image detection process by loading a trained model and running inference on the prepared image.
+     * Initiates the image detection process. Attempts detection with initial size
+     * retries with new size if previous size failed
      *
-     * @throws IOException If an error occurs during the loading of the image or model, or while performing detection.
+     * @throws IOException if an error occurs while loading the model or processing the image.
      */
-    public static void detect() throws IOException { // Detection logic is now in the format required for doing its job
-        // This is a known fact, since the StageTwoExporter has proven that the loading works properly by this code
-        // --> The exporter logic in the TrainerCNN code was bad -> fixed now
-        // -> fixed the logic in there - detection works now
+    public static void detect() throws IOException {
+        try {
+            // Attempt the detection with an initial size
+            runDetection(224);
+        } catch (TFInvalidArgumentException e) {
+            // Parse the required height from the error message
+            String errorMsg = e.getMessage();
+            int newHeight = parseRequiredDimension(errorMsg);
 
-        // Load the trained model from the directory specified by tensor_file, using the 'serve' tag.
+            // Retry the process with the new dimensions
+            System.out.printf("Retrying with dimensions: %s%n\n", newHeight);
+            runDetection(newHeight);
+        }
+    }
+
+    /**
+     * Runs the image detection process using a given input size
+     *
+     * @param inputSize The size to which the image should be resized before feeding it to the model.
+     * @throws IOException if an error occurs while loading the model or processing the image.
+     */
+    private static void runDetection(int inputSize) throws IOException {
+        // Load the trained model from the directory specified by tensor_file
         try (SavedModelBundle model = SavedModelBundle.load(tensor_file.getPath(), "serve")) {
             try (Session session = model.session()) {
-                // Prepare the image file by converting it to a tensor that can be fed into the model.
-                TFloat32 imageTensor = image_preparation(image_file);
+                // Prepare the image file by converting it to a tensor with the given input size
+                TFloat32 imageTensor = image_preparation(image_file, inputSize);
 
-                // Run the model session and fetch the output for class prediction.
-                // 'input' refers to the model's input tensor name, and 'class_output' is the tensor
-                // that will contain the class probabilities.
+                // Run the model session and fetch the output for class prediction
                 TFloat32 classOutput = (TFloat32) session.runner()
-                        .feed("input", imageTensor)   // Feed the prepared image tensor to the model input
-                        .fetch("class_output")        // Fetch the predicted class output
-                        .run()                                 // Run the detection
-                        .get(0);                               // Get the first output, which is the class prediction
+                        .feed("input", imageTensor)
+                        .fetch("class_output")
+                        .run()
+                        .get(0);
 
-                // Find the index of the maximum probability in the classOutput tensor
-                int predictedClass = 0;
-                float maxProbability = -1.0f;
-
-                // Quick softmax algorithm
-                for (int i = 0; i < classOutput.shape().get(1); i++) {
-                    float probability = classOutput.getFloat(0, i); // Get the probability for each class
-                    if (probability > maxProbability) {
-                        maxProbability = probability; // Update maximum probability
-                        predictedClass = i;           // Update predicted class index
-                    }
-
-                    // Print out probability for each class for checking
-                    System.out.printf("Class %s, probability: %.4f\n", i, probability);
-                }
-
-                // Print the predicted class and its probability to the console.
-                System.out.printf("Final predicted class: %d with probability: %.4f%n", predictedClass, maxProbability);
-
-                // Set the predicted class and probability in the label with proper formatting.
-                output_name.setText(String.format("Predicted class: %d with probability: %.4f", predictedClass, maxProbability));
+                // Process the class predictions
+                processClassOutput(classOutput);
             }
         }
+    }
+
+    /**
+     * Processes the class output from the model by identifying the class with the highest probability.
+     *
+     * @param classOutput The output tensor containing the predicted class probabilities.
+     */
+    private static void processClassOutput(TFloat32 classOutput) {
+        int predictedClass = 0;
+        float maxProbability = -1.0f;
+
+        // Iterate through the class probabilities to find the best prediction
+        for (int i = 0; i < classOutput.shape().get(1); i++) {
+            float probability = classOutput.getFloat(0, i);
+            if (probability > maxProbability) {
+                maxProbability = probability;
+                predictedClass = i;
+            }
+
+            // Print out the probability for each class
+            System.out.printf("Class %s, probability: %.4f\n", i, probability);
+        }
+
+        // Output the final prediction
+        System.out.printf("Final predicted class: %d with probability: %.4f%n", predictedClass, maxProbability);
+        output_name.setText(String.format("Predicted class: %d with probability: %.4f", predictedClass, maxProbability));
+    }
+
+    /**
+     * Parses the error message to extract the required dimension for the input size.
+     *
+     * @param errorMessage The error message containing the required dimension.
+     * @return The required dimension as an integer, standard is 224 since multiple of 32 which is commonly used
+     */
+    private static int parseRequiredDimension(String errorMessage) {
+        // Extract the required height from the error message
+        String regex = "requires a multiple of (\\d+)";
+        Pattern pattern = Pattern.compile(regex);
+        Matcher matcher = pattern.matcher(errorMessage);
+
+        if (matcher.find()) {
+            return Integer.parseInt(matcher.group(1)); // Return the parsed height
+        }
+
+        // Default value if parsing fails
+        return 224;
     }
 
     public static class event_select_image implements ActionListener {

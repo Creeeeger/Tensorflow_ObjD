@@ -188,8 +188,11 @@ public class tensorTrainerCNN extends JFrame {
         // Iterate over class directories to identify folders with sufficient images
         for (File classDir : classDirs) {
             // Retrieve all valid image files (JPG format) from the current directory
-            File[] imageFiles = classDir.listFiles((_, name) -> name.toLowerCase().endsWith(".jpg"));
-
+            File[] imageFiles = classDir.listFiles((_, name) ->
+                    name.toLowerCase().endsWith(".jpg") ||
+                            name.toLowerCase().endsWith(".jpeg") ||
+                            name.toLowerCase().endsWith(".png")
+            );
             // Skip the folder if it does not contain valid images
             if (imageFiles == null || imageFiles.length == 0) {
                 continue; // Continue to the next folder
@@ -233,14 +236,18 @@ public class tensorTrainerCNN extends JFrame {
             int classLabel = classLabelMap.get(className);  // Retrieve the corresponding class label
 
             // Retrieve all valid JPG image files in the selected class directory
-            File[] imageFiles = classDir.listFiles((_, name) -> name.toLowerCase().endsWith(".jpg"));
-
+            File[] imageFiles = classDir.listFiles((_, name) ->
+                    name.toLowerCase().endsWith(".jpg") ||
+                            name.toLowerCase().endsWith(".jpeg") ||
+                            name.toLowerCase().endsWith(".png")
+            );
             // Ensure image files are not null before proceeding
             for (File imageFile : Objects.requireNonNull(imageFiles)) {
                 // Stop processing if the batch size limit is reached
                 if (index >= batchSize) {
                     break;
                 }
+                System.out.printf("Class Name (folder) %s Class label %s File name %s %n", className, classLabel, imageFile.getName());
 
                 try {
                     // Read the image file into a BufferedImage object
@@ -334,6 +341,17 @@ public class tensorTrainerCNN extends JFrame {
     public static float[] preprocessLabel(int classLabel, int numClasses) {
         // Create an array to hold the one-hot encoded label, initialized to zero
         float[] labelArray = new float[numClasses];
+
+        // Check if the class label exceeds the total number of classes available
+        if (classLabel >= numberClasses) {
+            // Print an error message indicating that the class label is invalid
+            System.out.println("Class label " + classLabel + " exceeds total number of classes " + numberClasses);
+
+            labelArray[labelArray.length - 1] = 1.0f;  // One-hot encoding
+
+            // Return the modified label array
+            return labelArray;
+        }
 
         // Set the position corresponding to the class label to 1.0 for one-hot encoding
         labelArray[classLabel] = 1.0f;  // One-hot encoding
