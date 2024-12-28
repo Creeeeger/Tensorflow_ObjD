@@ -1,8 +1,6 @@
 package org.object_d;
 
 import nu.pattern.OpenCV;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.tensorflow.SavedModelBundle;
 import org.tensorflow.Session;
 import org.tensorflow.exceptions.TFInvalidArgumentException;
@@ -23,7 +21,6 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class trained_detector extends JFrame {
-    private static final Logger log = LoggerFactory.getLogger(trained_detector.class);
     // Create a File object to represent the path for a tensor file.
     static File tensor_file = new File(System.getProperty("user.dir") + File.separator + "tensor_file");  // Initially set to the current working directory
     static JLabel Tensor_name;       // Tensor_name label to display the name of the tensor file
@@ -31,6 +28,7 @@ public class trained_detector extends JFrame {
     static JLabel output_name;       // output_name label to display the name of the output
     static JButton image_select;     // JButton for selecting an image file
     static JButton predict;          // JButton to initiate the prediction process
+    static JButton tensor_select;    // JButton for the Tensor selection
     static File image_file;          // File object to store the selected image file
 
     public trained_detector() {
@@ -45,12 +43,12 @@ public class trained_detector extends JFrame {
         detectorPanel.setBorder(BorderFactory.createTitledBorder("Detector from previously created models"));
 
         // Initialize labels and buttons for selecting tensor and image files
-        Tensor_name = new JLabel("Tensor file");
-        JButton tensor_select = new JButton("Select Tensor file");
-
         image_name = new JLabel("Image file");
         image_select = new JButton("Select image file");
-        image_select.setEnabled(false); // Initially disabled since tensor file is selected first
+
+        Tensor_name = new JLabel("Tensor file");
+        tensor_select = new JButton("Select Tensor file");
+        tensor_select.setEnabled(false);
 
         // Label for displaying the predicted class
         output_name = new JLabel("Predicted class: ");
@@ -71,15 +69,15 @@ public class trained_detector extends JFrame {
         JLabel img = new JLabel(dummyImage); // Set the placeholder image in a JLabel
 
         // Add components to the detector panel with spacing between them
-        detectorPanel.add(Tensor_name);
-        detectorPanel.add(Box.createRigidArea(new Dimension(0, 5))); // Adds 5px vertical space
-        detectorPanel.add(tensor_select);
-        detectorPanel.add(Box.createRigidArea(new Dimension(0, 5)));
         detectorPanel.add(image_name);
         detectorPanel.add(Box.createRigidArea(new Dimension(0, 5)));
         detectorPanel.add(image_select);
         detectorPanel.add(Box.createRigidArea(new Dimension(0, 5)));
         detectorPanel.add(img); // Placeholder image added
+        detectorPanel.add(Box.createRigidArea(new Dimension(0, 5)));
+        detectorPanel.add(Tensor_name);
+        detectorPanel.add(Box.createRigidArea(new Dimension(0, 5))); // Adds 5px vertical space
+        detectorPanel.add(tensor_select);
         detectorPanel.add(Box.createRigidArea(new Dimension(0, 5)));
         detectorPanel.add(predict);
         detectorPanel.add(Box.createRigidArea(new Dimension(0, 5)));
@@ -100,17 +98,18 @@ public class trained_detector extends JFrame {
      *
      * @param ImageFile The image file to be prepared.
      * @return A tensor (TFloat32) representing the image data in a normalized format suitable for model prediction.
-     * @throws IOException If an error occurs while reading the image file.
      */
-    public static TFloat32 image_preparation(File ImageFile, int targetSize) throws IOException {
+    public static TFloat32 image_preparation(File ImageFile, int targetSize) {
         // Load OpenCV library locally to handle image manipulation
         OpenCV.loadLocally();
 
         // Read the image file from disk
-        BufferedImage img = ImageIO.read(ImageFile);
-
-        System.out.println(img.getType()); // Trigger for wrong image files since if it's not an image file this will throw an error and indicate
-        // That a wrong file format is present
+        BufferedImage img;
+        try {
+            img = ImageIO.read(ImageFile);
+        } catch (IOException e) {
+            throw new RuntimeException("Image not existent: " + e);
+        }
 
         // Create a new BufferedImage for resizing the original image to the target dimensions
         BufferedImage resizedImage = new BufferedImage(targetSize, targetSize, BufferedImage.TYPE_INT_RGB);
@@ -146,10 +145,8 @@ public class trained_detector extends JFrame {
     /**
      * Initiates the image detection process. Attempts detection with initial size
      * retries with new size if previous size failed
-     *
-     * @throws IOException if an error occurs while loading the model or processing the image.
      */
-    public static void detect() throws IOException {
+    public static void detect() {
         try {
             // Attempt the detection with an initial size
             runDetection(224);
@@ -168,9 +165,8 @@ public class trained_detector extends JFrame {
      * Runs the image detection process using a given input size
      *
      * @param inputSize The size to which the image should be resized before feeding it to the model.
-     * @throws IOException if an error occurs while loading the model or processing the image.
      */
-    private static void runDetection(int inputSize) throws IOException {
+    private static void runDetection(int inputSize) {
         // Load the trained model from the directory specified by tensor_file
         try (SavedModelBundle model = SavedModelBundle.load(tensor_file.getPath(), "serve")) {
             try (Session session = model.session()) {
@@ -186,9 +182,6 @@ public class trained_detector extends JFrame {
 
                 // Process the class predictions
                 processClassOutput(classOutput);
-            } catch (Exception e) {
-                output_name.setText("Model error occurred");
-                System.out.println("Model error occurred");
             }
         }
     }
@@ -268,6 +261,11 @@ public class trained_detector extends JFrame {
                     Image scaledImage = originalImage.getScaledInstance(desiredWidth, desiredHeight, Image.SCALE_SMOOTH);
                     ImageIcon scaledIcon = new ImageIcon(scaledImage);
 
+                    if (scaledIcon.getIconHeight() == -1) { // Check if valid image
+                        System.out.println("No valid image");
+                        throw new RuntimeException("No valid image");
+                    }
+
                     // Set the scaled image on the provided JLabel
                     imageLabel.setIcon(scaledIcon);
 
@@ -275,11 +273,11 @@ public class trained_detector extends JFrame {
                     image_name.setText(selectedFile.getPath());
                     image_file = selectedFile; // Assign the selected file to image_file
 
-                    // Enable the 'Predict' button since an image has been selected
-                    predict.setEnabled(true);
+                    // Enable the 'Tensor select' button since an image has been selected
+                    tensor_select.setEnabled(true);
 
                 } catch (Exception ex) {
-                    // If something goes wrong (e.g., file is not an image), throw a runtime exception
+                    // If something goes wrong
                     throw new RuntimeException(ex);
                 }
             }
@@ -309,22 +307,16 @@ public class trained_detector extends JFrame {
             // Print a message to confirm the model (directory) has been loaded
             System.out.println("Model loaded");
 
-            // Enable the image selection button now that the tensor file has been selected
-            image_select.setEnabled(true);
+            // Enable the prediction button now where the tensor file has been selected
+            predict.setEnabled(true);
         }
     }
 
     public static class event_predict implements ActionListener {
         @Override
         public void actionPerformed(ActionEvent e) {
-            // perform the prediction when the "Predict" button is pressed
-            try {
-                // Call the detect method to run the detection process
-                detect();
-            } catch (Exception ex) {
-                // If an exception occurs during detection, throw a RuntimeException
-                throw new RuntimeException(ex);
-            }
+            // perform the prediction when the "Predict" button is pressed - Call the detect method to run the detection process
+            detect();
         }
     }
 }
