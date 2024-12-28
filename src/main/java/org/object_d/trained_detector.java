@@ -1,6 +1,8 @@
 package org.object_d;
 
 import nu.pattern.OpenCV;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.tensorflow.SavedModelBundle;
 import org.tensorflow.Session;
 import org.tensorflow.exceptions.TFInvalidArgumentException;
@@ -21,6 +23,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class trained_detector extends JFrame {
+    private static final Logger log = LoggerFactory.getLogger(trained_detector.class);
     // Create a File object to represent the path for a tensor file.
     static File tensor_file = new File(System.getProperty("user.dir") + File.separator + "tensor_file");  // Initially set to the current working directory
     static JLabel Tensor_name;       // Tensor_name label to display the name of the tensor file
@@ -106,6 +109,9 @@ public class trained_detector extends JFrame {
         // Read the image file from disk
         BufferedImage img = ImageIO.read(ImageFile);
 
+        System.out.println(img.getType()); // Trigger for wrong image files since if it's not an image file this will throw an error and indicate
+        // That a wrong file format is present
+
         // Create a new BufferedImage for resizing the original image to the target dimensions
         BufferedImage resizedImage = new BufferedImage(targetSize, targetSize, BufferedImage.TYPE_INT_RGB);
         resizedImage.getGraphics().drawImage(img, 0, 0, targetSize, targetSize, null); // Draw the image scaled to the new size
@@ -180,6 +186,9 @@ public class trained_detector extends JFrame {
 
                 // Process the class predictions
                 processClassOutput(classOutput);
+            } catch (Exception e) {
+                output_name.setText("Model error occurred");
+                System.out.println("Model error occurred");
             }
         }
     }
@@ -202,12 +211,12 @@ public class trained_detector extends JFrame {
             }
 
             // Print out the probability for each class
-            System.out.printf("Class %s, probability: %.4f\n", i, probability);
+            System.out.printf("Class %s, probability: %.8f\n", i, probability);
         }
 
         // Output the final prediction
-        System.out.printf("Final predicted class: %d with probability: %.4f%n", predictedClass, maxProbability);
-        output_name.setText(String.format("Predicted class: %d with probability: %.4f", predictedClass, maxProbability));
+        System.out.printf("Final predicted class: %d with probability: %.8f%n", predictedClass, maxProbability);
+        output_name.setText(String.format("Predicted class: %d with probability: %.8f", predictedClass, maxProbability));
     }
 
     /**

@@ -283,6 +283,7 @@ public class database_handler {
             return array_data; // Return the 2D array with all the retrieved data
 
         } catch (Exception e) {
+            System.out.println("SQL error or missing database");
             // Catch any exceptions that may occur and rethrow them as RuntimeException
             // This simplifies error handling for the calling method
             throw new RuntimeException(e);
@@ -485,6 +486,7 @@ public class database_handler {
             return array_data;
 
         } catch (SQLException e) {
+            System.out.println("Probably your database is missing");
             // Catch any SQL exceptions and throw a RuntimeException
             throw new RuntimeException(e);
         }
