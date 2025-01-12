@@ -454,35 +454,9 @@ public class tensorTrainerCNN extends JFrame {
                 )
         ); // shape for class labels
 
-        // Input normalization (feature scaling)
-        // Scale pixel values from [0, 255] to [-0.5, 0.5] for better training convergence
-        Operand<TFloat32> scaledInput = tf.math.div(
-                tf.math.sub(
-                        tf.dtypes.cast(
-                                inputReshaped,
-                                TFloat32.class
-                        ),
-                        tf.constant(127.5f)),
-                tf.constant(255.0f)
-        );
-        /*
-        Casting Input to TFloat32 and subtracting 127.5 so:
-         tf.math.sub(
-             tf.dtypes.cast(inputReshaped, TFloat32.class),
-             tf.constant(127.5f)
-         )
-        •	Original range: [0, 255].
-	    •	After subtraction: [-127.5, 127.5].
-
-	    Dividing by a Constant tf.math.div(..., tf.constant(255.0f))
-	    •	range [-127.5, 127.5] to [-0.5, 0.5].
-        •	Minimum value: -127.5 / 255.0 = -0.5.
-        •	Maximum value: 127.5 / 255.0 = 0.5.
-         */
-
         if (variable) { // no dynamic layers
             // Build Convolutional Layers followed by Max Pooling layers
-            Operand<TFloat32> conv1 = buildConvLayer(tf, scaledInput, NUM_CHANNELS, 32); // First convolution layer
+            Operand<TFloat32> conv1 = buildConvLayer(tf, inputReshaped, NUM_CHANNELS, 32); // First convolution layer
             Operand<TFloat32> pool1 = buildMaxPoolLayer(tf, conv1); // First max pooling layer
 
             Operand<TFloat32> conv2 = buildConvLayer(tf, pool1, 32, 64); // Second convolution layer
@@ -553,11 +527,11 @@ public class tensorTrainerCNN extends JFrame {
             ); // Scale regularization term
 
             // Optimizer (Adam) for minimizing the total loss
-            Optimizer optimizer = new Adam(graph, 0.001f, 0.9f, 0.999f, 1e-6f); // Create an Adam optimizer
+            Optimizer optimizer = new Adam(graph, 0.00001f, 0.9f, 0.999f, 1e-8f); // Create an Adam optimizer
             optimizer.minimize(totalLoss, "train"); // Add minimization operation to the optimizer
         } else { // Dynamic layers
-            // Initialize the current layer with the scaled input image
-            Operand<TFloat32> currentLayer = scaledInput;
+            // Initialize the current layer with the reshaped input image
+            Operand<TFloat32> currentLayer = inputReshaped;
 
             // Set the number of input channels to 3 (RGB) and the number of output channels for the first convolution layer to 32
             int localChannelsIn = NUM_CHANNELS;
@@ -669,7 +643,7 @@ public class tensorTrainerCNN extends JFrame {
             Add<TFloat32> totalLoss = tf.withName("totalLoss").math.add(classLoss, tf.math.mul(regularizers, tf.constant(5e-4f)));
 
             // Create an Adam optimizer to minimize the total loss during training
-            Optimizer optimizer = new Adam(graph, 0.005f, 0.9f, 0.999f, 1e-6f); // Adam optimizer with specified parameters
+            Optimizer optimizer = new Adam(graph, 0.00001f, 0.9f, 0.999f, 1e-8f); // Adam optimizer with specified parameters
             optimizer.minimize(totalLoss, "train"); // Add the minimization operation to the optimizer
         }
 
@@ -996,9 +970,6 @@ public class tensorTrainerCNN extends JFrame {
             }
 
             Session session = new Session(graph);
-            // Initialize the Adam optimizer
-            new Adam(graph, 0.001f, 0.9f, 0.999f, 1e-6f);
-
             Result outputs = null;
 
             // Loop over the specified number of training epochs
