@@ -1,6 +1,6 @@
 ### Tensorflow_ObjD
 
-## Tensorflow object detection software in java 
+## Tensorflow object detection software in java
 
 - SQL backend for saving amount, times and names of detected objects
 
@@ -10,7 +10,7 @@
 
 - Use of 3NF database
 
-- XML backend for faster restoring the old configuration 
+- XML backend for faster restoring the old configuration
 
 - Detect what is on images
 
@@ -26,7 +26,12 @@
 
 - Training data analysis for loss function
 
+- CNN playground: create your own bespoke CNNs
+
+- Custom detector: use your own models to detect objects on images
+
 - (Later) Tensorflow development dependant -- hardware acceleration usage (npu) & detect images with checkpoints made
+
 
 - Based on tensorflow 2.x for unix systems (Tested on macOS 14 M1 Pro)
 

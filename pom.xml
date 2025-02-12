@@ -22,8 +22,9 @@
         </dependency>
         <dependency>
             <groupId>org.tensorflow</groupId>
-            <artifactId>tensorflow-core-platform</artifactId>
+            <artifactId>tensorflow-core-native</artifactId>
             <version>1.0.0</version>
+            <classifier>macosx-arm64</classifier>
         </dependency>
         <dependency>
             <groupId>org.tensorflow</groupId>

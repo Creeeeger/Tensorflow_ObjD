@@ -216,17 +216,14 @@ public class detector { // Class for detecting objects and labeling them as well
             // Initialize an array to store the results (one entry per image)
             String[] returnArray = new String[imageFiles.size()];
 
-            // Loop through each image file found in the directory
-            for (int i = 0; i < imageFiles.size(); i++) {
-                // Load the TensorFlow SavedModel for inference from the path
-                SavedModelBundle ModelBundle = SavedModelBundle.load(TensorPath, "serve");
+            // Load the TensorFlow SavedModel for inference from the path
+            try (SavedModelBundle ModelBundle = SavedModelBundle.load(TensorPath, "serve")) {
+                // Loop through each image file found in the directory
+                for (int i = 0; i < imageFiles.size(); i++) {
+                    // Get the string representation of the current image file
+                    String imageFile = imageFiles.get(i).toString();
+                    StringBuilder returnString = new StringBuilder();// To store the detection results for the image
 
-                // Get the string representation of the current image file
-                String imageFile = imageFiles.get(i).toString();
-                StringBuilder returnString = new StringBuilder(); // To store the detection results for the image
-
-                try (ModelBundle) {
-                    // Set up TensorFlow graph for image processing
                     try (Graph graph = new Graph()) {
                         // Create a TensorFlow session within the graph to run operations
                         try (Session session = new Session(graph)) {
@@ -323,12 +320,13 @@ public class detector { // Class for detecting objects and labeling them as well
                             }
                         }
                     }
-                }
-                // Assign the formatted detection results to the returnArray for the current image
-                returnArray[i] = imageFile.substring(imageFile.indexOf("/") + 1) + " " + returnString;
 
-                // Print the result for the current image
-                System.out.println(returnArray[i]);
+                    // Assign the formatted detection results to the returnArray for the current image
+                    returnArray[i] = imageFile.substring(imageFile.indexOf("/") + 1) + " " + returnString;
+
+                    // Print the result for the current image
+                    System.out.println(returnArray[i]);
+                }
             }
             // Return the array containing detection results for all images
             return returnArray;
