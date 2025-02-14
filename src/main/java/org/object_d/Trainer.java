@@ -335,40 +335,49 @@ public class Trainer extends JFrame {
             gen.setText("In case the download stops: download the safeTensor manually and put it into the model directory, in case the model gets stuck re run the sd web component");
 
             // Check if the environment exists
-            if (check_if_env_exists()) {
-                gen.setText("Starting generating images"); // Indicate that the image generation process is starting
-                try {
-                    // Create a new process builder for executing shell commands
-                    ProcessBuilder processBuilder = new ProcessBuilder();
-                    // Specify the command to start the shell (bash for Unix/Linux)
-                    processBuilder.command("bash");
-                    // Start the process
-                    Process process = processBuilder.start();
+            new Thread(() -> {
+                if (check_if_env_exists()) {
+                    SwingUtilities.invokeLater(() -> gen.setText("Starting generating images")); // Indicate that the image generation process is starting
 
-                    // Create a PrintWriter to send commands to the shell
-                    PrintWriter commandWriter = new PrintWriter(process.getOutputStream());
+                    try {
+                        // Create a new process builder for executing shell commands
+                        ProcessBuilder processBuilder = new ProcessBuilder();
+                        // Specify the command to start the shell (bash for Unix/Linux)
+                        processBuilder.command("bash");
+                        // Start the process
+                        Process process = processBuilder.start();
 
-                    // Navigate to the stable_diff_env directory and run the webui.sh script
-                    commandWriter.println("cd stable_diff_env");
-                    commandWriter.println("./webui.sh"); // Execute the script to start the image generation
-                    commandWriter.flush(); // Flush the commands to ensure they are executed
+                        // Create a PrintWriter to send commands to the shell
+                        PrintWriter commandWriter = new PrintWriter(process.getOutputStream());
 
-                    // Read the output of the command
-                    BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
-                    String line;
-                    // Print each line of the output to the console
-                    while ((line = reader.readLine()) != null) {
-                        System.out.println(line);
+                        // Navigate to the stable_diff_env directory and run the webui.sh script
+                        commandWriter.println("cd stable_diff_env");
+                        commandWriter.println("./webui.sh"); // Execute the script to start the image generation
+                        commandWriter.flush(); // Flush the commands to ensure they are executed
+
+                        // Read the output of the command
+                        BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+                        String line;
+                        // Print each line of the output to the console
+                        while ((line = reader.readLine()) != null) {
+                            System.out.println(line);
+                        }
+
+                        // Wait for process to complete
+                        process.waitFor();
+
+                        // Update UI after process completion
+                        SwingUtilities.invokeLater(() -> gen.setText("Image generation completed"));
+
+                    } catch (Exception es) {
+                        // Handle exceptions during process execution
+                        throw new RuntimeException(es);
                     }
-
-                } catch (Exception es) {
-                    // Handle exceptions during process execution
-                    throw new RuntimeException(es);
+                } else {
+                    // If the environment does not exist, create one
+                    create_env();
                 }
-            } else {
-                // If the environment does not exist, create one
-                create_env();
-            }
+            }).start();
         }
     }
 
