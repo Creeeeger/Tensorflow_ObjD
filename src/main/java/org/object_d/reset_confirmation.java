@@ -44,8 +44,14 @@ public class reset_confirmation extends JFrame {
             setVisible(false);
             // Log the action to the console for debugging or record-keeping
             System.out.println("Reset the database");
-            // Refresh the database view or user interface to show the changes
-            database_utility.refresh();
+
+            try {
+                // Refresh the database view or user interface to show the changes
+                database_utility.refresh();
+            } catch (Exception ex) {
+                ex.printStackTrace();
+                System.out.println("Database utility window is not existent, ignore error");
+            }
         }
     }
 
