@@ -449,6 +449,19 @@ public class Main_UI extends JFrame {
     public static class event_set_params implements ActionListener {
         @Override
         public void actionPerformed(ActionEvent e) { // Handle action event
+
+            String[][] values = load_config(); // Load config values
+
+            if (!(values[0][1].equals(prev_picture.getPath()) &&
+                    values[1][1].equals(tensor_file.getPath()) &&
+                    Integer.parseInt(values[2][1]) == resolution &&
+                    Integer.parseInt(values[3][1]) == batch_size &&
+                    Integer.parseInt(values[4][1]) == epochs &&
+                    Float.parseFloat(values[5][1]) == learning_rate)) {
+
+                setValues(values); // Update values due to new config detected
+            }
+
             model_param gui = new model_param( // Create new model parameter settings window
                     (Main_UI) SwingUtilities.getWindowAncestor(detect_objects), // Pass the current instance of Main_UI
                     prev_picture.getPath(), // Pass previous picture path
