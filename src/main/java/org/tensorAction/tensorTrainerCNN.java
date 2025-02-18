@@ -107,11 +107,13 @@ public class tensorTrainerCNN extends JFrame {
 
         // Train the model with the loaded dataset, number of classes, epochs, and image size
         // create switch for variable layer training and normal training
-        if (variable) {
-            trainModel(images, labels, numberClasses, tensorTrainerCNN.epochs, imageSize, true, layers);
-        } else {
-            trainModel(images, labels, numberClasses, tensorTrainerCNN.epochs, imageSize, false, null);
-        }
+        new Thread(() -> {
+            if (variable) {
+                trainModel(images, labels, numberClasses, tensorTrainerCNN.epochs, imageSize, true, layers);
+            } else {
+                trainModel(images, labels, numberClasses, tensorTrainerCNN.epochs, imageSize, false, null);
+            }
+        }).start();
     }
 
     /**
