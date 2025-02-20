@@ -169,18 +169,23 @@ public class trained_detector extends JFrame {
     private static void runDetection(int inputSize) {
         // Load the trained model from the directory specified by tensor_file
         try (SavedModelBundle model = SavedModelBundle.load(tensor_file.getPath(), "serve")) {
+
+            // Create a new TensorFlow session to run inference
             try (Session session = model.session()) {
-                // Prepare the image file by converting it to a tensor with the given input size
+
+                // Convert the image file into a tensor representation suitable for model input
+                // This involves resizing, normalizing, and formatting the image as needed
                 TFloat32 imageTensor = image_preparation(image_file, inputSize);
 
-                // Run the model session and fetch the output for class prediction
+                // Execute the model with the prepared image tensor
+                // "input" refers to the input layer of the model, and "class_output" is the output layer
                 TFloat32 classOutput = (TFloat32) session.runner()
-                        .feed("input", imageTensor)
-                        .fetch("class_output")
+                        .feed("input", imageTensor)  // Provide the processed image as input
+                        .fetch("class_output")      // Request the classification output from the model
                         .run()
-                        .get(0);
+                        .get(0);                    // Retrieve the first output tensor from the list
 
-                // Process the class predictions
+                // Process and interpret the output tensor, which contains class predictions
                 processClassOutput(classOutput);
             }
         }
@@ -219,16 +224,18 @@ public class trained_detector extends JFrame {
      * @return The required dimension as an integer, standard is 224 since multiple of 32 which is commonly used
      */
     private static int parseRequiredDimension(String errorMessage) {
-        // Extract the required height from the error message
+        // Define a regular expression pattern to extract the required dimension
+        // The pattern looks for phrases like "requires a multiple of <number>"
         String regex = "requires a multiple of (\\d+)";
         Pattern pattern = Pattern.compile(regex);
         Matcher matcher = pattern.matcher(errorMessage);
 
+        // If a match is found, extract and return the required dimension as an integer
         if (matcher.find()) {
-            return Integer.parseInt(matcher.group(1)); // Return the parsed height
+            return Integer.parseInt(matcher.group(1)); // Convert the matched value to an integer
         }
 
-        // Default value if parsing fails
+        // Return a default dimension (224) if no valid number is found in the error message
         return 224;
     }
 

@@ -292,22 +292,22 @@ public class CNNPlayground extends JFrame {
      * @return the JPanel containing the file selection UI
      */
     private static JPanel addFilePanel() {
-        // Create a new JPanel with a vertical stack layout
+        // Create a new JPanel with a vertical box layout for stacking components
         JPanel filePanel = new JPanel();
         filePanel.setLayout(new BoxLayout(filePanel, BoxLayout.Y_AXIS));
 
-        // Label to indicate the purpose of the panel
+        // Label to describe the purpose of the panel
         JLabel filePathLabel = new JLabel("Folder Path:");
 
-        // TextField to display the selected folder path, initialized as non-editable
+        // TextField to display the selected folder path, set as non-editable
         JTextField filePathTextField = new JTextField(30);
-        filePathTextField.setEditable(false);  // Prevent user edits
-        filePathTextField.setText("No folder selected");  // Placeholder text
+        filePathTextField.setEditable(false);  // Prevents manual user input
+        filePathTextField.setText("No folder selected");  // Default placeholder text
 
-        // Button to trigger the folder selection dialog
+        // Button to open a folder selection dialog
         JButton fileSelectButton = getFolderPath(filePathTextField);
 
-        // Add components to the panel
+        // Add all components to the panel
         filePanel.add(filePathLabel);
         filePanel.add(filePathTextField);
         filePanel.add(fileSelectButton);
@@ -315,23 +315,37 @@ public class CNNPlayground extends JFrame {
         return filePanel;
     }
 
+    // Method to create a folder selection button and define its behavior
     private static JButton getFolderPath(JTextField filePathTextField) {
+        // Button for selecting a folder
         JButton fileSelectButton = new JButton("Select Folder");
+
+        // Add an action listener to handle button clicks
         fileSelectButton.addActionListener(_ -> {
+            // Create a JFileChooser instance configured for directory selection
             JFileChooser folderChooser = new JFileChooser();
             folderChooser.setDialogTitle("Select a Folder");
-            folderChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);  // Only allow directories
+            folderChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);  // Allow only directories
 
-            // Show the dialog and get the user's choice
+            // Show the dialog and capture the user's selection
             int result = folderChooser.showOpenDialog(null);
+
+            // If the user selects a folder and confirms the choice
             if (result == JFileChooser.APPROVE_OPTION) {
-                // Get the selected folder and update the text field
+                // Retrieve the selected folder
                 File selectedFolder = folderChooser.getSelectedFile();
+
+                // Update the text field with the folder path
                 filePathTextField.setText(selectedFolder.getAbsolutePath());
-                startButton.setEnabled(true);  // Enable the start button after folder selection
-                filepath = selectedFolder.getAbsolutePath();  // Store the selected path
+
+                // Enable the start button after a valid folder is selected
+                startButton.setEnabled(true);
+
+                // Store the selected folder path in a variable
+                filepath = selectedFolder.getAbsolutePath();
             }
         });
+
         return fileSelectButton;
     }
 
@@ -389,14 +403,22 @@ public class CNNPlayground extends JFrame {
             }
         }
 
-        // Add drag-and-drop functionality to the block panel
-        blockPanel.setTransferHandler(new ComponentTransferHandler());
+        // Set up drag-and-drop functionality for blockPanel
+        blockPanel.setTransferHandler(new ComponentTransferHandler()); // Enables drag-and-drop handling
+
+        // Add a mouse listener to detect user interaction for initiating a drag event
         blockPanel.addMouseListener(new java.awt.event.MouseAdapter() {
             @Override
             public void mousePressed(java.awt.event.MouseEvent evt) {
-                // Trigger drag-and-drop functionality on mouse press
+                // When the mouse is pressed, start the drag-and-drop operation
+
+                // Get the component that triggered the event (blockPanel in this case)
                 JComponent component = (JComponent) evt.getSource();
+
+                // Retrieve the TransferHandler associated with the component
                 TransferHandler handler = component.getTransferHandler();
+
+                // Initiate a drag operation with MOVE action
                 handler.exportAsDrag(component, evt, TransferHandler.MOVE);
             }
         });
