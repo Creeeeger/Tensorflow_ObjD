@@ -479,25 +479,32 @@ public class CNNPlayground extends JFrame {
          */
         @Override
         public boolean canImport(TransferSupport support) {
-            // Get the drop target component
+            // Retrieve the component where the drop is being attempted
             Component dropTarget = support.getComponent();
 
-            // Check if the target is a JPanel with a TitledBorder that matches the "Drag & Drop Area" title
+            // Ensure the drop target is a JPanel
             if (dropTarget instanceof JPanel targetPanel) {
+                // Get the panel's border
                 Border border = targetPanel.getBorder();
 
                 // Check if the panel has a TitledBorder
                 if (border instanceof TitledBorder) {
+                    // Extract the title of the border
                     String panelTitle = ((TitledBorder) border).getTitle();
+
+                    // Allow drop only if the panel title matches "Drag & Drop Area"
                     if (panelTitle.contains("Drag & Drop Area")) {
-                        return support.isDataFlavorSupported(COMPONENT_FLAVOR); // Check if the correct data flavor is supported
+                        // Verify if the transferred data type is supported
+                        return support.isDataFlavorSupported(COMPONENT_FLAVOR);
                     } else {
-                        return false; // Reject import if title doesn't match
+                        // Reject the drop if the panel title does not match the expected one
+                        return false;
                     }
                 }
             }
 
-            return super.canImport(support); // Use the default behavior otherwise
+            // If conditions are not met, fall back to the default import behavior
+            return super.canImport(support);
         }
 
         /**
@@ -567,9 +574,12 @@ public class CNNPlayground extends JFrame {
                      */
                     @Override
                     public void mousePressed(java.awt.event.MouseEvent evt) {
+                        // Check if the component is highlighted and the left mouse button is pressed
                         if (isHighlighted && SwingUtilities.isLeftMouseButton(evt)) {
-                            // Store the initial position and click point for dragging
+                            // Store the initial click position relative to the component
                             initialClick = evt.getPoint();
+
+                            // Capture the current position of the component before dragging
                             offset = component.getLocation();
                         }
                     }
@@ -605,27 +615,33 @@ public class CNNPlayground extends JFrame {
                      */
                     @Override
                     public void mouseReleased(java.awt.event.MouseEvent evt) {
+                        // Check if the component is highlighted and the left mouse button was used
                         if (isHighlighted && SwingUtilities.isLeftMouseButton(evt)) {
-                            // Handle drop logic after dragging the component
+                            // Get the current mouse position at the time of release
                             Point currentPoint = evt.getPoint();
+
+                            // Convert the point from the component's coordinate space to the target container's space
                             Point targetPoint = SwingUtilities.convertPoint(component, currentPoint, targetContainer);
 
-                            boolean placedInTarget = false;
+                            boolean placedInTarget = false; // Flag to track if the component is successfully repositioned
 
-                            // Check if the component is dropped within a valid position
+                            // Iterate through components in the target container to check for a valid drop position
                             for (Component c : targetContainer.getComponents()) {
                                 if (c != component && c.getBounds().contains(targetPoint)) {
-                                    // Reorder the component to the drop position
-                                    targetContainer.remove(component);
-                                    targetContainer.add(component, targetContainer.getComponentZOrder(c));
+                                    // If the component is dropped within another component’s bounds, reorder it
+                                    targetContainer.remove(component); // Remove the component from its current position
+                                    targetContainer.add(component, targetContainer.getComponentZOrder(c)); // Insert it at the new position
+
+                                    // Refresh the container layout
                                     targetContainer.revalidate();
                                     targetContainer.repaint();
-                                    placedInTarget = true;
-                                    break;
+
+                                    placedInTarget = true; // Mark the drop as successful
+                                    break; // Exit loop once placement is confirmed
                                 }
                             }
 
-                            // If no valid position, reset to the original location
+                            // If the drop position is invalid, reset the component to its original location
                             if (!placedInTarget) {
                                 component.setLocation(offset);
                             }
